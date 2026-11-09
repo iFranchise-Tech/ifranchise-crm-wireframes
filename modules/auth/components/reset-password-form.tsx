@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField } from "@/modules/auth/components/fields";
-import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
+import { DemoBanner } from "@/modules/auth/components/status-message";
+import { RecoverySuccessPreview } from "@/modules/auth/components/recovery-success-preview";
 import { validateNewPassword } from "@/modules/auth/schemas/auth";
 
 export function ResetPasswordForm() {
@@ -25,10 +26,7 @@ export function ResetPasswordForm() {
   return <>
     <DemoBanner>Preview only. The reset token is not verified and no password will be changed.</DemoBanner>
     {complete ? (
-      <AuthCard eyebrow="PASSWORD RESET · PREVIEW" title="Your reset screen is ready." description="In a connected product, the server would validate the recovery token before changing the credential.">
-        <StatusMessage tone="warning" title="Nothing was changed">This preview validated the form only. No password was saved and no account was updated.</StatusMessage>
-        <div style={{ marginTop: 19 }}><PrimaryButton type="button" onClick={() => { setComplete(false); setSubmitted(false); setPassword(""); setConfirmation(""); }}>Review the form again</PrimaryButton></div>
-      </AuthCard>
+      <RecoverySuccessPreview onReviewForm={() => { setComplete(false); setSubmitted(false); setPassword(""); setConfirmation(""); }} />
     ) : (
       <AuthCard eyebrow="ACCOUNT RECOVERY" title="Choose a new password." description="Create a long, unique password for your work account.">
         <form className="auth-form" onSubmit={submit} noValidate>

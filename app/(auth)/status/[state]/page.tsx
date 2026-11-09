@@ -3,7 +3,6 @@ import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryLink } from "@/modules/auth/components/button";
 import { Icon, type IconName } from "@/modules/auth/components/icon";
 import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
-import { PreviewStateLinks } from "@/modules/auth/components/preview-state-links";
 
 const states = {
   "invalid-credentials": {
@@ -56,6 +55,5 @@ export default async function AuthenticationStatePage({ params }: { params: Prom
         <p className="form-note">Need help? Contact your organization administrator.</p>
       </div>
     </AuthCard>
-    <PreviewStateLinks />
   </>;
 }

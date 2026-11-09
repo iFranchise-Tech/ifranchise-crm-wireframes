@@ -6,16 +6,15 @@ import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
 import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
-import { PreviewStateLinks } from "@/modules/auth/components/preview-state-links";
 import { useRouter } from "next/navigation";
 import { validateWorkEmail } from "@/modules/auth/schemas/auth";
 
 const DEMO_SIGN_IN_ENABLED = process.env.NODE_ENV !== "production";
 
-export function SignInFlow() {
+export function SignInFlow({ initialStep = "email", initialEmail = "" }: { initialStep?: "email" | "password"; initialEmail?: string }) {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "password">("email");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"email" | "password">(initialStep);
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -85,7 +84,6 @@ export function SignInFlow() {
           </form>
         </AuthCard>
       )}
-      <PreviewStateLinks />
     </>
   );
 }

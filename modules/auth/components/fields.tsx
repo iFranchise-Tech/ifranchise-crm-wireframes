@@ -24,8 +24,8 @@ export function TextField({ label, error, icon = "mail", id, className, ...input
   );
 }
 
-export function PasswordField({ label, error, id, ...inputProps }: TextFieldProps) {
-  const [visible, setVisible] = useState(false);
+export function PasswordField({ label, error, id, initiallyVisible = false, ...inputProps }: TextFieldProps & { initiallyVisible?: boolean }) {
+  const [visible, setVisible] = useState(initiallyVisible);
   const inputId = id ?? inputProps.name;
   return (
     <div className="field">

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryLink } from "@/modules/auth/components/button";
 import { DemoBanner } from "@/modules/auth/components/status-message";
-import { PreviewStateLinks } from "@/modules/auth/components/preview-state-links";
 
 export default function WelcomePage() {
   return <>
@@ -14,6 +13,5 @@ export default function WelcomePage() {
         <Link className="text-action" href="/invitation">Accept an invitation</Link>
       </div>
     </AuthCard>
-    <PreviewStateLinks />
   </>;
 }

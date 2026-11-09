@@ -24,13 +24,19 @@ Open <http://127.0.0.1:4173>. `npm run typecheck` checks the TypeScript source a
 
 Account state previews are available under `/status/<state>`, such as `/status/temporarily-suspended`. They are visual states only and do not inspect or change an account.
 
+## Screen review
+
+The authentication shell includes a persistent desktop screen library with expandable groups. On mobile, use **Browse screens** to open the same grouped navigation. Use the **Desktop** and **Mobile** controls to preview each screen at a wide layout or a phone-sized frame.
+
+The navigation opens direct previews for email and password validation, password visibility, password entry, loading, invalid credentials, recovery, invitations, MFA, authentication success, account status, access restrictions, and session expiry.
+
 ## Structure
 
 ```text
 app/                    App Router routes and layouts
-components/layout/      Shared authentication shell and brand panel
+components/layout/      Shared shell, expandable screen navigation, and brand panel
 modules/auth/actions/   Server action boundary
-modules/auth/components Reusable auth UI
+modules/auth/components Reusable auth UI and direct state previews
 modules/auth/schemas/   Central email and form validation
 modules/auth/services/  Auth provider contract and capability status
 modules/auth/types/     Auth result, capability, and identity types
