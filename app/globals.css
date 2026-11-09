@@ -86,7 +86,7 @@ svg { flex: none; width: 20px; height: 20px; }
 .auth-viewport { min-height: 100svh; background: linear-gradient(180deg, #32159b 0%, #6340b3 28%, #c7b3e9 56%, #f6f1fc 80%, #fff 100%) top / 100% 220px no-repeat, #fff; }
 .auth-viewport:has(.welcome-screen) { background-size: 100% 510px; }
 .auth-column { display: grid; grid-template-rows: auto 1fr auto; min-height: 100svh; padding: 38px 48px 25px; }
-.auth-column-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.auth-column-header { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .auth-column-header .brand-wordmark img { width: 144px; height: 36px; filter: brightness(0) invert(1); }
 .auth-content { width: 100%; max-width: 400px; margin: auto; padding: 42px 0; }
 .auth-title { margin: 0; color: var(--ink); font-size: 32px; font-weight: 580; line-height: 1.2; letter-spacing: -.04em; }
@@ -96,9 +96,6 @@ svg { flex: none; width: 20px; height: 20px; }
 .auth-footer nav { display: inline-flex; align-items: center; gap: 12px; }
 .auth-footer button { min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: inherit; }
 .auth-footer button:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 4px; }
-.auth-environment { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 32px; padding: 0 10px; border: 1px solid #ffffff40; border-radius: 20px; background: #ffffff0d; color: #fff; font-size: 10px; font-weight: 500; }
-.auth-environment > span { width: 4px; height: 4px; border-radius: 50%; background: #e3d7ff; }
-.auth-environment:hover { background: #ffffff1c; border-color: #ffffff70; }
 .sign-in-separator { display: flex; align-items: center; gap: 14px; margin: 24px 0 16px; color: var(--muted); font-size: 11px; }
 .sign-in-separator::before, .sign-in-separator::after { flex: 1; height: 1px; background: var(--line); content: ""; }
 .provider-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }

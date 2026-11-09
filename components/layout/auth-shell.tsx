@@ -12,7 +12,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <section className="auth-column" aria-label="Authentication">
         <header className="auth-column-header">
           <BrandMark />
-          <AuthInformation variant="badge" />
         </header>
         <div className="auth-content">{children}</div>
         <AuthInformation />
