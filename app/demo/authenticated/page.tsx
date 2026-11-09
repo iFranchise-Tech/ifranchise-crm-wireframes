@@ -1,14 +1,5 @@
 import { AuthShell } from "@/components/layout/auth-shell";
-import { AuthCard } from "@/modules/auth/components/auth-card";
-import { PrimaryLink } from "@/modules/auth/components/button";
-import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
-
+import { ResultScreen } from "@/modules/auth/components/result-screen";
 export default function AuthenticatedPreviewPage() {
-  return <AuthShell>
-    <DemoBanner>Demo access only. No credentials were checked, sent, or saved, and no CRM session was created.</DemoBanner>
-    <AuthCard eyebrow="DEMO SIGN-IN COMPLETE" title="You’re into the preview." description="Any non-empty email and password opens this local preview so you can review the next authentication state.">
-      <StatusMessage tone="success" title="Preview only">This does not verify an identity or grant real CRM access. Connect server-side authentication and authorization before production.</StatusMessage>
-      <div style={{ marginTop: 19 }}><PrimaryLink href="/sign-in">Return to sign in</PrimaryLink></div>
-    </AuthCard>
-  </AuthShell>;
+  return <AuthShell><ResultScreen eyebrow="AUTHENTICATION COMPLETE" title="You’re all set." description="A good beginning to what comes next. You’ve reached the end of the authentication preview." note="Demo success · No credentials were verified, no session was created, and no CRM access is granted." action="Back to sign in" href="/sign-in" /></AuthShell>;
 }

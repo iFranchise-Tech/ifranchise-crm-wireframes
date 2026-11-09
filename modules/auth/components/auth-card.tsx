@@ -7,9 +7,9 @@ export function AuthCard({ eyebrow, title, description, children }: {
   children: ReactNode;
 }) {
   return (
-    <div>
+    <div className="auth-card">
       <p className="auth-eyebrow">{eyebrow}</p>
-      <h2 className="auth-title">{title}</h2>
+      <h1 className="auth-title" tabIndex={-1}>{title}</h1>
       {description ? <p className="auth-description">{description}</p> : null}
       {children}
     </div>

@@ -15,6 +15,6 @@ export function StatusMessage({ title, children, tone = "info" }: {
   );
 }
 
-export function DemoBanner({ children = "Preview only. No identity provider is connected; this screen does not authenticate or change an account." }: { children?: ReactNode }) {
+export function DemoBanner({ children = "Preview only · No accounts or credentials are changed." }: { children?: ReactNode }) {
   return <aside className="demo-banner" role="note">{children}</aside>;
 }

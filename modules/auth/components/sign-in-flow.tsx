@@ -1,89 +1,60 @@
 "use client";
-
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
 import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
-import { useRouter } from "next/navigation";
+import { Icon } from "@/modules/auth/components/icon";
 import { validateWorkEmail } from "@/modules/auth/schemas/auth";
+import { completePreviewStep, localSignInPreviewEnabled } from "@/modules/auth/services/preview-journey";
 
-const DEMO_SIGN_IN_ENABLED = process.env.NODE_ENV !== "production";
-
-export function SignInFlow({ initialStep = "email", initialEmail = "" }: { initialStep?: "email" | "password"; initialEmail?: string }) {
+export type SignInPreviewState = "email-validation" | "password-validation" | "password-visibility" | "loading";
+export function SignInFlow({ initialStep = "email", initialEmail = "", previewState }: { initialStep?: "email" | "password"; initialEmail?: string; previewState?: SignInPreviewState }) {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "password">(initialStep);
-  const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [step, setStep] = useState<"email" | "password">(previewState && previewState !== "email-validation" ? "password" : initialStep);
+  const [email, setEmail] = useState(previewState === "email-validation" ? "alex@company" : initialEmail || (previewState ? "alex@company.com" : ""));
+  const [password, setPassword] = useState(previewState === "password-visibility" ? "A sample password" : previewState === "loading" ? "preview-only" : "");
+  const [errors, setErrors] = useState<Record<string, string>>(previewState === "email-validation" ? { email: "Enter a valid email address, like you@company.com." } : previewState === "password-validation" ? { password: "Enter your password to continue." } : {});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
+  const isLoading = loading || previewState === "loading";
   function continueWithEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const enteredEmail = email.trim();
-    if (!enteredEmail) { setErrors({ email: "Enter your work email." }); return; }
-    if (!DEMO_SIGN_IN_ENABLED) {
-      const error = validateWorkEmail(enteredEmail);
-      if (error) { setErrors({ email: error }); return; }
-    }
-    setErrors({});
-    setEmail(enteredEmail);
-    setStep("password");
+    const entered = email.trim();
+    const error = !entered ? "Enter your work email." : !localSignInPreviewEnabled || previewState === "email-validation" ? validateWorkEmail(entered) : undefined;
+    if (error) { setErrors({ email: error }); return; }
+    setErrors({}); setEmail(entered); setStep("password");
   }
-
   async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!password) { setErrors({ password: "Enter your password." }); return; }
-    setErrors({});
-    setLoading(true);
-    setMessage("");
-    await new Promise(resolve => setTimeout(resolve, 350));
+    if (isLoading) return;
+    if (!password) { setErrors({ password: "Enter your password to continue." }); return; }
+    setErrors({}); setLoading(true); setMessage("");
+    await completePreviewStep();
+    setPassword("");
+    if (localSignInPreviewEnabled) { router.push("/demo/authenticated"); return; }
     setLoading(false);
-    if (DEMO_SIGN_IN_ENABLED) {
-      setPassword("");
-      router.push("/demo/authenticated");
-      return;
-    }
-    setMessage("Sign-in is unavailable because no identity provider is configured.");
+    setMessage("The sign-in service isn’t connected yet. Please try again once your organization has enabled access.");
   }
-
-  return (
-    <>
-      <DemoBanner>
-        {DEMO_SIGN_IN_ENABLED
-          ? "Demo mode. Any non-empty email and password opens a local preview; credentials are not checked or saved."
-          : "Sign-in is unavailable until an identity provider is connected."}
-      </DemoBanner>
-      {step === "email" ? (
-        <AuthCard eyebrow="SECURE SIGN-IN" title="Welcome back." description="Sign in with the work email associated with your iFranchise account.">
-          <form className="auth-form" onSubmit={continueWithEmail} noValidate>
-            <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
-            <PrimaryButton type="submit">Continue <span aria-hidden="true">→</span></PrimaryButton>
-          </form>
-          <div className="form-between" style={{ marginTop: 18 }}>
-            <span className="form-note">New to iFranchise?</span>
-            <Link className="text-action" href="/invitation">Accept an invitation</Link>
-          </div>
-        </AuthCard>
-      ) : (
-        <AuthCard eyebrow="SECURE SIGN-IN" title="Enter your password." description="Use the password associated with this work account.">
-          <div className="form-between" style={{ margin: "-9px 0 22px" }}>
-            <span className="form-note">{email}</span>
-            <button className="text-action" type="button" onClick={() => { setStep("email"); setErrors({}); setMessage(""); }}>Change</button>
-          </div>
-          <form className="auth-form" onSubmit={submitPassword} noValidate>
-            <PasswordField label="Password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); }} error={errors.password} required />
-            {message ? <StatusMessage tone="warning" title="Identity service not connected">{message}</StatusMessage> : null}
-            <div className="form-between" style={{ marginTop: -2 }}>
-              <span />
-              <Link className="text-action" href="/forgot-password">Forgot password?</Link>
-            </div>
-            <PrimaryButton type="submit" loading={loading}>Sign in</PrimaryButton>
-          </form>
-        </AuthCard>
-      )}
-    </>
-  );
+  return <>
+    <DemoBanner>{localSignInPreviewEnabled ? "Demo access · Use any non-empty email and password. Nothing is checked, sent or saved." : "Design preview · The sign-in service is not connected."}</DemoBanner>
+    {step === "email" ? <AuthCard eyebrow="YOUR WORKSPACE AWAITS" title="Welcome back." description="Good to see you again. Enter your work email to continue to iFranchise CRM.">
+      <form className="auth-form" onSubmit={continueWithEmail} noValidate>
+        <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
+        <PrimaryButton type="submit">Continue <Icon name="arrow" /></PrimaryButton>
+      </form>
+      <div className="auth-divider" /><div className="form-between"><span className="form-note">New to iFranchise?</span><Link className="text-action" href="/invitation">Accept an invitation</Link></div>
+    </AuthCard> : <AuthCard eyebrow="WELCOME BACK" title="A familiar next step." description="Enter your password to pick up where you left off.">
+      <div className="account-context"><Icon name="user" /><span>{email}</span><button className="text-action" type="button" disabled={isLoading} onClick={() => { setStep("email"); setPassword(""); setErrors({}); setMessage(""); }}>Change</button></div>
+      <form className="auth-form" onSubmit={submitPassword} noValidate aria-busy={isLoading}>
+        <PasswordField label="Password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); setMessage(""); }} error={errors.password} initiallyVisible={previewState === "password-visibility"} autoFocus={initialStep === "email" && !previewState} disabled={isLoading} required />
+        <div className="form-between"><span className="form-note">{isLoading ? "Connecting to your workspace…" : ""}</span><Link className="text-action" href="/forgot-password">Forgot password?</Link></div>
+        {message ? <StatusMessage tone="warning" title="Sign-in unavailable">{message}</StatusMessage> : null}
+        <PrimaryButton type="submit" loading={isLoading} loadingLabel="Signing in…">Sign in <Icon name="arrow" /></PrimaryButton>
+      </form>
+      {previewState === "loading" ? <Link className="auth-back-link" href="/sign-in/password">← Return to password entry</Link> : null}
+    </AuthCard>}
+  </>;
 }

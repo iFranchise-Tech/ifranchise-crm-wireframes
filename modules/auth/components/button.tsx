@@ -1,18 +1,18 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; loading?: boolean };
+type Props = ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; loading?: boolean; loadingLabel?: string };
 
-export function PrimaryButton({ children, loading = false, disabled, ...props }: Props) {
+export function PrimaryButton({ children, loading = false, loadingLabel = "Working…", disabled, ...props }: Props) {
   return (
-    <button className="button-primary" disabled={disabled || loading} {...props}>
-      {loading ? <><span className="spinner" aria-hidden="true" />Working…</> : children}
+    <button className="button-primary" disabled={disabled || loading} aria-busy={loading} {...props}>
+      {loading ? <><span className="spinner" aria-hidden="true" />{loadingLabel}</> : children}
     </button>
   );
 }
 
-export function SecondaryButton({ children, ...props }: Props) {
-  return <button className="button-secondary" {...props}>{children}</button>;
+export function SecondaryButton({ children, loading = false, loadingLabel = "Working…", disabled, ...props }: Props) {
+  return <button className="button-secondary" disabled={disabled || loading} aria-busy={loading} {...props}>{loading ? loadingLabel : children}</button>;
 }
 
 export function PrimaryLink({ href, children }: { href: string; children: ReactNode }) {

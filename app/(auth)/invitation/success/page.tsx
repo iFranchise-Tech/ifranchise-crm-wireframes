@@ -1,0 +1,2 @@
+import { ResultScreen } from "@/modules/auth/components/result-screen";
+export default function SetupSuccessPage() { return <ResultScreen eyebrow="READY FOR YOUR NEXT CHAPTER" title="Welcome to the team." description="Your account setup journey is complete. Head to sign-in to take the next step." note="Setup success preview · No account was created or activated." action="Continue to sign in" href="/sign-in" />; }

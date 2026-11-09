@@ -1,69 +1,63 @@
 "use client";
-
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton, PrimaryLink } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
-import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
-import { validateWorkEmail } from "@/modules/auth/schemas/auth";
+import { DemoBanner } from "@/modules/auth/components/status-message";
+import { Icon } from "@/modules/auth/components/icon";
+import { validateWorkEmail, validateNewPassword } from "@/modules/auth/schemas/auth";
+import { completePreviewStep } from "@/modules/auth/services/preview-journey";
 
 export function InvitationFlow() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [reviewed, setReviewed] = useState(false);
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const [loading, setLoading] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (loading) return;
     const problem = validateWorkEmail(email);
     if (problem) { setError(problem); return; }
-    setError("");
-    setReviewed(true);
+    setError(""); setLoading(true); await completePreviewStep(); router.push("/invitation/review");
   }
-  return <>
-    <DemoBanner />
-    {!reviewed ? <>
-      <AuthCard eyebrow="TEAM INVITATION" title="Accept your invitation." description="Confirm the work email that received your iFranchise invitation.">
-        <form className="auth-form" onSubmit={submit} noValidate>
-          <TextField label="Work email" name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setError(""); }} error={error} required />
-          <PrimaryButton type="submit">Review invitation</PrimaryButton>
-        </form>
-        <p className="form-note" style={{ marginTop: 16 }}>An administrator assigns account status, role and access permissions.</p>
-      </AuthCard>
-    </> : <>
-      <AuthCard eyebrow="INVITATION · PREVIEW" title="Invitation review is ready." description={`The invitation for ${email} would be verified by your organization before account setup.`}>
-        <StatusMessage tone="warning" title="Invitation service not connected">No invitation was looked up or accepted. Continue only to review the first-time setup design.</StatusMessage>
-        <div style={{ marginTop: 19 }}><PrimaryLink href="/invitation/setup">View account setup preview</PrimaryLink></div>
-      </AuthCard>
-    </>}
-  </>;
+  return <><DemoBanner>Invitation preview · No invitation is checked or accepted.</DemoBanner><div className="status-icon"><Icon name="users" /></div>
+    <AuthCard eyebrow="GOOD THINGS START TOGETHER" title="Your team is waiting." description="You’ve been invited to iFranchise CRM. Start with the work email that received your invitation.">
+      <form className="auth-form" onSubmit={submit} noValidate><TextField label="Invited work email" name="email" type="email" autoComplete="email" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setError(""); }} error={error} disabled={loading} required /><PrimaryButton type="submit" loading={loading} loadingLabel="Opening invitation…">Review invitation <Icon name="arrow" /></PrimaryButton></form>
+      <Link className="auth-back-link" href="/sign-in">Already part of the team? Sign in</Link>
+    </AuthCard></>;
+}
+
+export function InvitationReview() {
+  return <><DemoBanner>Sample invitation · No membership or role has been verified.</DemoBanner><div className="status-icon"><Icon name="mail" /></div>
+    <AuthCard eyebrow="YOU’RE INVITED" title="A place on the team." description="Join your organization’s iFranchise workspace and get ready for your next chapter.">
+      <div className="invite-details"><div className="invite-avatar"><Icon name="building" /></div><div><strong>iFranchise CRM</strong><span>Organization workspace</span><small>Access is assigned by your administrator.</small></div></div>
+      <p className="form-note">Next, add your name and create a password for your work account.</p><div className="status-actions"><PrimaryLink href="/invitation/setup">Accept & set up account <Icon name="arrow" /></PrimaryLink></div><Link className="auth-back-link" href="/invitation">← Use a different email</Link>
+    </AuthCard></>;
 }
 
 export function InvitationSetupForm() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next: Record<string, string> = {};
-    if (!name.trim()) next.name = "Enter your name.";
-    if (!password) next.password = "Enter a password.";
-    if (password !== confirmation) next.confirmation = "These passwords don’t match.";
+  const [loading, setLoading] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (loading) return;
+    const result = validateNewPassword(password, confirmation);
+    const next: Record<string, string> = result.success ? {} : result.errors;
+    if (!name.trim()) next.name = "Enter your full name.";
     if (Object.keys(next).length) { setErrors(next); return; }
-    setErrors({});
-    setSubmitted(true);
+    setErrors({}); setLoading(true); await completePreviewStep(); setPassword(""); setConfirmation(""); router.push("/invitation/success");
   }
-  return <>
-    <DemoBanner>Setup preview only. Invitation status, password storage and account activation are not connected.</DemoBanner>
-    <AuthCard eyebrow="FIRST-TIME SETUP · PREVIEW" title={submitted ? "Account setup preview complete." : "Set up your account."} description={submitted ? "This screen showed the activation step; it did not create or activate an account." : "Complete your details after an administrator has verified your invitation."}>
-      {submitted ? <StatusMessage tone="warning" title="No account was activated">Connect invitation verification and credential services before using this step in production.</StatusMessage> : (
-        <form className="auth-form" onSubmit={submit} noValidate>
-          <TextField label="Your name" name="name" autoComplete="name" placeholder="Full name" value={name} onChange={event => { setName(event.target.value); setErrors({}); }} error={errors.name} required />
-          <PasswordField label="Create password" name="new-password" autoComplete="new-password" placeholder="Enter a unique password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); }} error={errors.password} required />
-          <PasswordField label="Confirm password" name="confirm-password" autoComplete="new-password" placeholder="Enter it once more" value={confirmation} onChange={event => { setConfirmation(event.target.value); setErrors({}); }} error={errors.confirmation} required />
-          <PrimaryButton type="submit">Review activation</PrimaryButton>
-        </form>
-      )}
-    </AuthCard>
-  </>;
+  return <><DemoBanner>Setup preview · Your details are not saved and no account is created.</DemoBanner>
+    <AuthCard eyebrow="MAKE YOURSELF AT HOME" title="Let’s get you set up." description="A few details, and you’re ready for a more connected way to work.">
+      <form className="auth-form" onSubmit={submit} noValidate>
+        <TextField label="Full name" name="name" icon="user" autoComplete="name" placeholder="Your full name" value={name} onChange={event => { setName(event.target.value); setErrors({}); }} error={errors.name} disabled={loading} required />
+        <PasswordField label="Create password" name="new-password" autoComplete="new-password" placeholder="Choose a unique password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); }} error={errors.password} disabled={loading} required />
+        <PasswordField label="Confirm password" name="confirm-password" autoComplete="new-password" placeholder="Re-enter your password" value={confirmation} onChange={event => { setConfirmation(event.target.value); setErrors({}); }} error={errors.confirmation} disabled={loading} required />
+        <PrimaryButton type="submit" loading={loading} loadingLabel="Completing setup…">Complete account setup <Icon name="arrow" /></PrimaryButton>
+      </form><Link className="auth-back-link" href="/invitation/review">← Back to invitation</Link>
+    </AuthCard></>;
 }

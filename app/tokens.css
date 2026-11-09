@@ -1,0 +1,27 @@
+:root {
+  color-scheme: light;
+  /* Official wordmark and website palette, with accessible semantic extensions. */
+  --brand: #32159b;
+  --brand-strong: #271077;
+  --brand-tint: #f3f0ff;
+  --brand-soft: #e8e0fb;
+  --ink: #211c31;
+  --ink-soft: #474052;
+  --muted: #706a7c;
+  --subtle: #756d81;
+  --line: #e9e5ee;
+  --line-strong: #d9d3e3;
+  --paper: #fff;
+  --canvas: #f8f7fa;
+  --success: #23725a;
+  --success-tint: #edf8f2;
+  --danger: #b3404b;
+  --danger-tint: #fff2f3;
+  --amber: #956727;
+  --amber-tint: #fff8ec;
+  --radius-control: 10px;
+  --radius-card: 18px;
+  --shadow-card: 0 8px 32px #27134b08, 0 1px 3px #27134b05;
+  --focus-ring: 0 0 0 4px #32159b14;
+  --ease: 160ms ease;
+}

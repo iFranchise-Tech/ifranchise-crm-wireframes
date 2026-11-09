@@ -33,8 +33,8 @@ export function PasswordField({ label, error, id, initiallyVisible = false, ...i
       <div className={`field-control${error ? " has-error" : ""}`}>
         <Icon name="lock" />
         <input id={inputId} type={visible ? "text" : "password"} aria-invalid={Boolean(error)} aria-describedby={error ? `${inputId}-error` : undefined} {...inputProps} />
-        <button className="field-action" type="button" onClick={() => setVisible(value => !value)} aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`} aria-pressed={visible}>
-          {visible ? "Hide" : "Show"}
+        <button className="field-action" type="button" disabled={inputProps.disabled} onClick={() => setVisible(value => !value)} aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`} aria-pressed={visible}>
+          <Icon name={visible ? "eyeOff" : "eye"} />
         </button>
       </div>
       <p id={`${inputId}-error`} className="field-error" aria-live="polite">{error}</p>

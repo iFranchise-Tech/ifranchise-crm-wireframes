@@ -1,52 +1,49 @@
-# iFranchise CRM Authentication
+# iFranchise CRM — Authentication & Screen Library
 
-The first standalone authentication module for iFranchise CRM. This repository contains a responsive Next.js App Router application with TypeScript and Tailwind CSS. The interface is complete as a reviewable experience; the identity provider, email delivery, database, session store, MFA, and authorization services are intentionally not connected.
+A standalone Next.js, TypeScript and Tailwind CSS application. Authentication is the first reviewable module. This repository is independent of the other projects in the parent directory.
 
 ## Run locally
 
-Use Node.js 24 or later.
+Use Node.js 24. Install with `npm install`, then start with `npm run dev`.
 
-```sh
-npm install
-npm run dev
-```
+- Screen library: http://127.0.0.1:4173/library
+- Authentication overview: http://127.0.0.1:4173/library/authentication
+- Clean sign-in: http://127.0.0.1:4173/sign-in
+- Example mobile review: http://127.0.0.1:4173/library/authentication/sign-in?mode=mobile
 
-Open <http://127.0.0.1:4173>. `npm run typecheck` checks the TypeScript source and `npm run build` creates a production build.
+`npm run typecheck` checks TypeScript. `npm run build` creates a production build using webpack. With the preview running, `npm run check:routes` checks all 80 routes and unknown-state handling.
 
-## Screens
+## Review experience
 
-- Welcome and sign in, including email and password validation, visibility control, and a loading response.
-- Forgot password, check your email, reset password, and reset-form completion preview.
-- Invitation acceptance and first-time account setup preview.
-- MFA / OTP entry with six-digit keyboard, paste, and focus behavior.
-- Invalid credentials, account locked, temporarily suspended, deactivated, access restricted, and session expired states.
-- A separate authentication-success design preview at `/demo/authenticated`.
+The internal library contains 31 authentication screens and states, grouped into six journeys. A compact desktop sidebar, expandable groups, previous/next controls and direct screen links make all states reachable. The Desktop and Mobile switch uses an iframe viewport, so it exercises the actual responsive pages rather than emulating mobile through parent CSS. Desktop previews scale to fit smaller review windows; mobile previews retain natural touch sizing and scroll within the frame.
 
-Account state previews are available under `/status/<state>`, such as `/status/temporarily-suspended`. They are visual states only and do not inspect or change an account.
+Clean auth routes do not include the library navigation. The root route opens the review library for this stage of development. The future production entry can be changed independently.
 
-## Screen review
+The remaining 16 modules reflect CRM PRODUCT.pdf sections 02–17. Their scope pages are summaries of the PRD, not implemented CRM functionality. Section 01 is the product overview; Authentication is the first delivery slice across the access and security requirements.
 
-The authentication shell includes a persistent desktop screen library with expandable groups. On mobile, use **Browse screens** to open the same grouped navigation. Use the **Desktop** and **Mobile** controls to preview each screen at a wide layout or a phone-sized frame.
+## Architecture
 
-The navigation opens direct previews for email and password validation, password visibility, password entry, loading, invalid credentials, recovery, invitations, MFA, authentication success, account status, access restrictions, and session expiry.
-
-## Structure
-
-```text
-app/                    App Router routes and layouts
-components/layout/      Shared shell, expandable screen navigation, and brand panel
-modules/auth/actions/   Server action boundary
-modules/auth/components Reusable auth UI and direct state previews
-modules/auth/schemas/   Central email and form validation
-modules/auth/services/  Auth provider contract and capability status
-modules/auth/types/     Auth result, capability, and identity types
-lib/auth/               Default-deny session and authorization boundaries
-```
+- `app/(auth)/`: clean authentication routes
+- `app/library/`: internal catalog, module scope and screen review routes
+- `app/demo/authenticated/`: isolated authentication-success preview
+- `app/tokens.css`: centralized brand and semantic tokens
+- `components/layout/`: brand identity and product auth shell
+- `modules/auth/components/`: reusable fields, OTP, forms and result states
+- `modules/auth/config/`: typed access-state content
+- `modules/auth/schemas/`: form validation, independent of presentation
+- `modules/auth/services/`: provider contract, capabilities and clearly isolated preview behavior
+- `modules/auth/actions/`: server action boundary
+- `modules/screen-library/config/`: one typed registry for screens, journeys and PRD modules
+- `lib/auth/`: server session and default-deny authorization boundaries
 
 ## Authentication boundary
 
-The sign-in form validates input locally for this preview. Submitting a password does not send credentials to an identity provider, persist them, create a session, or grant access. Recovery and invitation flows do not send email or activate accounts. The OTP screen does not send or verify a code. The success page is isolated under `/demo` and explicitly does not represent a verified session.
+No identity provider, database, email delivery, MFA provider or session store is connected. Development sign-in accepts any non-empty email and password to open the local success preview; it does not check, transmit or persist credentials. This shortcut is disabled in production builds. Recovery, setup and OTP interactions only navigate through explicit visual-preview states. They never change an account or create a session.
 
-The session reader currently returns no session, and the authorization boundary denies by default. Keep authentication and access checks on the server when adding the approved identity provider, database, APIs, Cloudflare services, notifications, and audit events. Never use a client-rendered role or route as an authorization decision.
+The session reader returns no session, and authorization denies all requests. These previews do not grant protected CRM access. Integrate the approved identity provider and enforce authentication, role/team/record/department/brand/field/action authorization on the server. Verify recovery and invitation tokens server-side, apply the approved password and MFA policies, implement email delivery, audit events and session revocation before enabling real authentication.
 
-The product requirements specify role, team, record, department, brand, field, and action-level access, default denial, account lifecycle states, session expiry/revocation, failed-attempt monitoring, and MFA where implemented. They do not define a password composition rule, MFA enrollment or recovery method, OTP lifetime, password recovery token design, or lockout threshold. This implementation avoids presenting those unknowns as production policy; the password meter is guidance only.
+The PRD does not specify numerical lockout thresholds, OTP lifetime, password composition rules or MFA recovery methods. No such values are presented as production policy. Authentication UI errors shown from direct review routes are fixtures, not responses from a real account service.
+
+## Brand provenance
+
+`public/brand/ifranchise-wordmark.svg` is the original wordmark from https://ifranchise.in/assets/ifranchise-wordmark.svg, retrieved from the official website. The primary purple `#32159b` comes from that asset and the website palette. The visual composition is original CSS; no external reference artwork, brand logos or heavy animation libraries were added.
