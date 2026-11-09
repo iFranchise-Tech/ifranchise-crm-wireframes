@@ -7,9 +7,13 @@ import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
 import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
 import { PreviewStateLinks } from "@/modules/auth/components/preview-state-links";
-import { validateSignIn, validateWorkEmail } from "@/modules/auth/schemas/auth";
+import { useRouter } from "next/navigation";
+import { validateWorkEmail } from "@/modules/auth/schemas/auth";
+
+const DEMO_SIGN_IN_ENABLED = process.env.NODE_ENV !== "production";
 
 export function SignInFlow() {
+  const router = useRouter();
   const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,27 +23,40 @@ export function SignInFlow() {
 
   function continueWithEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const error = validateWorkEmail(email);
-    if (error) { setErrors({ email: error }); return; }
+    const enteredEmail = email.trim();
+    if (!enteredEmail) { setErrors({ email: "Enter your work email." }); return; }
+    if (!DEMO_SIGN_IN_ENABLED) {
+      const error = validateWorkEmail(enteredEmail);
+      if (error) { setErrors({ email: error }); return; }
+    }
     setErrors({});
+    setEmail(enteredEmail);
     setStep("password");
   }
 
   async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = validateSignIn({ email, password });
-    if (!result.success) { setErrors(result.errors); return; }
+    if (!password) { setErrors({ password: "Enter your password." }); return; }
     setErrors({});
     setLoading(true);
     setMessage("");
-    await new Promise(resolve => setTimeout(resolve, 420));
+    await new Promise(resolve => setTimeout(resolve, 350));
     setLoading(false);
-    setMessage("Sign-in is not connected. No credentials were sent to an identity provider or saved.");
+    if (DEMO_SIGN_IN_ENABLED) {
+      setPassword("");
+      router.push("/demo/authenticated");
+      return;
+    }
+    setMessage("Sign-in is unavailable because no identity provider is configured.");
   }
 
   return (
     <>
-      <DemoBanner />
+      <DemoBanner>
+        {DEMO_SIGN_IN_ENABLED
+          ? "Demo mode. Any non-empty email and password opens a local preview; credentials are not checked or saved."
+          : "Sign-in is unavailable until an identity provider is connected."}
+      </DemoBanner>
       {step === "email" ? (
         <AuthCard eyebrow="SECURE SIGN-IN" title="Welcome back." description="Sign in with the work email associated with your iFranchise account.">
           <form className="auth-form" onSubmit={continueWithEmail} noValidate>

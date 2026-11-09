@@ -5,10 +5,10 @@ import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-mess
 
 export default function AuthenticatedPreviewPage() {
   return <AuthShell>
-    <DemoBanner>Success screen preview only. This route does not create a session or grant CRM access.</DemoBanner>
-    <AuthCard eyebrow="AUTHENTICATION SUCCESS · PREVIEW" title="Your workspace is ready." description="After a real server-validated sign-in, iFranchise can route each person to their authorized workspace.">
-      <StatusMessage tone="success" title="Role-aware entry">Sales, Finance, Marketing, MIS, HR, IT and brand users should see only their assigned modules and data.</StatusMessage>
-      <div style={{ marginTop: 19 }}><PrimaryLink href="/welcome">Return to welcome</PrimaryLink></div>
+    <DemoBanner>Demo access only. No credentials were checked, sent, or saved, and no CRM session was created.</DemoBanner>
+    <AuthCard eyebrow="DEMO SIGN-IN COMPLETE" title="You’re into the preview." description="Any non-empty email and password opens this local preview so you can review the next authentication state.">
+      <StatusMessage tone="success" title="Preview only">This does not verify an identity or grant real CRM access. Connect server-side authentication and authorization before production.</StatusMessage>
+      <div style={{ marginTop: 19 }}><PrimaryLink href="/sign-in">Return to sign in</PrimaryLink></div>
     </AuthCard>
   </AuthShell>;
 }
