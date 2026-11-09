@@ -49,7 +49,8 @@ const meta = {
 const names = Object.fromEntries(groups.flatMap(g => g.items).map(([id,name])=>[id,name]));
 const ids = Object.keys(names);
 let current = 'welcome';
-let device = window.matchMedia('(max-width: 760px)').matches ? 'mobile' : 'desktop';
+const requestedView = new URLSearchParams(location.search).get('view');
+let device = ['mobile','desktop'].includes(requestedView) ? requestedView : window.matchMedia('(max-width: 760px)').matches ? 'mobile' : 'desktop';
 let deviceTouched = false;
 let lastEmail = '';
 let cooldown = 0;
@@ -64,7 +65,7 @@ function renderDirectory(){
     return `<div class="nav-group ${open?'open':''}"><button class="nav-group-toggle" aria-expanded="${open}" data-group="${i}"><span class="nav-icon">${g.icon}</span><span>${g.title}</span><span class="chevron">⌄</span></button><div class="nav-subitems">${g.items.map(([id,label])=>`<button class="nav-item ${id===current?'active':''}" data-go="${id}"><span class="nav-bullet"></span>${label}</button>`).join('')}</div></div>`
   }).join('')}<div class="nav-divider"></div><div class="nav-caption">RESPONSIVE PREVIEWS</div><button class="nav-shortcut ${device==='desktop'?'active':''}" data-device="desktop"><span class="nav-icon">▣</span>Desktop screens</button><button class="nav-shortcut ${device==='mobile'?'active':''}" data-device="mobile"><span class="nav-icon">▯</span>Mobile screens</button>`;
 }
-function setDevice(value){device=value;deviceTouched=true;document.body.dataset.device=value;document.querySelectorAll('[data-device]').forEach(b=>b.classList.toggle('selected',b.dataset.device===value));renderDirectory();if(current!=='overview')renderScreen();}
+function setDevice(value){device=value;deviceTouched=true;history.replaceState(null,'',`${location.pathname}?view=${value}${location.hash}`);document.body.dataset.device=value;document.querySelectorAll('[data-device]').forEach(b=>b.classList.toggle('selected',b.dataset.device===value));renderDirectory();if(current!=='overview')renderScreen();}
 function go(id,writeHash=true){
   if(id!=='overview'&&!meta[id])return;
   current=id;

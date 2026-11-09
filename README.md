@@ -10,7 +10,7 @@ Requires Node.js 20 or newer.
 npm run dev
 ```
 
-Open <http://127.0.0.1:4173>. Individual states can be opened directly with URL hashes, for example `/#mfa`, `/#reset`, and `/#deactivated`.
+Open <http://127.0.0.1:4173>. Desktop and mobile modes can be linked directly with `/?view=desktop#welcome` and `/?view=mobile#welcome`. Individual states can be opened directly with URL hashes, for example `/#mfa`, `/#reset`, and `/#deactivated`.
 
 ## Screen inventory
 
