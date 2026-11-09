@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f5f8" />
+    <meta name="description" content="Interactive iFranchise CRM authentication experience." />
+    <title>iFranchise CRM · Access experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Authentication screen directory">
+        <div class="brand-lockup"><div class="brand-mark">i<span>F</span></div><div><strong>iFranchise</strong><small>CRM ACCESS SYSTEM</small></div><button class="icon-button sidebar-close" id="closeNav" aria-label="Close navigation">×</button></div>
+        <div class="directory-label">PROTOTYPE DIRECTORY <span>34</span></div>
+        <nav id="directory" class="directory"></nav>
+        <div class="sidebar-foot"><div class="avatar">IF</div><div><strong>Experience preview</strong><small>Authentication · v1.0</small></div><span class="status-dot"></span></div>
+      </aside>
+      <div class="scrim" id="scrim"></div>
+      <main class="main-area">
+        <header class="topbar">
+          <div class="topbar-start"><button class="icon-button menu-button" id="openNav" aria-label="Open navigation"><span></span><span></span><span></span></button><div class="crumb"><span>Product experience</span><b>/</b><strong id="breadcrumb">Overview</strong></div></div>
+          <div class="topbar-end"><span class="prototype-pill"><i></i> SIMULATED ENVIRONMENT</span><div class="device-switch" role="group" aria-label="Preview size"><button data-device="desktop" class="selected">Desktop</button><button data-device="mobile">Mobile</button></div><button class="help-button" data-go="overview"><span>?</span><em>About this preview</em></button></div>
+        </header>
+        <section class="page-wrap" id="pageWrap">
+          <div class="page-heading"><div><div class="eyebrow" id="screenKicker">AUTHENTICATION EXPERIENCE</div><h1 id="pageTitle">A considered way in.</h1><p id="pageDescription">Explore the complete access journey for every iFranchise CRM user.</p></div><div class="heading-meta"><span class="meta-label">CURRENT VIEW</span><strong id="currentLabel">Overview</strong></div></div>
+          <section id="overview" class="overview-view"></section>
+          <section id="previewStage" class="preview-stage" hidden>
+            <div class="preview-toolbar"><div class="preview-state"><span class="live-dot"></span><span>LIVE PREVIEW</span><b>/</b><strong id="stateLabel">Welcome</strong></div><div class="preview-toolbar-right"><span>Experience <strong id="screenCount">01</strong> / 34</span><button class="quiet-button" id="restartScreen">↻ <span>Restart state</span></button></div></div>
+            <div class="canvas" id="canvas"><div class="screen-frame" id="screenFrame"></div></div>
+          </section>
+          <footer class="page-footer"><span>iFranchise CRM · Authentication system</span><span>Design preview <i>•</i> No real accounts or messages</span></footer>
+        </section>
+      </main>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>
