@@ -7,6 +7,7 @@ import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
 import { StatusMessage } from "@/modules/auth/components/status-message";
 import { Icon } from "@/modules/auth/components/icon";
+import { SocialSignIn } from "@/modules/auth/components/social-sign-in";
 import { validateWorkEmail } from "@/modules/auth/schemas/auth";
 import { completePreviewStep, localSignInPreviewEnabled } from "@/modules/auth/services/preview-journey";
 
@@ -30,7 +31,9 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
   async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isLoading) return;
-    if (!password) { setErrors({ password: "Enter your password to continue." }); return; }
+    const emailError = !email.trim() ? "Enter your work email." : !localSignInPreviewEnabled ? validateWorkEmail(email.trim()) : undefined;
+    const passwordError = !password ? "Enter your password to continue." : undefined;
+    if (emailError || passwordError) { setErrors({ ...(emailError ? { email: emailError } : {}), ...(passwordError ? { password: passwordError } : {}) }); return; }
     setErrors({}); setLoading(true); setMessage("");
     await completePreviewStep();
     setPassword("");
@@ -45,15 +48,17 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
         <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
         <PrimaryButton type="submit">Continue <Icon name="arrow" /></PrimaryButton>
       </form>
+      <SocialSignIn />
       <div className="auth-divider" /><div className="form-between"><span className="form-note">New to iFranchise?</span><Link className="text-action" href="/invitation">Accept an invitation</Link></div>
     </AuthCard> : <AuthCard title="Enter your password" description="Sign in to your iFranchise account.">
-      <div className="account-context"><Icon name="user" /><span>{email}</span><button className="text-action" type="button" disabled={isLoading} onClick={() => { setStep("email"); setPassword(""); setErrors({}); setMessage(""); }}>Change</button></div>
       <form className="auth-form" onSubmit={submitPassword} noValidate aria-busy={isLoading}>
+        <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors(current => ({ ...current, email: "" })); setMessage(""); }} error={errors.email} disabled={isLoading} required />
         <PasswordField label="Password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); setMessage(""); }} error={errors.password} initiallyVisible={previewState === "password-visibility"} autoFocus={initialStep === "email" && !previewState} disabled={isLoading} required />
         <div className="form-between"><span className="form-note"></span><Link className="text-action" href="/forgot-password">Forgot password?</Link></div>
         {message ? <StatusMessage tone="warning" title="Sign-in unavailable">{message}</StatusMessage> : null}
         <PrimaryButton type="submit" loading={isLoading} loadingLabel="Signing in…">Sign in <Icon name="arrow" /></PrimaryButton>
       </form>
+      <SocialSignIn disabled={isLoading} />
       {previewState === "loading" ? <Link className="auth-back-link" href="/sign-in/password">← Return to password entry</Link> : null}
     </AuthCard>}
   </>;
