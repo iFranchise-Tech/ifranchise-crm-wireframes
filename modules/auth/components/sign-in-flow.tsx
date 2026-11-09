@@ -43,14 +43,14 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
   }
   return <>
 
-    {step === "email" ? <AuthCard title="Sign in" description="Enter your work email to continue.">
+    {step === "email" ? <AuthCard title="Sign in" description="Enter your work email to continue." headingAlign="center">
       <form className="auth-form" onSubmit={continueWithEmail} noValidate>
         <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
         <PrimaryButton type="submit">Continue <Icon name="arrow" /></PrimaryButton>
       </form>
       <SocialSignIn />
       <div className="auth-divider" /><div className="form-between"><span className="form-note">New to iFranchise?</span><Link className="text-action" href="/invitation">Accept an invitation</Link></div>
-    </AuthCard> : <AuthCard title="Enter your password" description="Sign in to your iFranchise account.">
+    </AuthCard> : <AuthCard title="Enter your password" description="Sign in to your iFranchise account." headingAlign="center">
       <form className="auth-form" onSubmit={submitPassword} noValidate aria-busy={isLoading}>
         <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors(current => ({ ...current, email: "" })); setMessage(""); }} error={errors.email} disabled={isLoading} required />
         <PasswordField label="Password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); setMessage(""); }} error={errors.password} initiallyVisible={previewState === "password-visibility"} autoFocus={initialStep === "email" && !previewState} disabled={isLoading} required />

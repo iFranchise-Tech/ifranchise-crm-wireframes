@@ -91,6 +91,7 @@ svg { flex: none; width: 20px; height: 20px; }
 .auth-content { width: 100%; max-width: 400px; margin: auto; padding: 42px 0; }
 .auth-title { margin: 0; color: var(--ink); font-size: 32px; font-weight: 580; line-height: 1.2; letter-spacing: -.04em; }
 .auth-description { margin: 14px 0 30px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.auth-card[data-heading-align="center"] > .auth-title, .auth-card[data-heading-align="center"] > .auth-description { text-align: center; }
 .auth-footer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 22px; color: var(--subtle); font-size: 11px; line-height: 1.7; }
 .auth-footer nav { display: inline-flex; align-items: center; gap: 12px; }
 .auth-footer button { min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: inherit; }
@@ -145,9 +146,10 @@ svg { flex: none; width: 20px; height: 20px; }
   .auth-brand-panel .brand-wordmark img { width: 148px; height: 37px; filter: brightness(0) invert(1); }
   .auth-brand-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
   .auth-brand-scene { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: auto; padding-top: 32px; }
+  .auth-brand-copy { text-align: center; }
   .auth-brand-copy h2 { margin: 0; color: #fff; font-size: clamp(28px, 2.7vw, 38px); font-weight: 550; line-height: 1.23; letter-spacing: -.04em; }
-  .auth-brand-copy h2 > span { display: block; color: #dacefa; }
-  .auth-brand-copy p { max-width: 360px; margin: 18px 0 0; color: #ded5f2; font-size: 13px; line-height: 1.8; }
+  .auth-brand-copy h2 > span { display: block; }
+  .auth-brand-copy p { max-width: 360px; margin: 18px auto 0; color: #ded5f2; font-size: 13px; line-height: 1.8; text-wrap: pretty; }
   .auth-brand-art { width: min(100%, 400px); margin: 0 auto; }
   .auth-brand-art img { display: block; width: 100%; height: auto; }
   .auth-column { grid-template-rows: 1fr auto; padding: 40px 48px 25px; }

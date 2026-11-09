@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 
-export function AuthCard({ title, description, children }: {
+export function AuthCard({ title, description, children, headingAlign = "left" }: {
   title: string;
   description?: string;
   children: ReactNode;
+  headingAlign?: "left" | "center";
 }) {
   return (
-    <div className="auth-card">
+    <div className="auth-card" data-heading-align={headingAlign}>
       <h1 className="auth-title" tabIndex={-1}>{title}</h1>
       {description ? <p className="auth-description">{description}</p> : null}
       {children}
