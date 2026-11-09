@@ -1,47 +1,46 @@
-# iFranchise CRM — Authentication experience
+# iFranchise CRM Authentication
 
-A high fidelity, interactive authentication UI prototype built as a new standalone repository. It has no runtime dependencies and does not connect to an identity provider, email service, CRM API, or database.
+The first standalone authentication module for iFranchise CRM. This repository contains a responsive Next.js App Router application with TypeScript and Tailwind CSS. The interface is complete as a reviewable experience; the identity provider, email delivery, database, session store, MFA, and authorization services are intentionally not connected.
 
 ## Run locally
 
-Requires Node.js 20 or newer.
+Use Node.js 24 or later.
 
 ```sh
+npm install
 npm run dev
 ```
 
-Open <http://127.0.0.1:4173>. Desktop and mobile modes can be linked directly with `/?view=desktop#welcome` and `/?view=mobile#welcome`. Individual states can be opened directly with URL hashes, for example `/#mfa`, `/#reset`, and `/#deactivated`.
+Open <http://127.0.0.1:4173>. `npm run typecheck` checks the TypeScript source and `npm run build` creates a production build.
 
-## Screen inventory
+## Screens
 
-The persistent directory contains 33 distinct authentication states plus Overview:
+- Welcome and sign in, including email and password validation, visibility control, and a loading response.
+- Forgot password, check your email, reset password, and reset-form completion preview.
+- Invitation acceptance and first-time account setup preview.
+- MFA / OTP entry with six-digit keyboard, paste, and focus behavior.
+- Invalid credentials, account locked, temporarily suspended, deactivated, access restricted, and session expired states.
+- A separate authentication-success design preview at `/demo/authenticated`.
 
-- **Welcome and login:** Welcome, work email, password, signing in, incorrect details.
-- **Email and password:** Email entry, password entry, loading state.
-- **Password recovery:** Forgot password, instructions sent, recovery link issue.
-- **Password reset:** Choose a new password, password updated.
-- **First-time account setup:** Invitation received, accept invitation, invitation expired, invitation unavailable, account setup, account activated.
-- **MFA / OTP verification:** Verification code, incorrect code, expired code, verification limit.
-- **Authentication success:** Access verification, role-based entry, successful sign-in.
-- **Authentication errors:** Network issue, service error, authentication unavailable.
-- **Account restrictions:** Account on hold, account deactivated, role not assigned, device approval needed, access denied.
-- **Session management:** Session expired, session ending.
+Account state previews are available under `/status/<state>`, such as `/status/temporarily-suspended`. They are visual states only and do not inspect or change an account.
 
-Desktop and mobile preview modes are available for every screen. On narrow viewports, the directory becomes an accessible slide-in drawer.
+## Structure
 
-## PRD alignment
+```text
+app/                    App Router routes and layouts
+components/layout/      Shared authentication shell and brand panel
+modules/auth/actions/   Server action boundary
+modules/auth/components Reusable auth UI
+modules/auth/schemas/   Central email and form validation
+modules/auth/services/  Auth provider contract and capability status
+modules/auth/types/     Auth result, capability, and identity types
+lib/auth/               Default-deny session and authorization boundaries
+```
 
-The 195-page product requirements document defines secure login, credential validation, approved password policies, MFA where implemented, server-side authorization, session expiry and revocation, failed-login monitoring, account suspension, and the account states Pending Activation, Active, Temporarily Suspended, and Deactivated. It also requires role, team, record, department, brand, field, and action-level authorization, with default denial and immediate access revocation on deactivation.
+## Authentication boundary
 
-The PRD does not define an authentication vendor, password composition rules, MFA enrollment or backup factors, OTP lifetime or resend limits, recovery token lifecycle, lockout threshold or duration, “remember me,” or a specific invitation delivery protocol. The preview labels these flows as simulated and does not introduce those values as production policy.
+The sign-in form validates input locally for this preview. Submitting a password does not send credentials to an identity provider, persist them, create a session, or grant access. Recovery and invitation flows do not send email or activate accounts. The OTP screen does not send or verify a code. The success page is isolated under `/demo` and explicitly does not represent a verified session.
 
-## Interactions
+The session reader currently returns no session, and the authorization boundary denies by default. Keep authentication and access checks on the server when adding the approved identity provider, database, APIs, Cloudflare services, notifications, and audit events. Never use a client-rendered role or route as an authorization decision.
 
-- Work email and password validation, password reveal, and password strength feedback.
-- Sign-in → access verification → role-aware entry → success (all simulated).
-- Recovery request and reset with matching-password confirmation (simulated).
-- Invitation acceptance and initial password setup (simulated).
-- Six-digit OTP entry, automatic focus movement, and a 30-second demo resend cooldown.
-- Direct state navigation, expandable directory groups, preview size switch, and state restart.
-
-No passwords, recovery tokens, verification codes, invitations, or session credentials are sent or stored. A real authentication service, email delivery, server-side session controls, audit events, device registration, and production authorization checks remain to be integrated and reviewed.
+The product requirements specify role, team, record, department, brand, field, and action-level access, default denial, account lifecycle states, session expiry/revocation, failed-attempt monitoring, and MFA where implemented. They do not define a password composition rule, MFA enrollment or recovery method, OTP lifetime, password recovery token design, or lockout threshold. This implementation avoids presenting those unknowns as production policy; the password meter is guidance only.
