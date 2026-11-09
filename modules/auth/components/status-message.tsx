@@ -14,7 +14,3 @@ export function StatusMessage({ title, children, tone = "info" }: {
     </div>
   );
 }
-
-export function DemoBanner({ children = "Preview only · No accounts or credentials are changed." }: { children?: ReactNode }) {
-  return <aside className="demo-banner" role="note">{children}</aside>;
-}

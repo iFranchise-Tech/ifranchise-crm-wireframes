@@ -11,16 +11,13 @@ type ReviewShellProps = {
   subtitle: string;
   overviewHref: string;
   title: string;
-  section: string;
-  route?: string;
   navigation: ReactNode;
   controls?: ReactNode;
-  footer?: ReactNode;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, section, route, navigation, controls, footer, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   return <div className="review-shell">
     <aside className="review-sidebar">
@@ -30,15 +27,13 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, s
       {navigation}
       <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>
     </aside>
-    <main className="review-workspace" data-information={!footer || undefined}>
+    <main className="review-workspace">
       <header className="review-toolbar">
         <button className="icon-button review-menu-button" aria-label="Browse module navigation" onClick={() => dialog.current?.showModal()}><Icon name="menu" /></button>
-        <div className="review-breadcrumb"><Link href={overviewHref}>{moduleName}</Link><Icon name="chevron" /><span>{title}</span></div>
+        <div className="review-breadcrumb"><Link href={overviewHref}>{moduleName}</Link><Icon name="chevron" /><h1>{title}</h1></div>
         {controls}
       </header>
-      <div className="review-screen-heading"><div><span>{section}</span><h1>{title}</h1></div>{route ? <span className="review-route">{route}</span> : null}</div>
       {children}
-      {footer}
     </main>
     <dialog className="review-nav-dialog" ref={dialog} aria-labelledby="review-navigation-title">
       <div className="dialog-heading"><strong id="review-navigation-title">{moduleName}</strong><button className="icon-button" aria-label="Close module navigation" onClick={() => dialog.current?.close()}><Icon name="close" /></button></div>

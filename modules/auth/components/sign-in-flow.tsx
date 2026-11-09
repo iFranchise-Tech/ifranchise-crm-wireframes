@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField, TextField } from "@/modules/auth/components/fields";
-import { DemoBanner, StatusMessage } from "@/modules/auth/components/status-message";
+import { StatusMessage } from "@/modules/auth/components/status-message";
 import { Icon } from "@/modules/auth/components/icon";
 import { validateWorkEmail } from "@/modules/auth/schemas/auth";
 import { completePreviewStep, localSignInPreviewEnabled } from "@/modules/auth/services/preview-journey";
@@ -39,18 +39,18 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
     setMessage("The sign-in service isn’t connected yet. Please try again once your organization has enabled access.");
   }
   return <>
-    <DemoBanner>{localSignInPreviewEnabled ? "Demo access · Use any non-empty email and password. Nothing is checked, sent or saved." : "Design preview · The sign-in service is not connected."}</DemoBanner>
-    {step === "email" ? <AuthCard eyebrow="YOUR WORKSPACE AWAITS" title="Welcome back." description="Good to see you again. Enter your work email to continue to iFranchise CRM.">
+
+    {step === "email" ? <AuthCard title="Sign in" description="Enter your work email to continue.">
       <form className="auth-form" onSubmit={continueWithEmail} noValidate>
         <TextField label="Work email" name="email" type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
         <PrimaryButton type="submit">Continue <Icon name="arrow" /></PrimaryButton>
       </form>
       <div className="auth-divider" /><div className="form-between"><span className="form-note">New to iFranchise?</span><Link className="text-action" href="/invitation">Accept an invitation</Link></div>
-    </AuthCard> : <AuthCard eyebrow="WELCOME BACK" title="A familiar next step." description="Enter your password to pick up where you left off.">
+    </AuthCard> : <AuthCard title="Enter your password" description="Sign in to your iFranchise account.">
       <div className="account-context"><Icon name="user" /><span>{email}</span><button className="text-action" type="button" disabled={isLoading} onClick={() => { setStep("email"); setPassword(""); setErrors({}); setMessage(""); }}>Change</button></div>
       <form className="auth-form" onSubmit={submitPassword} noValidate aria-busy={isLoading}>
         <PasswordField label="Password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); setMessage(""); }} error={errors.password} initiallyVisible={previewState === "password-visibility"} autoFocus={initialStep === "email" && !previewState} disabled={isLoading} required />
-        <div className="form-between"><span className="form-note">{isLoading ? "Connecting to your workspace…" : ""}</span><Link className="text-action" href="/forgot-password">Forgot password?</Link></div>
+        <div className="form-between"><span className="form-note"></span><Link className="text-action" href="/forgot-password">Forgot password?</Link></div>
         {message ? <StatusMessage tone="warning" title="Sign-in unavailable">{message}</StatusMessage> : null}
         <PrimaryButton type="submit" loading={isLoading} loadingLabel="Signing in…">Sign in <Icon name="arrow" /></PrimaryButton>
       </form>

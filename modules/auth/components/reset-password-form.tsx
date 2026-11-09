@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
 import { PasswordField } from "@/modules/auth/components/fields";
-import { DemoBanner } from "@/modules/auth/components/status-message";
 import { Icon } from "@/modules/auth/components/icon";
 import { validateNewPassword } from "@/modules/auth/schemas/auth";
 import { completePreviewStep } from "@/modules/auth/services/preview-journey";
@@ -22,8 +21,8 @@ export function ResetPasswordForm({ showMismatch = false }: { showMismatch?: boo
     if (!result.success) { setErrors(result.errors); return; }
     setErrors({}); setLoading(true); await completePreviewStep(); setPassword(""); setConfirmation(""); router.push("/reset-password/success");
   }
-  return <><DemoBanner>Reset preview · No link is verified and no password is changed.</DemoBanner>
-    <AuthCard eyebrow="A FRESH START" title="Create a new password." description="Choose a long, unique password that you don’t use for another account.">
+  return <>
+    <AuthCard title="Reset password" description="Choose a long, unique password that you don’t use for another account.">
       <form className="auth-form" onSubmit={submit} noValidate>
         <PasswordField label="New password" name="new-password" autoComplete="new-password" placeholder="Create your new password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); }} error={errors.password} disabled={loading} required />
         <PasswordField label="Confirm new password" name="confirm-password" autoComplete="new-password" placeholder="Re-enter your new password" value={confirmation} onChange={event => { setConfirmation(event.target.value); setErrors({}); }} error={errors.confirmation} disabled={loading} required />

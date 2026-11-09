@@ -4,7 +4,7 @@ A standalone Next.js, TypeScript and Tailwind CSS application. Authentication is
 
 ## Run locally
 
-Use Node.js 24. Install with `npm install`, then start with `npm run dev`.
+Use Node.js 24. Install with `npm install`, then start with `npm run dev`. Development uses Webpack because the local Turbopack preview was serving stale CSS after edits.
 
 - Screen library: http://127.0.0.1:4173/library
 - Authentication viewer: http://127.0.0.1:4173/library/authentication/welcome
@@ -16,7 +16,7 @@ Use Node.js 24. Install with `npm install`, then start with `npm run dev`.
 
 ## Review experience
 
-The internal library contains 31 authentication screens and states, grouped into six journeys. A compact desktop sidebar, expandable groups, previous/next controls and direct screen links make all states reachable. The Desktop and Mobile switch uses an iframe viewport, so it exercises the actual responsive pages rather than emulating mobile through parent CSS. Desktop previews scale to fit smaller review windows; mobile previews retain natural touch sizing and scroll within the frame.
+The internal library contains 31 authentication screens and states, grouped into six journeys. A compact desktop sidebar, expandable groups and direct screen links make all states reachable. The viewer has no bottom pager or external-open button. The Desktop and Mobile switch uses an iframe viewport, so it exercises the actual responsive pages rather than emulating mobile through parent CSS. Desktop previews scale to fit smaller review windows; mobile previews retain natural touch sizing and scroll within the frame.
 
 Clean auth routes do not include the library navigation. The root route opens the review library for this stage of development. The future production entry can be changed independently.
 
@@ -49,4 +49,6 @@ The PRD does not specify numerical lockout thresholds, OTP lifetime, password co
 
 ## Brand provenance
 
-`public/brand/ifranchise-wordmark.svg` is the original wordmark from https://ifranchise.in/assets/ifranchise-wordmark.svg, retrieved from the official website. The primary purple `#32159b` comes from that asset and the website palette. The visual composition is original CSS; no external reference artwork, brand logos or heavy animation libraries were added.
+`public/brand/ifranchise-wordmark.svg` is the original wordmark from https://ifranchise.in/assets/ifranchise-wordmark.svg, retrieved from the official website. The primary purple `#32159b` comes from that asset and the website palette. Desktop authentication pairs a purple gradient and storefront illustration on the left with the form on the right. Mobile uses one column with a gradient fading into white. Verification adds a short, cancellable checking sequence and an animated success checkmark, with reduced-motion support. The persistent review layout keeps embedded navigation from restarting that animation. All motion uses CSS; no animation dependencies were added.
+
+`public/illustrations/franchise-storefront.png` was generated with the built-in image-generation tool for this project, then copied into the repository with its transparent background preserved. It is served through Next.js image optimization. Prompt: “A refined 3D miniature franchise storefront with porcelain walls, deep iFranchise purple (#32159b) and lavender striped awning, glass door and display window, two matching smaller stores behind it; three-quarter view, soft studio lighting, minimal premium product illustration, transparent background, no text, logos, people or decorative objects.”

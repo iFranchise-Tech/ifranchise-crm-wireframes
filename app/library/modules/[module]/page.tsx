@@ -16,7 +16,7 @@ export default async function ModuleScopePage({ params, searchParams }: { params
   const isOverview = query.view === "overview";
   const scopeHref = `/library/modules/${module.id}`;
   const overviewHref = `${scopeHref}?view=overview`;
-  return <ReviewShell moduleName={module.name} icon={module.icon} subtitle="Product scope defined" overviewHref={overviewHref} title={isOverview ? "Module overview" : "Product scope"} section={`${module.name} · Module ${module.section}`} controls={<span className="review-toolbar-status"><span className="status-dot" />Planned module</span>} navigation={<nav className="review-navigation" aria-label={`${module.name} navigation`}>
+  return <ReviewShell moduleName={module.name} icon={module.icon} subtitle="Product scope defined" overviewHref={overviewHref} title={isOverview ? "Module overview" : "Product scope"} controls={<span className="review-toolbar-status"><span className="status-dot" />Planned module</span>} navigation={<nav className="review-navigation" aria-label={`${module.name} navigation`}>
     <Link className="review-overview-link" href={overviewHref} aria-current={isOverview ? "page" : undefined}><Icon name="grid" />Module overview</Link>
     <Link className="review-overview-link" href={scopeHref} aria-current={!isOverview ? "page" : undefined}><Icon name="layers" />Product scope</Link>
   </nav>}>
