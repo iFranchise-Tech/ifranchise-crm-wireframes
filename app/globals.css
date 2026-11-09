@@ -141,15 +141,15 @@ svg { flex: none; width: 20px; height: 20px; }
 .auth-brand-panel { display: none; }
 @media (min-width: 901px) {
   .auth-viewport, .auth-viewport:has(.welcome-screen) { display: grid; grid-template-columns: minmax(360px, .92fr) minmax(440px, 1.08fr); background: #fff; }
-  .auth-brand-panel { display: flex; position: relative; flex-direction: column; align-items: flex-start; min-width: 0; padding: 40px; overflow: hidden; background: radial-gradient(ellipse at 10% 0%, #6946bd 0%, transparent 60%), linear-gradient(180deg, #32159b 0%, #6240ad 32%, #b8a0dd 66%, #f2ebfa 100%); }
+  .auth-brand-panel { display: flex; position: relative; flex-direction: column; align-items: flex-start; min-width: 0; padding: 40px; overflow: hidden; background: radial-gradient(ellipse at 12% 35%, #7650c847 0%, transparent 65%), linear-gradient(160deg, #32159b 0%, #45249c 52%, #2b176e 100%); }
   .auth-brand-panel .brand-wordmark img { width: 148px; height: 37px; filter: brightness(0) invert(1); }
   .auth-brand-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
-  .auth-brand-scene { width: 100%; margin: auto; }
-  .auth-brand-art { width: min(100%, 440px); margin: 0 auto; }
+  .auth-brand-scene { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: auto; padding-top: 32px; }
+  .auth-brand-copy h2 { margin: 0; color: #fff; font-size: clamp(28px, 2.7vw, 38px); font-weight: 550; line-height: 1.23; letter-spacing: -.04em; }
+  .auth-brand-copy h2 > span { display: block; color: #dacefa; }
+  .auth-brand-copy p { max-width: 360px; margin: 18px 0 0; color: #ded5f2; font-size: 13px; line-height: 1.8; }
+  .auth-brand-art { width: min(100%, 400px); margin: 0 auto; }
   .auth-brand-art img { display: block; width: 100%; height: auto; }
-  .franchise-flow { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; max-width: 350px; padding: 22px 0 4px; margin: 0 auto; border-top: 1px solid #6e4b9b26; list-style: none; color: #5c4677; font-size: 12px; font-weight: 500; }
-  .franchise-flow li { display: flex; align-items: center; gap: 18px; }
-  .franchise-flow li + li::before { width: 4px; height: 4px; border-radius: 50%; background: #9a7bb7; content: ""; }
   .auth-column { grid-template-rows: 1fr auto; padding: 40px 48px 25px; }
   .auth-column-header { display: none; }
   .auth-content { padding: 40px 0; }
