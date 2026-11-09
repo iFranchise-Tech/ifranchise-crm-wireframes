@@ -7,11 +7,12 @@ A standalone Next.js, TypeScript and Tailwind CSS application. Authentication is
 Use Node.js 24. Install with `npm install`, then start with `npm run dev`.
 
 - Screen library: http://127.0.0.1:4173/library
-- Authentication overview: http://127.0.0.1:4173/library/authentication
+- Authentication viewer: http://127.0.0.1:4173/library/authentication/welcome
+- In-workspace overview: http://127.0.0.1:4173/library/authentication/overview
 - Clean sign-in: http://127.0.0.1:4173/sign-in
 - Example mobile review: http://127.0.0.1:4173/library/authentication/sign-in?mode=mobile
 
-`npm run typecheck` checks TypeScript. `npm run build` creates a production build using webpack. With the preview running, `npm run check:routes` checks all 80 routes and unknown-state handling.
+`npm run typecheck` checks TypeScript. `npm run build` creates a production build using webpack. With the preview running, `npm run check:routes` checks all 97 screen, scope and overview routes and unknown-state handling.
 
 ## Review experience
 
@@ -19,7 +20,9 @@ The internal library contains 31 authentication screens and states, grouped into
 
 Clean auth routes do not include the library navigation. The root route opens the review library for this stage of development. The future production entry can be changed independently.
 
-The remaining 16 modules reflect CRM PRODUCT.pdf sections 02–17. Their scope pages are summaries of the PRD, not implemented CRM functionality. Section 01 is the product overview; Authentication is the first delivery slice across the access and security requirements.
+Module cards open directly into the shared review workspace. Authentication starts on Welcome; its sidebar overview contains screen counts, journeys and preview details. Other modules open their product scope, with module-specific information available from the same sidebar. The former `/library/authentication` landing URL redirects to Welcome and preserves the preview mode.
+
+The remaining 16 modules reflect CRM PRODUCT.pdf sections 02–17. Their scope views are summaries of the PRD, not implemented CRM functionality. Section 01 is the product overview; Authentication is the first delivery slice across the access and security requirements.
 
 ## Architecture
 

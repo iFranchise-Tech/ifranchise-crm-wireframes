@@ -25,6 +25,6 @@ export const crmModules: CrmModule[] = [
 type ModuleCard = Pick<CrmModule, "id" | "name" | "icon" | "section" | "category" | "description"> & { href: string; available: boolean };
 
 export const moduleCards: ModuleCard[] = [
-  { id: "authentication", name: "Authentication", icon: "lock", section: "01", category: "Platform & governance", description: "Welcome, sign-in, recovery and account access. Every screen, in one place.", href: "/library/authentication", available: true },
+  { id: "authentication", name: "Authentication", icon: "lock", section: "01", category: "Platform & governance", description: "Welcome, sign-in, recovery and account access. Every screen, in one place.", href: "/library/authentication/welcome", available: true },
   ...crmModules.map(module => ({ ...module, href: `/library/modules/${module.id}`, available: false })),
 ];

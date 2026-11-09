@@ -8,9 +8,11 @@ assert.equal(new Set(authScreens.map(screen => screen.href)).size, authScreens.l
 const routes = [
   ...authScreens.map(screen => ({ path: screen.href, marker: 'auth-content' })),
   ...authScreens.map(screen => ({ path: `/library/authentication/${screen.id}`, marker: 'review-shell' })),
-  ...crmModules.map(module => ({ path: `/library/modules/${module.id}`, marker: 'module-scope' })),
+  ...crmModules.map(module => ({ path: `/library/modules/${module.id}`, marker: 'review-shell' })),
+  ...crmModules.map(module => ({ path: `/library/modules/${module.id}?view=overview`, marker: 'module-metrics' })),
   { path: '/library', marker: 'module-grid' },
-  { path: '/library/authentication', marker: 'journey-grid' },
+  { path: '/library/authentication', marker: 'review-shell' },
+  { path: '/library/authentication/overview', marker: 'module-metrics' },
 ];
 let checked = 0;
 for (let offset = 0; offset < routes.length; offset += 4) {
