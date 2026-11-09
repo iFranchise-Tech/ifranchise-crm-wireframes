@@ -9,7 +9,7 @@ const routes = [
   ...authScreens.map(screen => ({ path: screen.href, marker: 'auth-content' })),
   ...authScreens.map(screen => ({ path: `/library/authentication/${screen.id}`, marker: 'review-shell' })),
   ...crmModules.map(module => ({ path: `/library/modules/${module.id}`, marker: 'module-scope' })),
-  { path: '/library', marker: 'featured-module' },
+  { path: '/library', marker: 'module-grid' },
   { path: '/library/authentication', marker: 'journey-grid' },
 ];
 let checked = 0;

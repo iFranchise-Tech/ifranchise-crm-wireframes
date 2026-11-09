@@ -21,3 +21,10 @@ export const crmModules: CrmModule[] = [
   { id: "notifications", name: "Notifications & Automation", icon: "bell", section: "16", category: "Platform & governance", description: "Timely updates, grounded in meaningful business events.", scope: ["In-app notifications and approved message templates", "Assignment, meeting, follow-up and financial alerts", "Automation rules, delivery history and controlled retries"] },
   { id: "security", name: "Data Management & Security", icon: "database", section: "17", category: "Platform & governance", description: "Protect business data throughout its lifecycle.", scope: ["Server-side authentication and access control", "Protected files, data integrity and audit trails", "Database security, backup and recovery"] },
 ];
+
+type ModuleCard = Pick<CrmModule, "id" | "name" | "icon" | "section" | "category" | "description"> & { href: string; available: boolean };
+
+export const moduleCards: ModuleCard[] = [
+  { id: "authentication", name: "Authentication", icon: "lock", section: "01", category: "Platform & governance", description: "Welcome, sign-in, recovery and account access. Every screen, in one place.", href: "/library/authentication", available: true },
+  ...crmModules.map(module => ({ ...module, href: `/library/modules/${module.id}`, available: false })),
+];
