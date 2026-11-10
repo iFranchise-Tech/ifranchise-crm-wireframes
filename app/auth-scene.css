@@ -9,83 +9,85 @@
 
 /* The environment stays behind the form; only decorative layers animate. */
 .auth-viewport {
-  --brand: #0969d6; --brand-strong: #0758b5; --brand-tint: #edf5ff; --brand-soft: #e4f0ff;
-  --ink: #142238; --ink-soft: #37465a; --muted: #647287; --subtle: #728197;
-  --line: #e6ebf2; --line-strong: #d5dee9; --paper: #ffffff;
+  --brand: #2456e8; --brand-strong: #173cb1; --brand-tint: #edf1ff; --brand-soft: #e5ebfc;
+  --ink: #171b26; --ink-soft: #414754; --muted: #626878; --subtle: #707684;
+  --line: #cfd4e080; --line-strong: #cbd1df; --paper: #ffffff; --radius-control: 999px;
   --success: #197758; --success-tint: #edf8f2;
   --danger: #ba394c; --danger-tint: #fff1f3; --amber: #976018; --amber-tint: #fff7e9;
-  --focus-ring: 0 0 0 3px #1688f51a;
+  --focus-ring: 0 0 0 3px #4267df1a;
   position: relative; isolation: isolate; display: grid; grid-template-rows: minmax(0, 1fr) auto;
-  height: 100dvh; min-height: 0; padding: 24px 24px 10px; color: var(--ink); background: #020a17;
+  height: 100dvh; min-height: 0; padding: 24px 24px 10px; color: var(--ink); background: #e4eaf7;
   color-scheme: light;
 }
-.earth-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #020a17; }
-.earth-fallback, .earth-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.earth-fallback { object-fit: cover; object-position: center; }
-.earth-canvas { opacity: 0; }
-.earth-canvas[data-ready="true"] { opacity: 1; transition: opacity 400ms ease; }
-.earth-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 40%, #02091418 100%); }
+.glass-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #e4eaf7; }
+.glass-scene-landscape { position: absolute; inset: -1%; display: block; width: 102%; height: 102%; max-width: none; object-fit: cover; object-position: center; animation: pearl-drift 36s ease-in-out infinite alternate; }
+.glass-scene-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 81% 63%, #ffecda4d, transparent 28%); animation: pearl-light 24s ease-in-out infinite alternate; }
+@keyframes pearl-drift { from { transform: translate3d(-.25%, 0, 0) scale(1); } to { transform: translate3d(.25%, -.2%, 0) scale(1.008); } }
+@keyframes pearl-light { from { opacity: .35; transform: translate3d(0, 0, 0); } to { opacity: .75; transform: translate3d(-1%, .4%, 0); } }
 .auth-column {
-  width: min(100%, 470px); align-self: center; margin: 12px auto; padding: 32px 34px;
-  border: 1px solid #ffffffeb; border-radius: 24px;
+  width: min(100%, 470px); align-self: center; margin: 12px auto; padding: 36px 38px;
+  border: 1px solid #fffffff0; border-radius: 36px;
   /* An opaque base also keeps the form readable without backdrop-filter support. */
-  background: #f8faff;
-  box-shadow: 0 24px 80px #0005, 0 3px 12px #041c3824, inset 0 1px 0 #fff, inset 0 -1px 0 #ffffff70;
+  background: #f3f5fb;
+  box-shadow: 0 20px 64px #52658f12, 0 1px 2px #ffffff66, inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #ffffff80;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .auth-column {
-    background: linear-gradient(145deg, #fffffff7 0%, #fffffff0 52%, #f3f8ffe8 100%);
-    -webkit-backdrop-filter: blur(24px) saturate(110%);
-    backdrop-filter: blur(24px) saturate(110%);
+    background: linear-gradient(135deg, #ffffff4d 0%, #f9faff8f 45%, #f4f4ff73 100%);
+    -webkit-backdrop-filter: blur(22px) saturate(105%);
+    backdrop-filter: blur(22px) saturate(105%);
   }
 }
 .auth-content { width: 100%; min-width: 0; margin: 0 auto; }
 .auth-viewport .auth-title { font-size: 29px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; text-align: center; text-wrap: balance; }
 .auth-viewport .auth-description { margin: 10px 0 26px; font-size: 14px; line-height: 1.5; text-align: center; text-wrap: balance; }
-.auth-viewport .auth-footer { position: relative; margin: 16px auto 0; gap: 2px 18px; font-size: 10px; color: #c2cddd; }
-.auth-viewport .auth-footer button { color: #d0dcea; }
-.auth-viewport .field-control, .auth-viewport .otp-cell { background: #ffffffd9; }
+.auth-viewport .auth-footer { position: relative; margin: 16px auto 0; gap: 2px 18px; font-size: 10px; color: #555d6e; }
+.auth-viewport .auth-footer button { color: #444c5d; }
+.auth-viewport .field-control, .auth-viewport .otp-cell { background: #ffffff26; border-color: #bcc5d666; box-shadow: inset 0 1px 2px #7684a008; }
+.auth-viewport .field-control { border-radius: 999px; }
 .auth-viewport .field-control input { background: transparent; }
-.auth-viewport .field-control:hover { border-color: #aebed1; }
-.auth-viewport .field-control:focus-within, .auth-viewport .otp-cell:focus { border-color: #2385e2; }
-.auth-viewport .field-control input::placeholder { color: #8090a4; }
-.auth-viewport .field-control > svg { color: #7a8ba1; }
+.auth-viewport .field-control:hover { border-color: #a6afc4; }
+.auth-viewport .field-control:focus-within, .auth-viewport .otp-cell:focus { border-color: #708ddb; background: #ffffff66; }
+.auth-viewport .field-control input::placeholder { color: #6c7382; }
+.auth-viewport .field-control > svg { color: #646c7c; }
+.auth-viewport .field-action { border-radius: 50%; }
 .auth-viewport .field-control > .field-valid-icon { color: var(--success); }
 .auth-viewport .field-control.is-valid { border-color: #93c3ac; }
 .auth-viewport .field-control.has-error { border-color: #d98a96; }
 .auth-viewport .field-control input:autofill { background: #fff; }
 .auth-viewport .field-control input:-webkit-autofill, .auth-viewport .field-control input:-webkit-autofill:hover, .auth-viewport .field-control input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #fff inset; }
-.auth-viewport .field-control:has(input:disabled), .auth-viewport .field-control input:disabled { background: #f2f5f9; color: #718097; }
-.auth-viewport .field-control:has(input:read-only), .auth-viewport .field-control input:read-only { background: #f5f7fa; color: #647287; }
+.auth-viewport .field-control:has(input:disabled), .auth-viewport .field-control input:disabled { background: #f1f3f8; color: #82798f; }
+.auth-viewport .field-control:has(input:read-only), .auth-viewport .field-control input:read-only { background: #f7f5fa; color: #706b80; }
 .auth-viewport .field-action:hover { color: var(--brand); }
-.auth-viewport .button-primary { background: linear-gradient(100deg, #0768d5, #0872cf); border-color: #0872cf; box-shadow: 0 4px 16px #006be01a, inset 0 1px #ffffff12; }
-.auth-viewport .button-primary:hover:not(:disabled) { background: linear-gradient(100deg, #075cbb, #0869c0); box-shadow: 0 5px 20px #0086ff2b; }
-.auth-viewport .button-secondary { background: #f3f7fc; }
-.auth-viewport .provider-button { background: #ffffffe6; border-color: #d5dee9; color: #243246; }
-.auth-viewport .provider-button:hover:not(:disabled) { background: #f5f9ff; border-color: #aebed1; }
-.auth-viewport .provider-button:active:not(:disabled) { background: #edf5ff; }
-.auth-viewport .status-message { color: #3d5a7f; background: #f0f6ff; border-color: #d6e4f7; }
+.auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { border-radius: 999px; }
+.auth-viewport .button-primary { background: linear-gradient(165deg, #55585f 0%, #30343c 44%, #1e222a 100%); border-color: #30343c; box-shadow: inset 0 1px 1px #ffffff47, 0 3px 8px #28304412; }
+.auth-viewport .button-primary:hover:not(:disabled) { background: linear-gradient(165deg, #61646b, #363b44 44%, #252a34); box-shadow: inset 0 1px 1px #ffffff47, 0 4px 12px #2830441c; }
+.auth-viewport .button-secondary { background: #ffffff40; }
+.auth-viewport .provider-button { background: linear-gradient(135deg, #ffffff73, #ffffff26); border-color: #ffffffe6; color: #171b26; box-shadow: 0 0 0 1px #b9c2d333, inset 0 1px #ffffff80; }
+.auth-viewport .provider-button:hover:not(:disabled) { background: #ffffff80; border-color: #fff; }
+.auth-viewport .provider-button:active:not(:disabled) { background: #ffffffa6; }
+.auth-viewport .status-message { color: #4e5f87; background: #f0f3fc; border-color: #dbe3f3; }
 .auth-viewport .status-message[data-tone="warning"] { color: var(--amber); background: var(--amber-tint); border-color: #efd9b9; }
 .auth-viewport .status-message[data-tone="error"] { color: var(--danger); background: var(--danger-tint); border-color: #f0cbd1; }
 .auth-viewport .status-message[data-tone="success"] { color: var(--success); background: var(--success-tint); border-color: #c9e6d6; }
 .auth-viewport .auth-dialog { background: #fff; }
-.auth-viewport .auth-dialog-close { background: #f2f5f9; }
-.auth-viewport .auth-dialog-close:hover { background: #e6edf6; }
-.auth-viewport .dialog-service-label { background: #edf5ff; color: #3b5b84; }
-.auth-viewport :focus-visible { outline-color: #2385e2; }
+.auth-viewport .auth-dialog-close { background: #f1f3f8; }
+.auth-viewport .auth-dialog-close:hover { background: #e8edf8; }
+.auth-viewport .dialog-service-label { background: #edf1fc; color: #4e5f87; }
+.auth-viewport :focus-visible { outline-color: #708ddb; }
 .auth-viewport .auth-back-link { display: table; margin: 20px auto 0; text-align: center; }
 .auth-viewport .verification-scene { min-height: 0; }
 .auth-viewport .verification-mark { margin-bottom: 20px; }
 .auth-viewport .verification-mark::before { background: var(--brand-tint); }
-.auth-viewport .verification-ring { stroke: #d6e7f8; }
-.auth-viewport .verification-mark[data-state="checking"] .verification-ring { stroke: #2385e2; }
-.auth-viewport .otp-cell[data-filled="true"] { background: #edf5ff; border-color: #a5c5e8; }
+.auth-viewport .verification-ring { stroke: #dbe3f3; }
+.auth-viewport .verification-mark[data-state="checking"] .verification-ring { stroke: #5d7acb; }
+.auth-viewport .otp-cell[data-filled="true"] { background: #edf1fc; border-color: #b8c6e7; }
 .auth-viewport .otp-cell[aria-invalid="true"], .auth-viewport .otp-cell[data-filled="true"][aria-invalid="true"] { background: #fff1f3; border-color: #d98a96; }
 .auth-viewport .verification-mark[data-state="complete"]::before { background: var(--success-tint); }
 .auth-viewport .verification-mark[data-state="complete"] .verification-ring { stroke: #8dc3aa; }
-.auth-viewport .requirement-check { background: transparent; border-color: #d5dee9; }
+.auth-viewport .requirement-check { background: transparent; border-color: #d3dbe9; }
 .auth-viewport .password-requirements li[data-met="true"] .requirement-check { background: var(--success-tint); border-color: #93c3ac; }
-.auth-viewport .workspace-handoff-progress { background: #e2ebf6; }
+.auth-viewport .workspace-handoff-progress { background: #e8edfa; }
 .invitation-summary { margin: 24px 0; border-block: 1px solid var(--line); }
 .invitation-person { display: flex; align-items: center; gap: 12px; padding: 18px 0; }
 .invitation-person strong { display: block; color: var(--ink); font-size: 14px; font-weight: 650; }
@@ -105,7 +107,7 @@
 .password-strength[data-score="3"] .password-strength-meter > span::after { background: #3a8bc2; }
 @media (max-width: 600px) {
   .auth-viewport { padding: 24px 16px 12px; }
-  .auth-viewport .auth-column { padding: 28px 22px; border-radius: 22px; margin-block: 0; }
+  .auth-viewport .auth-column { padding: 28px 22px; border-radius: 30px; margin-block: 0; }
   .auth-viewport .auth-content { padding: 0; }
   .auth-viewport .auth-title { font-size: 26px; }
   .auth-viewport .auth-description { font-size: 13px; margin-bottom: 24px; }
@@ -116,11 +118,8 @@
   .auth-column { padding: 26px 32px; margin-block: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .earth-canvas[data-ready="true"] { transition: none; }
+  .glass-scene-landscape, .glass-scene-light { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
   .auth-column { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-
-.auth-viewport .auth-dialog .scene-credit { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
-.scene-credit a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }

@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-10",
+  "tool": "Built-in image generation",
+  "reference": "User-supplied light glass authentication reference, codex-clipboard-0cb7b539-1f06-4fd7-9f64-5c83a8e17ec5.png",
+  "prompt": "Use case: precise-object-edit. Asset type: full-bleed website background, landscape 16:9. Edit the supplied reference image by removing ALL interface content: remove the entire central translucent login card, every logo, every heading, text, input, button, copyright footer and all lettering. Reconstruct the scenery naturally where the UI was. Preserve the reference's background composition and material precisely: pale icy blue and lilac sky, an enormous beautifully refractive transparent glass arc/sphere with delicate crystal edges rising from the left and sweeping across the top, soft flowing pearlescent white-lavender dunes across the lower third, warm pale peach sunrise glow right of center near the horizon, reflective satin foreground. The center should be quiet and pale, seamlessly filled in, suitable for a form layered later. High-end minimalist photorealistic 3D material rendering, very light airy luminous palette, subtle refraction. No planet, no Earth, no continents, no dark sky. Output background scenery only, absolutely no UI, no text, no card outline, no watermark. Keep the whole scene light as in the source.",
+  "output": "public/images/auth-pearl-landscape.webp",
+  "dimensions": {
+    "width": 1672,
+    "height": 941
+  },
+  "bytes": 30100,
+  "optimization": "WebP, quality 88, effort 6",
+  "implementation": "UI removed from the source; all cards, text, fields and controls are rendered independently in HTML/CSS."
+}
