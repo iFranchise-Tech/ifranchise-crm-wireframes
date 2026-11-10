@@ -1,0 +1,145 @@
+/* Height-aware spacing keeps the complete authentication task in view. */
+.auth-card-heading, .auth-card-body { min-width: 0; }
+.auth-fit-stage { display: grid; grid-template-rows: minmax(0, 1fr); align-items: center; min-height: 0; min-width: 0; }
+.auth-fit-stage > .auth-column { margin-block: 0; transform-origin: center; }
+.review-shell { height: 100dvh; }
+
+@media (max-height: 800px), (max-width: 700px) {
+  .review-information:has(.module-overview) { padding: 16px 20px; }
+  .module-overview .module-summary { padding: 0 0 12px; gap: 10px; }
+  .module-overview .module-summary h2 { font-size: 22px; }
+  .module-overview .module-summary p { margin-top: 4px; }
+  .module-overview .module-metrics { margin-bottom: 14px; }
+  .module-overview .module-metrics > div { padding: 10px 12px; gap: 4px; }
+  .module-overview .module-metrics > div:nth-child(-n+2) strong { font-size: 22px; }
+  .module-overview .module-metrics svg { display: none; }
+  .module-overview .overview-section-heading { margin-bottom: 8px; }
+  .module-overview .overview-journeys { gap: 6px; margin-bottom: 14px; }
+  .module-overview .overview-journey { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; }
+  .module-overview .journey-heading .module-icon { width: 24px; height: 24px; border: 0; background: none; }
+  .module-overview .journey-heading svg { width: 18px; height: 18px; }
+  .module-overview .journey-number, .module-overview .overview-journey p { display: none; }
+  .module-overview .overview-journey h3 { margin: 0; font-size: 12px; }
+  .module-overview .overview-journey-footer { margin: 0; gap: 8px; }
+  .module-overview .overview-journey-footer span { display: none; }
+  .module-overview .review-note { padding: 10px 12px; }
+  .module-overview .review-note p { font-size: 11px; line-height: 1.45; }
+}
+@media (max-width: 700px) and (max-height: 700px) {
+  .review-information:has(.module-overview) { padding: 12px; }
+  .module-overview .module-summary p { display: none; }
+  .module-overview .module-summary .library-primary { width: auto; min-height: 34px; padding: 8px 10px; font-size: 10px; }
+  .module-overview .module-summary h2 { font-size: 18px; }
+  .module-overview .module-summary { flex-wrap: nowrap; }
+  .module-overview .module-metrics > div { padding: 8px 10px; }
+  .module-overview .module-metrics > div:nth-child(n+3) span { display: none; }
+  .module-overview .overview-journeys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .module-overview .overview-journey { grid-template-columns: 20px minmax(0, 1fr); gap: 6px; padding: 8px; min-height: 50px; }
+  .module-overview .overview-journey-footer { display: none; }
+}
+
+@media (max-height: 760px) {
+  .auth-viewport { padding: 16px 20px 6px; }
+  .auth-viewport .auth-column { padding: 24px 28px; margin-block: 0; }
+  .auth-viewport .auth-description { margin: 8px 0 20px; }
+  .auth-viewport .auth-footer { margin-top: 8px; }
+  .auth-viewport .auth-back-link { margin-top: 14px; }
+  .auth-viewport .status-icon { margin-bottom: 18px; }
+  .auth-viewport .status-actions { margin-top: 20px; gap: 12px; }
+  .auth-viewport .recovery-email-actions { margin-top: 20px; gap: 12px; }
+  .auth-viewport .recovery-feedback { min-height: 38px; }
+}
+
+@media (max-height: 620px) {
+  .auth-viewport .auth-dialog-body { padding: 24px 20px 20px; }
+  .auth-viewport .auth-dialog h2 { font-size: 20px; margin-bottom: 12px; }
+  .auth-viewport .auth-dialog p { margin: 10px 0; line-height: 1.5; }
+  .auth-viewport .auth-dialog .scene-credit { margin-top: 14px; padding-top: 10px; }
+  .auth-viewport { padding: 10px 12px 4px; }
+  .auth-viewport .auth-column { padding: 18px 24px; border-radius: 20px; }
+  .auth-viewport .auth-title { font-size: 25px; }
+  .auth-viewport .auth-description { font-size: 13px; line-height: 1.4; margin: 6px 0 16px; }
+  .auth-viewport .auth-form { gap: 9px; }
+  .auth-viewport .field { gap: 4px; }
+  .auth-viewport .field-control { min-height: 46px; }
+  .auth-viewport .field-control input { height: 44px; }
+  .auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { min-height: 44px; padding-block: 10px; }
+  .auth-viewport .sign-in-separator { margin: 16px 0 12px; }
+  .auth-viewport .auth-back-link { margin-top: 12px; line-height: 1.5; }
+  .auth-viewport .status-icon { width: 48px; height: 48px; margin-bottom: 14px; }
+  .auth-viewport .verification-mark { width: 56px; height: 56px; margin-bottom: 12px; }
+  .auth-viewport .otp-cell { height: 48px; }
+  .auth-viewport .verification-form { gap: 10px; }
+  .auth-viewport .invitation-summary { margin: 16px 0; }
+  .auth-viewport .invitation-person { padding: 12px 0; }
+  .auth-viewport .invitation-summary dl { gap: 7px; padding-bottom: 12px; }
+  .auth-viewport .password-strength { margin: 0; }
+  .auth-viewport .password-strength-heading { margin-bottom: 5px; }
+  .auth-viewport .password-next-stage { min-height: 104px; }
+  .auth-viewport .password-requirements { gap: 3px; }
+  .auth-viewport .auth-footer { margin-top: 6px; gap: 0 14px; font-size: 9px; }
+  .auth-viewport .auth-footer button { min-height: 32px; }
+}
+
+@media (max-height: 520px) {
+  .auth-viewport .auth-column { padding: 14px 20px; }
+  .auth-viewport .auth-title { font-size: 23px; }
+  .auth-viewport .auth-description { margin-bottom: 12px; }
+  .auth-viewport .auth-form { gap: 7px; }
+  .auth-viewport .auth-back-link { margin-top: 8px; }
+  .auth-viewport .auth-footer { margin-top: 4px; }
+}
+
+/* Short landscape screens use their width instead of stacking everything. */
+@media (min-width: 560px) and (max-height: 480px) {
+  .auth-viewport { padding: 10px 16px 4px; }
+  .auth-viewport .auth-column { width: min(100%, 760px); padding: 20px 24px; }
+  .auth-card { display: grid; grid-template-columns: minmax(150px, .85fr) minmax(0, 1.15fr); align-items: center; gap: 28px; }
+  .auth-card-heading { padding-inline: 4px; }
+  .auth-viewport .auth-card-heading .auth-description { margin-bottom: 0; }
+  .auth-content:has(> .status-icon) { display: grid; grid-template-columns: minmax(150px, .85fr) minmax(0, 1.15fr); column-gap: 28px; align-items: center; }
+  .auth-content > .status-icon { grid-column: 1; grid-row: 1; align-self: end; margin-bottom: 14px; }
+  .auth-content:has(> .status-icon) > .auth-card { display: contents; }
+  .auth-content:has(> .status-icon) .auth-card-heading { grid-column: 1; grid-row: 2; align-self: start; }
+  .auth-content:has(> .status-icon) .auth-card-body { grid-column: 2; grid-row: 1 / 3; }
+  .auth-viewport .status-actions { margin-top: 0; }
+  .auth-viewport .recovery-email-actions { margin-top: 0; }
+  .auth-viewport .invitation-summary { margin-top: 0; }
+  .auth-viewport .verification-scene { display: grid; grid-template-columns: minmax(150px, .85fr) minmax(0, 1.15fr); column-gap: 28px; }
+  .verification-scene > .verification-mark { grid-column: 1; align-self: end; }
+  .verification-scene > .auth-card { display: contents; }
+  .verification-scene .auth-card-heading { grid-column: 1; grid-row: 2; }
+  .verification-scene .auth-card-body { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+}
+
+/* A single expanded group keeps quick navigation usable on laptop heights. */
+@media (min-width: 701px) and (max-height: 800px) {
+  .review-brand { padding: 18px 20px 14px; gap: 6px; }
+  .review-all-modules { padding: 12px 20px 0; }
+  .review-sidebar-heading { padding: 16px 18px; }
+  .review-overview-link { margin-bottom: 6px; }
+  .review-nav-group summary { min-height: 36px; padding-block: 8px; }
+  .review-nav-group li > a { min-height: 31px; padding-block: 7px; }
+  .review-nav-group ul { gap: 0; margin-bottom: 4px; }
+  .review-sidebar-footer { padding: 12px 20px; }
+}
+@media (min-width: 701px) and (max-height: 650px) {
+  .review-brand { padding-block: 12px; gap: 4px; }
+  .review-brand > span:not(.brand-wordmark) { display: none; }
+  .review-sidebar-heading { padding-block: 12px; }
+  .review-overview-link { padding-block: 7px; margin-bottom: 2px; }
+  .review-nav-group { margin-bottom: 0; }
+  .review-nav-group summary { min-height: 32px; padding-block: 6px; }
+  .review-nav-group li > a { min-height: 28px; padding-block: 5px; }
+  .review-sidebar-footer { padding-block: 8px; }
+}
+@media (max-width: 700px) and (max-height: 700px) {
+  .review-nav-dialog .dialog-heading { padding-block: 8px; margin-bottom: 4px; }
+  .review-nav-dialog .review-all-modules { padding-block: 4px 8px; }
+  .review-nav-dialog .review-overview-link { margin-block: 4px; }
+  .review-nav-dialog .review-navigation { padding-bottom: 8px; }
+  .review-nav-dialog .review-nav-group { margin-bottom: 0; }
+  .review-nav-dialog summary { min-height: 32px; padding-block: 5px; }
+  .review-nav-dialog li > a { min-height: 32px; padding-block: 6px; }
+  .review-nav-dialog .review-nav-group ul { margin-bottom: 2px; gap: 0; }
+}

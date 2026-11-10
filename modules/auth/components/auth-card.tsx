@@ -8,9 +8,11 @@ export function AuthCard({ title, description, children, headingAlign = "center"
 }) {
   return (
     <div className="auth-card" data-heading-align={headingAlign}>
-      <h1 className="auth-title" tabIndex={-1}>{title}</h1>
-      {description ? <p className="auth-description">{description}</p> : null}
-      {children}
+      <div className="auth-card-heading">
+        <h1 className="auth-title" tabIndex={-1}>{title}</h1>
+        {description ? <p className="auth-description">{description}</p> : null}
+      </div>
+      <div className="auth-card-body">{children}</div>
     </div>
   );
 }

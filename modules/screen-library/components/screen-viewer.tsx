@@ -41,19 +41,20 @@ export function ScreenViewer({ screen, initialMode }: { screen: AuthScreen; init
     const observer = new ResizeObserver(measure); observer.observe(stage.current);
     return () => observer.disconnect();
   }, []);
-  const availableWidth = Math.max(320, size.width - (size.width < 352 ? 0 : size.width < 500 ? 16 : 48));
-  const availableHeight = Math.max(300, size.height - 36);
+  const horizontalInset = size.width < 500 ? 12 : size.height < 500 ? 24 : 48;
+  const verticalInset = size.height < 600 ? 16 : 36;
+  const availableWidth = Math.max(0, size.width - horizontalInset);
+  const availableHeight = Math.max(0, size.height - verticalInset);
   const width = mode === "mobile" ? Math.min(390, availableWidth) : availableWidth;
   const height = availableHeight;
-  const scale = 1;
   function changeMode(next: Mode) { setMode(next); window.history.replaceState(null, "", reviewHref(screen.id, next)); }
   return <ReviewShell moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title={screen.title} navigation={<AuthNavigation screenId={screen.id} mode={mode} />} controls={<div className="preview-mode-control" role="group" aria-label="Preview size">
     <button aria-label="Desktop" aria-pressed={mode === "desktop"} onClick={() => changeMode("desktop")}><Icon name="desktop" /><span>Desktop</span></button>
     <button aria-label="Mobile" aria-pressed={mode === "mobile"} onClick={() => changeMode("mobile")}><Icon name="mobile" /><span>Mobile</span></button>
   </div>}>
     <div className="review-stage" ref={stage} data-mode={mode}>
-      <div className="review-frame-wrap" style={{ width: width * scale, height: height * scale, visibility: measured ? "visible" : "hidden" }}>
-        <iframe ref={frame} className="review-frame" title={`${screen.title} — ${mode} preview`} src={source.current} style={{ width, height, transform: `scale(${scale})` }} />
+      <div className="review-frame-wrap" style={{ width, height, visibility: measured ? "visible" : "hidden" }}>
+        <iframe ref={frame} className="review-frame" title={`${screen.title} — ${mode} preview`} src={source.current} style={{ width, height }} />
       </div>
     </div>
   </ReviewShell>;

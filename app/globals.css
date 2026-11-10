@@ -3,7 +3,7 @@
 @import "./auth-scene.css";
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--paper); }
+html { min-width: 0; background: var(--paper); }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Satoshi", Arial, sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 h1, h2, h3, h4, h5, h6 { font-family: inherit; }
 button, input { font: inherit; }
@@ -103,7 +103,7 @@ svg { flex: none; width: 20px; height: 20px; }
 .auth-title { margin: 0; color: var(--ink); font-size: 32px; font-weight: 700; line-height: 1.2; letter-spacing: -.025em; }
 .auth-title:focus { outline: none; }
 .auth-description { margin: 12px 0 26px; color: var(--muted); font-size: 14px; line-height: 1.65; }
-.auth-card[data-heading-align="center"] > .auth-title, .auth-card[data-heading-align="center"] > .auth-description { text-align: center; }
+.auth-card[data-heading-align="center"] > .auth-card-heading { text-align: center; }
 .auth-footer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 22px; color: var(--subtle); font-size: 11px; line-height: 1.7; }
 .auth-copyright { text-align: center; text-wrap: balance; }
 .auth-footer nav { display: inline-flex; align-items: center; gap: 12px; }
