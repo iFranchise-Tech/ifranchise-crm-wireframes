@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export function AuthCard({ title, description, children, headingAlign = "left" }: {
+export function AuthCard({ title, description, children, headingAlign = "center" }: {
   title: string;
   description?: string;
   children: ReactNode;

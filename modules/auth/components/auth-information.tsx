@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AuthLink as Link } from "./auth-navigation-context";
 import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/modules/auth/components/icon";
@@ -15,7 +15,7 @@ export function AuthInformation() {
 
   return <>
     <footer className="auth-footer">
-      <span>© {new Date().getFullYear()} iFranchise</span>
+      <span className="auth-copyright">© {new Date().getFullYear()} iFranchise Services Private Limited</span>
       <nav aria-label="Privacy and support"><button type="button" onClick={() => show("privacy")}>Privacy</button><span aria-hidden="true">·</span><button type="button" onClick={() => show("help")}>Help</button></nav>
     </footer>
     <Dialog open={open} onClose={() => setOpen(false)} title={titles[topic]}>
@@ -24,7 +24,7 @@ export function AuthInformation() {
         <p>Use sample details while reviewing. For your organization’s privacy policy, contact your workspace administrator.</p>
       </> : <>
         <p>Choose the option that matches what you need.</p>
-        <div className="auth-help-links"><Link href="/forgot-password" onClick={() => setOpen(false)}><Icon name="key" /><span>Reset your password</span><Icon name="chevron" /></Link><Link href="/invitation" onClick={() => setOpen(false)}><Icon name="users" /><span>Accept an invitation</span><Icon name="chevron" /></Link></div>
+        <div className="auth-help-links"><Link href="/forgot-password" onClick={() => setOpen(false)}><Icon name="lockReset" /><span>Reset your password</span><Icon name="chevron" /></Link></div>
         <p className="dialog-detail">For account restrictions or organization access, contact your workspace administrator. Live sign-in and account services are not connected in this review environment.</p>
       </>}
     </Dialog>

@@ -7,7 +7,7 @@ export function OtpField({ value, onChange, error, disabled, focusRequest = 0 }:
   const errorId = useId();
   const digits = Array.from({ length: 6 }, (_, index) => value[index] === " " ? "" : value[index] ?? "");
   useEffect(() => {
-    if (focusRequest) refs.current.find(input => input && !input.value)?.focus();
+    if (focusRequest) (refs.current.find(input => input && !input.value) ?? refs.current[0])?.focus();
   }, [focusRequest]);
   function setDigits(index: number, raw: string) {
     const clean = raw.replace(/\D/g, "");
@@ -18,7 +18,7 @@ export function OtpField({ value, onChange, error, disabled, focusRequest = 0 }:
     onChange(next.map(digit => digit || " ").join("").trimEnd());
     if (clean) refs.current[Math.min(index + clean.length, 5)]?.focus();
   }
-  return <div className="otp-field" data-invalid={Boolean(error)}><div className="otp-row" role="group" aria-label="Six-digit verification code" aria-describedby={error ? errorId : undefined}>
+  return <div className="otp-field" data-invalid={Boolean(error)}><div className="otp-row" role="group" aria-label="Six-digit iFranchise code from your authenticator app" aria-describedby={error ? errorId : undefined}>
     {digits.map((digit, index) => <input key={index} ref={node => { refs.current[index] = node; }} className="otp-cell" data-filled={Boolean(digit)} style={{ "--digit-index": index } as CSSProperties} aria-label={`Digit ${index + 1}`} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} autoComplete={index === 0 ? "one-time-code" : "off"} inputMode="numeric" pattern="[0-9]*" value={digit} disabled={disabled} onFocus={event => event.target.select()} onChange={event => setDigits(index, event.target.value)} onKeyDown={event => {
       if (event.key === "Backspace" && !digit && index > 0) { event.preventDefault(); setDigits(index - 1, ""); refs.current[index - 1]?.focus(); }
       if (event.key === "ArrowLeft" && index > 0) { event.preventDefault(); refs.current[index - 1]?.focus(); }

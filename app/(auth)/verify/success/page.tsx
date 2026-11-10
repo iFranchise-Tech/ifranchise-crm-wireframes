@@ -1,5 +1,5 @@
-import { VerificationSuccessPreview } from "@/modules/auth/components/verification-success-preview";
+import { redirect } from "next/navigation";
 
 export default function VerificationSuccessPage() {
-  return <VerificationSuccessPreview />;
+  redirect("/demo/authenticated");
 }

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ScreenViewer } from "@/modules/screen-library/components/screen-viewer";
 import { authScreens, getAuthScreen } from "@/modules/screen-library/config/auth-screens";
 
@@ -9,6 +9,8 @@ export async function generateMetadata({ params }: { params: Promise<{ screen: s
 }
 export default async function ScreenReviewPage({ params, searchParams }: { params: Promise<{ screen: string }>; searchParams: Promise<{ mode?: string }> }) {
   const [{ screen: id }, query] = await Promise.all([params, searchParams]);
+  const aliases: Record<string, string> = { "email-validation": "sign-in", "password-validation": "password", "password-visibility": "password", "reset-validation": "reset-password", "setup-success": "authenticated", "workspace": "authenticated", "invitation-review": "invitation", "verify-success": "authenticated" };
+  if (Object.hasOwn(aliases, id)) redirect(`/library/authentication/${aliases[id]}${query.mode === "mobile" ? "?mode=mobile" : ""}`);
   const screen = getAuthScreen(id);
   if (!screen) notFound();
   return <ScreenViewer screen={screen} initialMode={query.mode === "mobile" ? "mobile" : "desktop"} />;

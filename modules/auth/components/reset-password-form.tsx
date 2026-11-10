@@ -1,18 +1,18 @@
 "use client";
-import Link from "next/link";
+import { AuthLink as Link } from "./auth-navigation-context";
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useAuthNavigation } from "./auth-navigation-context";
 import { AuthCard } from "@/modules/auth/components/auth-card";
 import { PrimaryButton } from "@/modules/auth/components/button";
-import { PasswordField } from "@/modules/auth/components/fields";
+import { NewPasswordFields } from "./new-password-fields";
 import { Icon } from "@/modules/auth/components/icon";
 import { validateNewPassword } from "@/modules/auth/schemas/auth";
 import { completePreviewStep } from "@/modules/auth/services/preview-journey";
 
 export function ResetPasswordForm({ showMismatch = false }: { showMismatch?: boolean }) {
-  const router = useRouter();
-  const [password, setPassword] = useState(showMismatch ? "sample-password" : "");
-  const [confirmation, setConfirmation] = useState(showMismatch ? "different-password" : "");
+  const router = useAuthNavigation();
+  const [password, setPassword] = useState(showMismatch ? "Franchise8!" : "");
+  const [confirmation, setConfirmation] = useState(showMismatch ? "Different8!" : "");
   const [errors, setErrors] = useState<Record<string, string>>(showMismatch ? { confirmation: "These passwords don’t match. Try again." } : {});
   const [loading, setLoading] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -22,10 +22,11 @@ export function ResetPasswordForm({ showMismatch = false }: { showMismatch?: boo
     setErrors({}); setLoading(true); await completePreviewStep(); setPassword(""); setConfirmation(""); router.push("/reset-password/success");
   }
   return <>
-    <AuthCard title="Reset password" description="Choose a long, unique password that you don’t use for another account.">
+    <AuthCard title="Reset password" description="Create a new password for your account.">
       <form className="auth-form" onSubmit={submit} noValidate>
-        <PasswordField label="New password" name="new-password" autoComplete="new-password" placeholder="Create your new password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); }} error={errors.password} disabled={loading} required />
-        <PasswordField label="Confirm new password" name="confirm-password" autoComplete="new-password" placeholder="Re-enter your new password" value={confirmation} onChange={event => { setConfirmation(event.target.value); setErrors({}); }} error={errors.confirmation} disabled={loading} required />
+        <NewPasswordFields password={password} confirmation={confirmation} errors={errors} disabled={loading}
+          onPasswordChange={value => { setPassword(value); setErrors({}); }}
+          onConfirmationChange={value => { setConfirmation(value); setErrors({}); }} />
         <PrimaryButton type="submit" loading={loading} loadingLabel="Updating…">Reset password <Icon name="arrow" /></PrimaryButton>
       </form><Link className="auth-back-link" href="/sign-in">← Back to sign in</Link>
     </AuthCard></>;
