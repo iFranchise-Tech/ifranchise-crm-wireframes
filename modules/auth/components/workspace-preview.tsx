@@ -2,7 +2,7 @@ import { BrandMark } from "@/components/layout/brand-mark";
 import { Icon } from "./icon";
 import { AuthLink } from "./auth-navigation-context";
 export function WorkspacePreview() {
-  return <main className="workspace-home">
+  return <section className="workspace-home" aria-label="Sample workspace">
     <header className="workspace-home-header"><BrandMark /><span className="workspace-review-label">Design review</span><AuthLink href="/sign-in">Sign out</AuthLink></header>
     <div className="workspace-home-content">
       <span className="workspace-eyebrow">WORKSPACE</span><h1>Welcome to iFranchise</h1><p>Choose where you’d like to start.</p>
@@ -13,5 +13,5 @@ export function WorkspacePreview() {
       </div>
       <p className="workspace-review-note">Sample workspace. These modules open their product scope; live account services and CRM data are not connected.</p>
     </div>
-  </main>;
+  </section>;
 }

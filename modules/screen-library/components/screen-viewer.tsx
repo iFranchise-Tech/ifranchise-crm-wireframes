@@ -29,7 +29,7 @@ export function ScreenViewer({ screen, initialMode }: { screen: AuthScreen; init
       if (data?.type === "ifranchise:preview-ready") frame.current?.contentWindow?.postMessage({ type: "ifranchise:select-screen", screen: selected.current }, window.location.origin);
       if (data?.type === "ifranchise:screen-changed" && typeof data.screen === "string" && getAuthScreen(data.screen) && data.screen !== selected.current) window.history.pushState(null, "", reviewHref(data.screen, mode));
       if (data?.type === "ifranchise:open-library" && typeof data.href === "string" && /^\/library(?:\/modules\/[a-z-]+)?$/.test(data.href)) router.push(data.href);
-      if (data?.type === "ifranchise:open-workspace") router.push("/demo/workspace");
+      if (data?.type === "ifranchise:open-workspace") router.push(`/demo/workspace${mode === "mobile" ? "?mode=mobile" : ""}`);
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);

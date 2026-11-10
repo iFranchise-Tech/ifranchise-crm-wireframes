@@ -20,7 +20,7 @@ type ReviewShellProps = {
 export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   return <div className="review-shell">
-    <aside className="review-sidebar">
+    <aside className="review-sidebar" aria-label="Screen library">
       <Link className="review-brand" href="/library" aria-label="Back to screen library"><BrandMark /><span>SCREEN LIBRARY</span></Link>
       <Link className="review-all-modules" href="/library">← All modules</Link>
       <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>

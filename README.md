@@ -9,16 +9,16 @@ Use Node.js 24. Install with `npm install`, then start with `npm run dev`. Devel
 - Screen library: http://127.0.0.1:4173/library
 - Authentication viewer: http://127.0.0.1:4173/library/authentication/welcome
 - In-workspace overview: http://127.0.0.1:4173/library/authentication/overview
-- Clean sign-in: http://127.0.0.1:4173/sign-in
+- Direct sign-in (opens the same sidebar workspace): http://127.0.0.1:4173/sign-in
 - Example mobile review: http://127.0.0.1:4173/library/authentication/sign-in?mode=mobile
 
-`npm run typecheck` checks TypeScript. `npm run build` creates a production build using webpack. With the preview running, `npm run check:routes` checks the registered clean, embedded, review, scope and overview routes and unknown-state handling.
+`npm run typecheck` checks TypeScript. `npm run build` creates a production build using webpack. With the preview running, `npm run check:routes` checks direct-entry redirects, embedded, review, scope and overview routes and unknown-state handling.
 
 ## Review experience
 
-The internal library contains 24 authentication screens and states, grouped into six journeys. A compact desktop sidebar, expandable groups and direct screen links make all states reachable. The viewer has no bottom pager or external-open button. The Desktop and Mobile switch uses a real iframe viewport with the same authentication components as the clean routes. This surface stays mounted during screen navigation, so switching screens does not reload the app, assets or fonts. Review URLs and browser back/forward remain synchronized. Email validation, password validation, visibility and mismatch feedback happen in the forms instead of separate navigation entries. Desktop previews scale to fit smaller review windows; mobile previews retain natural touch sizing and scroll within the frame.
+The internal library contains 24 authentication screens and states, grouped into six journeys. A compact desktop sidebar, expandable groups and direct screen links make all states reachable. The viewer has no bottom pager or external-open button. The Desktop and Mobile switch uses a real iframe viewport with the shared authentication components. This surface stays mounted during screen navigation, so switching screens does not reload the app, assets or fonts. Review URLs and browser back/forward remain synchronized. Email validation, password validation, visibility and mismatch feedback happen in the forms instead of separate navigation entries. Desktop previews scale to fit smaller review windows; mobile previews retain natural touch sizing and scroll within the frame.
 
-Clean auth routes do not include the library navigation. The root route opens the review library for this stage of development. The future production entry can be changed independently.
+All public authentication links, including `/sign-in`, temporarily redirect into the shared review workspace. Bookmarks, reloads, new tabs and journey transitions retain the screen navigation. The sidebar stays visible above 700px, uses a compact width on smaller desktops and scrolls independently on short windows. Mobile uses the navigation menu. Only `/auth-preview/*` remains an isolated surface for the viewer iframe, preventing nested navigation. Query parameters survive entry redirects. The root route opens the review library for this stage of development; future production entry can be changed independently.
 
 Module cards open directly into the shared review workspace. Authentication starts on Welcome; its sidebar overview contains screen counts, journeys and preview details. Other modules open their product scope, with module-specific information available from the same sidebar. The former `/library/authentication` landing URL redirects to Welcome and preserves the preview mode.
 
@@ -26,7 +26,7 @@ The remaining 16 modules reflect CRM PRODUCT.pdf sections 02–17. Their scope v
 
 ## Architecture
 
-- `app/(auth)/`: clean authentication routes
+- `app/(auth)/`: authentication entry routes, redirected into review by `next.config.ts`
 - `app/library/`: internal catalog, module scope and screen review routes
 - `app/auth-preview/`: persistent embedded review surface
 - `app/demo/`: isolated success and sample workspace handoff
@@ -46,7 +46,7 @@ No identity provider, database, email delivery, MFA provider or session store is
 
 Google is the only provider button, shown as a full-width “Continue with Google” action. Until OAuth is integrated it opens a clear unavailable dialog; it never redirects, transmits credentials or fabricates a provider session. Sign-in and recovery accept work email or employee ID. The identifier stays editable on the password step. Invitations are opened from email; there is no invitation CTA on Welcome or sign-in.
 
-Password creation and reset use the requested review policy: 8–15 characters, uppercase and lowercase letters, a number and a special character. A stable checklist updates during typing, then crossfades to the confirmation field when all rules are met. Matching passwords receive an inline check and confirmation; mismatches remain editable. Password reset success animates an opening lock. A shared authentication success state shows a drawn checkmark, then automatically open the sample workspace after 1.6 seconds without another CTA. First-time setup opens the sample workspace directly, without another success/sign-in step. This destination lives outside the authentication review navigation, links to module scope pages and explicitly distinguishes itself from a live CRM. The former Workspace review entry has been removed; old review links redirect to Authentication success.
+Password creation and reset use the requested review policy: 8–15 characters, uppercase and lowercase letters, a number and a special character. A stable checklist updates during typing, then crossfades to the confirmation field when all rules are met. Matching passwords receive an inline check and confirmation; mismatches remain editable. Password reset success animates an opening lock. A shared authentication success state shows a drawn checkmark, then automatically open the sample workspace after 1.6 seconds without another CTA. First-time setup opens the sample workspace directly, without another success/sign-in step. This destination keeps the shared review sidebar, links to module scope pages and explicitly distinguishes itself from a live CRM. The former Workspace review entry has been removed; old review links redirect to Authentication success.
 
 `npm test` exercises identifier handling, password length boundaries, composition, confirmation and sign-in validation using Node.js 24.
 
