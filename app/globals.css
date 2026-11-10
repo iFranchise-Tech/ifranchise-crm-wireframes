@@ -230,8 +230,7 @@ svg { flex: none; width: 20px; height: 20px; }
 .password-requirements li[data-met="true"] .requirement-check { background: var(--success-tint); border-color: #a9ceb6; color: var(--success); }
 .password-requirements li[data-met="true"] svg { animation: requirement-appear 180ms ease-out; }
 @keyframes requirement-appear { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
-.recovery-email-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 14px 28px; margin-top: 24px; }
-.recovery-email-actions .text-action { min-height: 44px; display: inline-flex; align-items: center; }
+.recovery-email-actions { display: grid; justify-items: center; gap: 20px; margin-top: 24px; }
 .recovery-email-actions .auth-back-link { margin: 0; }
 .recovery-feedback { min-height: 58px; margin-top: 10px; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: center; }
 .status-actions .auth-back-link { margin: 0 auto; }

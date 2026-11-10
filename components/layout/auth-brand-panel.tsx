@@ -7,7 +7,7 @@ import { BrandMark } from "./brand-mark";
 const slides = [
   {
     id: "collaboration",
-    title: "Your franchise pipeline, connected.",
+    title: "Your franchise, connected.",
     description: "Bring leads, meetings and approvals into one clear view for your team.",
     image: "/illustrations/crm-collaboration-refined.png",
     label: "Franchise collaboration",
