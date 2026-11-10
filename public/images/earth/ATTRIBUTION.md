@@ -16,3 +16,5 @@ Downloaded 2026-11-10. The main WebP files were resized from 8K to 4096 × 2048 
 - clouds.jpg: https://www.solarsystemscope.com/textures/download/2k_earth_clouds.jpg
 
 The renderer maps these images onto a rotating sphere and adds lighting, independent cloud movement, atmospheric scattering effects, procedural stars and sunrise glow. Credit is also available in the application's Help panel.
+
+`first-frame.webp` is a 1600 × 1000 capture of this renderer at time zero, using the desktop maps above. It is the loading and WebGL fallback image, with the same centered crop as the animated scene. Regenerate it from the renderer when changing its initial composition or lighting.

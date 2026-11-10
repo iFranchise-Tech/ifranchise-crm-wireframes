@@ -21,9 +21,9 @@
 }
 .earth-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #020a17; }
 .earth-fallback, .earth-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.earth-fallback { object-fit: cover; object-position: center 60%; }
-.earth-canvas { opacity: 0; transition: opacity 900ms ease; }
-.earth-canvas[data-ready="true"] { opacity: 1; }
+.earth-fallback { object-fit: cover; object-position: center; }
+.earth-canvas { opacity: 0; }
+.earth-canvas[data-ready="true"] { opacity: 1; transition: opacity 400ms ease; }
 .earth-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 40%, #02091418 100%); }
 .auth-column {
   width: min(100%, 470px); align-self: center; margin: 12px auto; padding: 32px 34px;
@@ -110,14 +110,13 @@
   .auth-viewport .auth-title { font-size: 26px; }
   .auth-viewport .auth-description { font-size: 13px; margin-bottom: 24px; }
   .auth-viewport .auth-footer { max-width: 300px; margin-top: 12px; }
-  .earth-fallback { object-position: 57% 65%; }
 }
 @media (max-height: 680px) and (min-width: 601px) {
   .auth-viewport { padding-top: 20px; }
   .auth-column { padding: 26px 32px; margin-block: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .earth-canvas { transition: none; }
+  .earth-canvas[data-ready="true"] { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
   .auth-column { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }

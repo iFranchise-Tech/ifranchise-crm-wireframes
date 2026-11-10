@@ -27,7 +27,7 @@ export function EarthScene() {
   }, []);
 
   return <div className="earth-scene" aria-hidden="true">
-    <img className="earth-fallback" src="/images/orbital-earth.webp" alt="" width="1536" height="1024" fetchPriority="high" />
+    <img className="earth-fallback" src="/images/earth/first-frame.webp" alt="" width="1600" height="1000" fetchPriority="high" loading="eager" />
     <canvas ref={canvas} className="earth-canvas" />
     <div className="earth-shade" />
   </div>;

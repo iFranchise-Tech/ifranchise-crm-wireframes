@@ -42,9 +42,14 @@ vec3 displayColor(vec3 c) {
   return pow(c / (1. + c * .55), vec3(1. / 2.2));
 }
 void main() {
-  float aspect = resolution.x / resolution.y;
-  vec2 screen = vec2((uv.x - .5) * aspect, uv.y);
-  vec3 sky = mix(vec3(.00012, .00055, .002), vec3(.00035, .0018, .007), 1. - uv.y);
+  // Match the 1600 × 1000 first-frame poster with centered object-fit: cover.
+  // Both layers must share framing, including on narrow and ultrawide screens.
+  float aspect = 1.6;
+  float viewportAspect = resolution.x / resolution.y;
+  vec2 crop = vec2(min(1., viewportAspect / aspect), min(1., aspect / viewportAspect));
+  vec2 sceneUV = (uv - .5) * crop + .5;
+  vec2 screen = vec2((sceneUV.x - .5) * aspect, sceneUV.y);
+  vec3 sky = mix(vec3(.00012, .00055, .002), vec3(.00035, .0018, .007), 1. - sceneUV.y);
   float nebula = exp(-length((screen - vec2(aspect * .36, .68)) * vec2(1.1, 2.)) * 5.);
   sky += vec3(.0004, .0017, .0045) * nebula;
   sky += vec3(.13, .23, .39) * stars(screen, 57., .003) * .8;
@@ -54,7 +59,7 @@ void main() {
   // Fixed orbital framing. Only the mapped longitude rotates, never the UI or silhouette.
   float radius = max(2.4, aspect * 1.26);
   float horizon = .55;
-  vec2 p = vec2(screen.x, uv.y + radius - horizon + screen.x * .026);
+  vec2 p = vec2(screen.x, sceneUV.y + radius - horizon + screen.x * .026);
   float limb = length(p) - radius;
   float rotation = -.08 + time / 1200.;
   float sunX = aspect * (.355 + .035 * sin(time * .008));
@@ -119,7 +124,7 @@ void main() {
   color += vec3(4., 3.3, 2.4) * exp(-sunDistance * 145.) * visibility;
   float streak = exp(-abs(sunOffset.y) * 170.) * exp(-abs(sunOffset.x) * 12.);
   color += vec3(.11, .12, .13) * streak * visibility;
-  color *= 1. - .22 * smoothstep(.3, .95, length(vec2((uv.x - .5) * 1.1, uv.y - .48)));
+  color *= 1. - .22 * smoothstep(.3, .95, length(vec2((sceneUV.x - .5) * 1.1, sceneUV.y - .48)));
   gl_FragColor = vec4(displayColor(color), 1.);
 }
 `;
@@ -128,7 +133,7 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   const gl = canvas.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
   if (!gl) return () => {};
   let disposed = false, ready = false, visible = true;
-  let frame = 0, elapsed = 0, previous = 0, lastDraw = 0;
+  let frame = 0, revealFrame = 0, elapsed = 0, previous = 0, lastDraw = 0;
   const textures: WebGLTexture[] = [];
   const shaders: WebGLShader[] = [];
   const images: HTMLImageElement[] = [];
@@ -144,6 +149,7 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   const cleanup = () => {
     disposed = true;
     cancelAnimationFrame(frame);
+    cancelAnimationFrame(revealFrame);
     images.forEach((image) => { image.onload = null; image.onerror = null; });
     textures.forEach((texture) => gl.deleteTexture(texture));
     shaders.forEach((shader) => gl.deleteShader(shader));
@@ -190,6 +196,7 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   }
   function resume() {
     cancelAnimationFrame(frame); frame = 0; previous = 0;
+    if (canvas.dataset.ready !== "true") return;
     if (motion.matches) { draw(); return; }
     if (ready && visible && !document.hidden && !disposed) frame = requestAnimationFrame(tick);
   }
@@ -197,7 +204,11 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; resume(); });
   resizer.observe(canvas); observer.observe(canvas);
   motion.addEventListener("change", resume); document.addEventListener("visibilitychange", resume);
-  const lost = (event: Event) => { event.preventDefault(); ready = false; cancelAnimationFrame(frame); delete canvas.dataset.ready; };
+  const lost = (event: Event) => {
+    event.preventDefault(); ready = false;
+    cancelAnimationFrame(frame); cancelAnimationFrame(revealFrame);
+    delete canvas.dataset.ready;
+  };
   canvas.addEventListener("webglcontextlost", lost);
   Promise.all(["day", "night", "clouds"].map((name, index) => new Promise<void>((resolve, reject) => {
     const image = new Image(); images.push(image);
@@ -223,7 +234,16 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
     image.src = detailedMaps && index > 0 ? `/images/earth/${name}-detail.webp` : `/images/earth/${name}.${textureExtension}`;
   }))).then(() => {
     if (disposed || gl.isContextLost()) return;
-    ready = true; resize(); canvas.dataset.ready = "true"; resume();
+    ready = true;
+    resize();
+    // Present a complete time-zero frame before replacing the identical poster.
+    // Never expose a cleared canvas during hydration, resizing or restoration.
+    revealFrame = requestAnimationFrame(() => {
+      if (disposed || !ready || gl.isContextLost()) return;
+      draw();
+      canvas.dataset.ready = "true";
+      resume();
+    });
   }).catch(() => { /* Keep the initial still image if a texture fails. */ });
   return () => {
     resizer.disconnect(); observer.disconnect();
