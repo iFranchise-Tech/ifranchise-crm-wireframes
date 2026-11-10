@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-10",
+  "tool": "Built-in image generation",
+  "reference": "User-supplied Modern Purple Workspace Login.png",
+  "prompt": "Edit the supplied reference into a clean, full-bleed background asset for the same website. Remove the entire central login card and every UI element, logo, word, field, button, shadow cast by the card, and text. Reconstruct the underlying background continuously where the card used to be. Preserve the reference background as closely as possible: a very light white-lavender misty sky occupying the upper half, exquisitely fine violet and white point-cloud particles forming undulating fabric-like waves across the lower half, a taller flowing wave rising on the left edge and softer wave rising on the right edge, bright airy center, subtle depth of field with soft large white particles in the foreground, restrained purple highlights. This must be the same calm, elegant, high-key landscape, not a new concept. No planet, no glass bubble, no buildings, no objects. No UI or typography. Preserve the landscape aspect ratio and delicate contrast. Output just the background image.",
+  "output": "public/images/auth-purple-waves.webp",
+  "dimensions": {
+    "width": 1671,
+    "height": 941
+  },
+  "bytes": 77902,
+  "optimization": "WebP, quality 90, effort 6",
+  "implementation": "The decorative image flows gently using CSS transforms. The card and controls remain separate HTML, with reduced-motion support and no canvas handoff."
+}

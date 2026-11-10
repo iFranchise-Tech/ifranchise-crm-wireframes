@@ -66,8 +66,8 @@ Form labels sit six pixels above their controls. Compact field spacing retains a
 
 ### Scene and illustration assets
 
-- `public/images/auth-pearl-landscape.webp`: reference-derived glass arc, pearlescent dunes and pale sunrise background, edited with the built-in image generation tool to remove all interface content. Optimized to 1672 × 941 and 30,100 bytes. The form remains real, interactive HTML.
-- Exact generation prompt and source details: [glass scene generation notes](docs/glass-scene-generation.json).
+- `public/images/auth-purple-waves.webp`: reference-derived pale lavender background with finely dotted purple waves, edited with the built-in image generation tool to remove all interface content. Optimized to 1671 × 941 and 77,902 bytes. Slow CSS motion affects only the decorative scenery; the form remains stationary, interactive HTML. Reduced-motion preferences disable the scenery animation.
+- Exact generation prompt and source details: [purple wave generation notes](docs/purple-wave-generation.json).
 - The earlier carousel assets below remain as source assets; they are no longer displayed in authentication.
 
 - `public/illustrations/crm-collaboration-refined.png`: revised CRM scene with natural skin tones and refined details.
