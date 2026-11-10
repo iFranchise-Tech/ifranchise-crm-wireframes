@@ -15,8 +15,9 @@ svg { flex: none; width: 20px; height: 20px; }
 ::selection { background: var(--brand-soft); color: var(--brand-strong); }
 :focus-visible { outline: 3px solid #8961f3; outline-offset: 4px; }
 [hidden] { display: none !important; }
-.brand-wordmark { display: inline-flex; flex: none; align-items: center; }
+.brand-wordmark, .brand-symbol { display: inline-flex; flex: none; align-items: center; }
 .brand-wordmark img { display: block; width: 162px; height: auto; aspect-ratio: 910 / 150; object-fit: contain; }
+.brand-symbol img { display: block; width: 56px; height: auto; aspect-ratio: 512 / 494; object-fit: contain; border-radius: 12px; }
 
 /* Clean product authentication shell. Review controls live exclusively under /library. */
 .auth-form { display: flex; flex-direction: column; gap: 12px; }

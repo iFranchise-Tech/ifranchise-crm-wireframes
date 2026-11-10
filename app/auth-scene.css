@@ -27,21 +27,20 @@
 .earth-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 40%, #02091418 100%); }
 .auth-column {
   width: min(100%, 470px); align-self: center; margin: 12px auto; padding: 32px 34px;
-  border: 1px solid #ffffffd9; border-radius: 24px;
+  border: 1px solid #ffffffeb; border-radius: 24px;
   /* An opaque base also keeps the form readable without backdrop-filter support. */
   background: #f8faff;
-  box-shadow: 0 24px 80px #0006, 0 3px 12px #041c3824, inset 0 1px 0 #fff;
+  box-shadow: 0 24px 80px #0005, 0 3px 12px #041c3824, inset 0 1px 0 #fff, inset 0 -1px 0 #ffffff70;
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .auth-column {
-    background: linear-gradient(145deg, #ffffffef 0%, #ffffffed 42%, #edf5ffde 100%);
-    -webkit-backdrop-filter: blur(24px) saturate(125%);
-    backdrop-filter: blur(24px) saturate(125%);
+    background: linear-gradient(145deg, #fffffff7 0%, #fffffff0 52%, #f3f8ffe8 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(110%);
+    backdrop-filter: blur(24px) saturate(110%);
   }
 }
 .auth-column-header { display: flex; align-items: center; justify-content: center; }
-.auth-column-header .brand-wordmark img { width: 153px; filter: none; }
-.auth-content { width: 100%; margin: 0 auto; padding-top: 28px; }
+.auth-content { width: 100%; margin: 0 auto; padding-top: 22px; }
 .auth-viewport .auth-title { font-size: 29px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; text-align: center; text-wrap: balance; }
 .auth-viewport .auth-description { margin: 10px 0 26px; font-size: 14px; line-height: 1.5; text-align: center; text-wrap: balance; }
 .auth-viewport .auth-footer { position: relative; margin: 16px auto 0; gap: 2px 18px; font-size: 10px; color: #c2cddd; }
@@ -108,7 +107,7 @@
 @media (max-width: 600px) {
   .auth-viewport { padding: 24px 16px 12px; }
   .auth-viewport .auth-column { padding: 28px 22px; border-radius: 22px; margin-block: 0; }
-  .auth-viewport .auth-content { padding: 25px 0 0; }
+  .auth-viewport .auth-content { padding: 22px 0 0; }
   .auth-viewport .auth-title { font-size: 26px; }
   .auth-viewport .auth-description { font-size: 13px; margin-bottom: 24px; }
   .auth-viewport .auth-footer { max-width: 300px; margin-top: 12px; }

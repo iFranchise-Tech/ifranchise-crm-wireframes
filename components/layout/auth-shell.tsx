@@ -9,7 +9,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <EarthScene />
       <section className="auth-column" aria-label="Authentication">
         <header className="auth-column-header">
-          <BrandMark />
+          <BrandMark variant="symbol" />
         </header>
         <div className="auth-content">{children}</div>
       </section>

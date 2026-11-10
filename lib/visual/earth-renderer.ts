@@ -175,7 +175,10 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   function resize() {
     const { width, height } = canvas.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt((desktop ? 2_000_000 : 800_000) / Math.max(1, width * height)));
-    canvas.width = Math.max(1, Math.round(width * ratio)); canvas.height = Math.max(1, Math.round(height * ratio));
+    const nextWidth = Math.max(1, Math.round(width * ratio));
+    const nextHeight = Math.max(1, Math.round(height * ratio));
+    if (canvas.width !== nextWidth) canvas.width = nextWidth;
+    if (canvas.height !== nextHeight) canvas.height = nextHeight;
     draw();
   }
   function tick(now: number) {
@@ -199,7 +202,7 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
   Promise.all(["day", "night", "clouds"].map((name, index) => new Promise<void>((resolve, reject) => {
     const image = new Image(); images.push(image);
     image.onload = () => {
-      if (disposed) return;
+      if (disposed || gl.isContextLost()) { reject(); return; }
       const texture = gl.createTexture();
       if (!texture) { reject(); return; }
       textures.push(texture);
@@ -219,7 +222,7 @@ export function createEarthRenderer(canvas: HTMLCanvasElement): () => void {
     image.onerror = reject;
     image.src = detailedMaps && index > 0 ? `/images/earth/${name}-detail.webp` : `/images/earth/${name}.${textureExtension}`;
   }))).then(() => {
-    if (disposed) return;
+    if (disposed || gl.isContextLost()) return;
     ready = true; resize(); canvas.dataset.ready = "true"; resume();
   }).catch(() => { /* Keep the initial still image if a texture fails. */ });
   return () => {

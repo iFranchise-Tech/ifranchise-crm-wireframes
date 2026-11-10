@@ -8,10 +8,22 @@ export function EarthScene() {
   useEffect(() => {
     let disposed = false;
     let release: (() => void) | undefined;
+    let restore: (() => void) | undefined;
+    const element = canvas.current;
     import("@/lib/visual/earth-renderer").then(({ createEarthRenderer }) => {
-      if (!disposed && canvas.current) release = createEarthRenderer(canvas.current);
+      if (disposed || !element) return;
+      restore = () => {
+        release?.();
+        release = createEarthRenderer(element);
+      };
+      restore();
+      element.addEventListener("webglcontextrestored", restore);
     }).catch(() => { /* Keep the static scene if the renderer is unavailable. */ });
-    return () => { disposed = true; release?.(); };
+    return () => {
+      disposed = true;
+      if (restore) element?.removeEventListener("webglcontextrestored", restore);
+      release?.();
+    };
   }, []);
 
   return <div className="earth-scene" aria-hidden="true">
