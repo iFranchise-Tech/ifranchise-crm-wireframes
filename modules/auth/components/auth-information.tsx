@@ -26,6 +26,7 @@ export function AuthInformation() {
         <p>Choose the option that matches what you need.</p>
         <div className="auth-help-links"><Link href="/forgot-password" onClick={() => setOpen(false)}><Icon name="lockReset" /><span>Reset your password</span><Icon name="chevron" /></Link></div>
         <p className="dialog-detail">For account restrictions or organization access, contact your workspace administrator. Live sign-in and account services are not connected in this review environment.</p>
+        <p className="scene-credit">Earth imagery by <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noreferrer">Solar System Scope</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></p>
       </>}
     </Dialog>
   </>;
