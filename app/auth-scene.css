@@ -22,10 +22,18 @@
 .wave-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #f5f4fb; }
 /* Overscan keeps the moving image edges outside the viewport. Only transform
    and opacity animate, independently of the stationary form. */
-.wave-scene-landscape { position: absolute; inset: -3%; display: block; width: 106%; height: 106%; max-width: none; object-fit: cover; object-position: center; transform-origin: center bottom; animation: wave-flow 22s ease-in-out infinite alternate; }
-.wave-scene-light { position: absolute; inset: -8%; background: radial-gradient(ellipse at 22% 74%, #ffffff80, transparent 36%), radial-gradient(ellipse at 85% 65%, #e4d9ff40, transparent 32%); animation: wave-light 18s ease-in-out infinite alternate; }
-@keyframes wave-flow { from { transform: translate3d(-.8%, .3%, 0) scale(1.005, 1) skewY(-.25deg); } to { transform: translate3d(.8%, -.4%, 0) scale(1.025, 1.035) skewY(.25deg); } }
-@keyframes wave-light { from { opacity: .25; transform: translate3d(-2%, 0, 0); } to { opacity: .55; transform: translate3d(2%, -.5%, 0); } }
+.wave-scene-landscape { position: absolute; inset: -5%; display: block; width: 110%; height: 110%; max-width: none; object-fit: cover; object-position: center; transform-origin: center bottom; animation: wave-flow 20s ease-in-out infinite alternate; }
+/* Feathered crests rise at different speeds, giving the dotted fabric depth
+   without a canvas, extra downloads, or a first-frame renderer swap. */
+.wave-scene-crest-left { mask-image: linear-gradient(90deg, #000 12%, #000c 28%, transparent 53%); transform-origin: left bottom; animation: wave-crest-left 11s ease-in-out infinite alternate; }
+.wave-scene-crest-right { mask-image: linear-gradient(90deg, transparent 47%, #000c 72%, #000 88%); transform-origin: right bottom; animation: wave-crest-right 14s ease-in-out infinite alternate; }
+.wave-scene-light { position: absolute; inset: -12%; background: radial-gradient(ellipse at 22% 74%, #ffffffb3, transparent 36%), radial-gradient(ellipse at 85% 65%, #dcd0ff66, transparent 32%); animation: wave-light 12s ease-in-out infinite alternate; }
+/* A stationary wash keeps moving dots away from the footer's reading surface. */
+.wave-scene::after { content: ""; position: absolute; inset: auto 0 0; height: 110px; background: linear-gradient(0deg, #f6f5fc 8%, #f6f5fce6 38%, transparent); }
+@keyframes wave-flow { from { transform: translate3d(-1.2%, .5%, 0) scale(1.01, 1); } to { transform: translate3d(1.2%, -.8%, 0) scale(1.025, 1.045); } }
+@keyframes wave-crest-left { from { transform: translate3d(-1.4%, 1%, 0) scale(1.01, .98); } to { transform: translate3d(.6%, -1.8%, 0) scale(1.04, 1.1); } }
+@keyframes wave-crest-right { from { transform: translate3d(.9%, -1.5%, 0) scale(1.025, 1.08); } to { transform: translate3d(-.9%, .8%, 0) scale(1.01, .99); } }
+@keyframes wave-light { from { opacity: .3; transform: translate3d(-5%, 1%, 0); } to { opacity: .65; transform: translate3d(5%, -1%, 0); } }
 .auth-column {
   width: min(100%, 450px); align-self: center; margin: 12px auto; padding: 36px 38px;
   border: 1px solid #e3dfed; border-radius: 24px;
@@ -43,8 +51,12 @@
 .auth-content { width: 100%; min-width: 0; margin: 0 auto; }
 .auth-viewport .auth-title { font-size: 29px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; text-align: center; text-wrap: balance; }
 .auth-viewport .auth-description { margin: 10px 0 26px; font-size: 15px; line-height: 1.5; text-align: center; text-wrap: balance; }
-.auth-viewport .auth-footer { position: relative; margin: 16px auto 0; gap: 2px 18px; font-size: 11px; color: #555d6e; }
-.auth-viewport .auth-footer button { color: #444c5d; }
+.auth-viewport .auth-footer { position: relative; max-width: 100%; margin: 16px auto 0; gap: 0 20px; font-size: 12px; font-weight: 500; line-height: 1.5; color: #535363; text-align: center; }
+.auth-viewport .auth-copyright { text-wrap: balance; }
+.auth-viewport .auth-footer nav { gap: 12px; flex-shrink: 0; }
+.auth-viewport .auth-footer nav > span { color: #8c849e; }
+.auth-viewport .auth-footer button { min-height: 36px; padding-inline: 3px; color: #41404f; font-weight: 500; }
+.auth-viewport .auth-footer button:hover { color: var(--brand); }
 .auth-viewport .field-label { font-size: 14px; }
 .auth-viewport .field-heading .text-action { font-size: 13px; }
 .auth-viewport .field-control, .auth-viewport .otp-cell { background: #ffffff66; border-color: #d9d7e6; box-shadow: inset 0 1px 2px #65528f04; }
@@ -119,7 +131,8 @@
   .auth-viewport .auth-content { padding: 0; }
   .auth-viewport .auth-title { font-size: 26px; }
   .auth-viewport .auth-description { font-size: 14px; margin-bottom: 24px; }
-  .auth-viewport .auth-footer { max-width: 300px; margin-top: 12px; }
+  .auth-viewport .auth-footer { flex-direction: column; max-width: 100%; margin-top: 12px; gap: 0; }
+  .auth-viewport .auth-footer button { min-height: 40px; }
 }
 @media (max-height: 680px) and (min-width: 601px) {
   .auth-viewport { padding-top: 20px; }
@@ -127,6 +140,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .wave-scene-landscape, .wave-scene-light { animation: none; }
+  .wave-scene-crest { display: none; }
 }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
   .auth-column { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }

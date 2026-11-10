@@ -76,7 +76,7 @@
   .auth-viewport .password-strength-heading { margin-bottom: 5px; }
   .auth-viewport .password-next-stage { min-height: 104px; }
   .auth-viewport .password-requirements { gap: 3px; }
-  .auth-viewport .auth-footer { margin-top: 6px; gap: 0 14px; font-size: 9px; }
+  .auth-viewport .auth-footer { margin-top: 6px; }
   .auth-viewport .auth-footer button { min-height: 32px; }
 }
 
