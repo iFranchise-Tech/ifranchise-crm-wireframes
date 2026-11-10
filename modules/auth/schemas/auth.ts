@@ -22,16 +22,25 @@ export function validateSignIn(input: SignInInput): ValidationResult<SignInInput
 }
 export function passwordRequirements(password: string) {
   return [
-    { id: "length", label: "8–15 characters", met: password.length >= 8 && password.length <= 15 },
-    { id: "case", label: "Upper & lowercase letters", met: /[A-Z]/.test(password) && /[a-z]/.test(password) },
+    { id: "uppercase", label: "Uppercase letters", met: /[A-Z]/.test(password) },
+    { id: "lowercase", label: "Lowercase letters", met: /[a-z]/.test(password) },
     { id: "number", label: "A number", met: /[0-9]/.test(password) },
     { id: "symbol", label: "A special character", met: /[^A-Za-z0-9\s]/.test(password) },
+    { id: "length", label: "8–15 characters", met: password.length >= 8 && password.length <= 15 },
   ];
+}
+/** A local composition estimate, not a breach check or security guarantee. */
+export function passwordStrength(password: string) {
+  if (!password) return { score: 0, label: "Password strength" };
+  const met = passwordRequirements(password).filter(rule => rule.met).length;
+  const repeated = /(.)\1{3}/.test(password);
+  const score = password.length < 8 || repeated ? 1 : met < 5 ? 2 : password.length < 12 ? 3 : 4;
+  return { score, label: ["", "Weak", "Fair", "Good", "Strong"][score] };
 }
 export function validateNewPassword(password: string, confirmation: string): ValidationResult<{ password: string }> {
   const errors: Record<string, string> = {};
   if (!password) errors.password = "Create your password.";
-  else if (!passwordRequirements(password).every(rule => rule.met)) errors.password = "Your password must meet all four requirements.";
+  else if (!passwordRequirements(password).every(rule => rule.met)) errors.password = "Meet all five password requirements.";
   if (!confirmation) errors.confirmation = "Confirm your password.";
   else if (password !== confirmation) errors.confirmation = "Passwords don’t match yet.";
   return Object.keys(errors).length ? { success: false, errors } : { success: true, value: { password } };

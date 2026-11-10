@@ -43,9 +43,9 @@ export function ScreenViewer({ screen, initialMode }: { screen: AuthScreen; init
   }, []);
   const availableWidth = Math.max(320, size.width - (size.width < 352 ? 0 : size.width < 500 ? 16 : 48));
   const availableHeight = Math.max(300, size.height - 36);
-  const width = mode === "mobile" ? Math.min(390, availableWidth) : Math.max(1120, availableWidth);
-  const height = mode === "mobile" ? availableHeight : Math.max(780, availableHeight);
-  const scale = mode === "mobile" ? 1 : Math.min(1, availableWidth / width, availableHeight / height);
+  const width = mode === "mobile" ? Math.min(390, availableWidth) : availableWidth;
+  const height = availableHeight;
+  const scale = 1;
   function changeMode(next: Mode) { setMode(next); window.history.replaceState(null, "", reviewHref(screen.id, next)); }
   return <ReviewShell moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title={screen.title} navigation={<AuthNavigation screenId={screen.id} mode={mode} />} controls={<div className="preview-mode-control" role="group" aria-label="Preview size">
     <button aria-label="Desktop" aria-pressed={mode === "desktop"} onClick={() => changeMode("desktop")}><Icon name="desktop" /><span>Desktop</span></button>

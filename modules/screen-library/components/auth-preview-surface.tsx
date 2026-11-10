@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthShell } from "@/components/layout/auth-shell";
 import { AuthNavigationContext } from "@/modules/auth/components/auth-navigation-context";
-import { WelcomeScreen } from "@/modules/auth/components/welcome-screen";
 import { SignInFlow } from "@/modules/auth/components/sign-in-flow";
 import { RecoveryForm } from "@/modules/auth/components/recovery-form";
 import { CheckEmailScreen } from "@/modules/auth/components/check-email-screen";
@@ -16,7 +15,6 @@ import { authScreens, getAuthScreen } from "../config/auth-screens";
 
 function ScreenContent({ id }: { id: string }) {
   switch (id) {
-    case "welcome": return <WelcomeScreen />;
     case "sign-in": return <SignInFlow />;
     case "password": return <SignInFlow initialStep="password" initialEmail="alex@company.com" />;
     case "loading": return <SignInFlow previewState="loading" />;

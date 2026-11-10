@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   // isolated /auth-preview surface outside these redirects to avoid nesting it.
   redirects() {
     const legacyScreens = [
+      ["/welcome", "sign-in"],
+      ["/status/temporarily-suspended", "sign-in"],
       ["/sign-in/email-validation", "sign-in"],
       ["/sign-in/password-validation", "password"],
       ["/sign-in/password-visibility", "password"],
@@ -19,6 +21,8 @@ const nextConfig: NextConfig = {
     return [
       ...authScreens.map(screen => ({ source: screen.href, destination: reviewHref(screen.id), permanent: false })),
       ...legacyScreens.map(([source, id]) => ({ source, destination: reviewHref(id), permanent: false })),
+      ...["welcome", "suspended"].map(screen => ({ source: `/auth-preview/${screen}`, destination: "/auth-preview/sign-in", permanent: false })),
+      { source: "/auth-preview/verify-success", destination: "/auth-preview/authenticated", permanent: false },
       { source: "/invitation/success", destination: "/demo/workspace", permanent: false },
     ];
   },

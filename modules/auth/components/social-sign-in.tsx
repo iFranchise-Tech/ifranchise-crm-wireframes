@@ -8,7 +8,7 @@ export function SocialSignIn({ disabled = false }: { disabled?: boolean }) {
   return <div className="social-sign-in">
     <div className="sign-in-separator"><span>or</span></div>
     <button type="button" className="provider-button" disabled={disabled} onClick={() => setOpen(true)}>
-      <span className="provider-google-mark"><Image src="/brand/providers/google-button.png" alt="" width={40} height={40} unoptimized /></span>
+      <Image src="/brand/providers/google-mark.svg" alt="" width={20} height={20} unoptimized />
       <span>Continue with Google</span>
     </button>
     <Dialog open={open} onClose={() => setOpen(false)} title="Google sign-in">

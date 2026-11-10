@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateIdentifier, validateNewPassword, validateSignIn } from "../modules/auth/schemas/auth.ts";
+import { passwordStrength, validateIdentifier, validateNewPassword, validateSignIn } from "../modules/auth/schemas/auth.ts";
 
 test("work email and employee IDs are accepted without changing employee ID case", () => {
   for (const value of ["alex@company.com", "  alex@company.com  ", "IF-2048", "employee_7", "00248"]) assert.equal(validateIdentifier(value), undefined);
@@ -33,4 +33,13 @@ test("confirmation must match; sign-in does not impose the new-password policy",
   assert.ok(result.errors.confirmation);
   assert.equal(validateSignIn({ email: "IF-2048", password: "older-password" }).success, true);
   assert.equal(validateSignIn({ email: "IF-2048", password: "" }).success, false);
+});
+
+test("strength feedback advances with variety and length, and flags repetition", () => {
+  assert.equal(passwordStrength("").score, 0);
+  assert.equal(passwordStrength("Ab1!").label, "Weak");
+  assert.equal(passwordStrength("abcdefghijklm").label, "Fair");
+  assert.equal(passwordStrength("Abcdef1!").label, "Good");
+  assert.equal(passwordStrength("BlueRiver7!Q").label, "Strong");
+  assert.equal(passwordStrength("Aaaaaaaa123!").label, "Weak");
 });

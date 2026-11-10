@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { passwordRequirements } from "../schemas/auth";
+import { passwordRequirements, passwordStrength } from "../schemas/auth";
 import { PasswordField } from "./fields";
 import { PasswordRequirements } from "./password-requirements";
 
@@ -20,6 +20,7 @@ type Props = {
 export function NewPasswordFields({ password, confirmation, onPasswordChange, onConfirmationChange, errors, disabled, passwordLabel = "New password", confirmationLabel = "Confirm new password" }: Props) {
   const [confirmationTouched, setConfirmationTouched] = useState(false);
   const ready = passwordRequirements(password).every(rule => rule.met);
+  const strength = passwordStrength(password);
   const matches = ready && confirmation === password;
   const mismatch = confirmation.length > 0 && !matches && (confirmationTouched || confirmation.length >= password.length);
   const confirmationError = matches ? undefined : errors.confirmation || (mismatch ? "Passwords don’t match yet." : undefined);
@@ -27,7 +28,14 @@ export function NewPasswordFields({ password, confirmation, onPasswordChange, on
   return <>
     <PasswordField label={passwordLabel} name="new-password" autoComplete="new-password" minLength={8} maxLength={15}
       placeholder={passwordLabel} value={password} onChange={event => onPasswordChange(event.target.value)}
+      onCopy={event => event.preventDefault()} onCut={event => event.preventDefault()} onDragStart={event => event.preventDefault()}
       error={errors.password} success={ready ? "All requirements met" : undefined} disabled={disabled} required />
+    <div className="password-strength" data-score={strength.score}>
+      <div className="password-strength-heading"><span>Strength</span><span aria-live="polite">{password ? strength.label : "—"}</span></div>
+      <div className="password-strength-meter" role="meter" aria-label="Estimated password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength.score} aria-valuetext={strength.label}>
+        {[1, 2, 3, 4].map(segment => <span key={segment} data-filled={segment <= strength.score} />)}
+      </div>
+    </div>
     <div className="password-next-stage" data-ready={ready}>
       <div className="password-stage password-rules-stage" aria-hidden={ready} inert={ready}>
         <PasswordRequirements password={password} />

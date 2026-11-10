@@ -34,6 +34,7 @@ for (const state of ['not-a-real-state', 'constructor', 'toString']) {
   assert.equal(missing.status, 404, `Unknown state ${state} must return 404`);
 }
 for (const [legacy, current] of Object.entries({
+  'welcome': 'sign-in', 'suspended': 'sign-in',
   'email-validation': 'sign-in', 'password-validation': 'password',
   'password-visibility': 'password', 'reset-validation': 'reset-password',
   'setup-success': 'authenticated', 'workspace': 'authenticated', 'invitation-review': 'invitation', 'verify-success': 'authenticated',
@@ -48,6 +49,10 @@ for (const prefix of ['/auth-preview', '/library/authentication']) {
   assert.equal(response.status, 404, 'Unknown review screens must return 404');
 }
 for (const [legacy, current] of [
+  ['/welcome', '/library/authentication/sign-in'],
+  ['/status/temporarily-suspended', '/library/authentication/sign-in'],
+  ['/auth-preview/welcome', '/auth-preview/sign-in'],
+  ['/auth-preview/suspended', '/auth-preview/sign-in'],
   ['/sign-in/email-validation', '/library/authentication/sign-in'],
   ['/sign-in/password-validation', '/library/authentication/password'],
   ['/sign-in/password-visibility', '/library/authentication/password'],
@@ -58,8 +63,8 @@ for (const [legacy, current] of [
   ['/auth-preview/verify-success', '/auth-preview/authenticated'],
 ]) {
   const response = await fetch(`${origin}${legacy}`);
-  assert.equal(response.status, 200);
-  assert.equal(new URL(response.url).pathname, current);
+  assert.equal(response.status, 200, `${legacy} must remain accessible`);
+  assert.equal(new URL(response.url).pathname, current, `${legacy} must redirect to ${current}`);
 }
 const mobileEntry = await fetch(`${origin}/sign-in?mode=mobile`, { redirect: 'manual' });
 assert.equal(mobileEntry.status, 307, 'Direct entry uses a temporary review redirect');

@@ -12,15 +12,15 @@ import { completePreviewStep } from "@/modules/auth/services/preview-journey";
 
 export function InvitationReview() {
   return <><div className="status-icon"><Icon name="mail" /></div>
-    <AuthCard title="Review invitation" description="Confirm your workspace before setting up your account.">
-      <div className="invite-details"><div className="invite-avatar"><Icon name="building" /></div><div><strong>iFranchise CRM</strong><span>Organization workspace</span><small>Access is assigned by your administrator.</small></div></div>
-      <div className="status-actions"><PrimaryLink href="/invitation/setup">Accept & set up account <Icon name="arrow" /></PrimaryLink></div><Link className="auth-back-link" href="/sign-in">Back to sign in</Link>
+    <AuthCard title="Review invitation" description="Your team has invited you to iFranchise.">
+      <div className="invitation-summary"><div className="invitation-person"><span className="invite-avatar"><Icon name="user" /></span><div><strong>iFranchise Employee</strong><span>Invited by your administrator</span></div></div><dl><div><dt>Workspace</dt><dd>iFranchise CRM</dd></div><div><dt>Account</dt><dd>Employee</dd></div></dl></div>
+      <div className="status-actions"><PrimaryLink href="/invitation/setup">Accept invitation <Icon name="arrow" /></PrimaryLink></div><Link className="auth-back-link" href="/sign-in">Back to sign in</Link>
     </AuthCard></>;
 }
 
 export function InvitationSetupForm() {
   const router = useAuthNavigation();
-  const [name, setName] = useState("");
+  const name = "iFranchise Employee";
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,19 +29,18 @@ export function InvitationSetupForm() {
     event.preventDefault(); if (loading) return;
     const result = validateNewPassword(password, confirmation);
     const next: Record<string, string> = result.success ? {} : result.errors;
-    if (!name.trim()) next.name = "Enter your full name.";
     if (Object.keys(next).length) { setErrors(next); return; }
     setErrors({}); setLoading(true); await completePreviewStep(); setPassword(""); setConfirmation(""); router.push("/demo/workspace");
   }
   return <>
-    <AuthCard title="Set up your account" description="Add your name and create a password.">
+    <AuthCard title="Set up your account" description="Create a password to get started.">
       <form className="auth-form" onSubmit={submit} noValidate>
-        <TextField label="Full name" name="name" icon="user" autoComplete="name" placeholder="Your full name" value={name} onChange={event => { setName(event.target.value); setErrors({}); }} error={errors.name} disabled={loading} required />
+        <TextField label="Full name" name="name" icon="user" autoComplete="name" value={name} readOnly aria-readonly="true" />
         <NewPasswordFields password={password} confirmation={confirmation} errors={errors} disabled={loading}
           passwordLabel="Create password" confirmationLabel="Confirm password"
           onPasswordChange={value => { setPassword(value); setErrors({}); }}
           onConfirmationChange={value => { setConfirmation(value); setErrors({}); }} />
-        <PrimaryButton type="submit" loading={loading} loadingLabel="Completing setup…">Open workspace <Icon name="arrow" /></PrimaryButton>
+        <PrimaryButton type="submit" loading={loading} loadingLabel="Completing setup…">Complete setup <Icon name="arrow" /></PrimaryButton>
       </form><Link className="auth-back-link" href="/invitation/review">← Back to invitation</Link>
     </AuthCard></>;
 }

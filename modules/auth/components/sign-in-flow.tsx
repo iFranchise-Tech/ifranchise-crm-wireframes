@@ -43,7 +43,7 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
   }
   return <>
 
-    {step === "email" ? <AuthCard title="Sign in" description="Use your work email or employee ID." headingAlign="center">
+    {step === "email" ? <AuthCard title="Sign in" description="Welcome back to your workspace." headingAlign="center">
       <form className="auth-form" onSubmit={continueWithEmail} noValidate>
         <TextField label="Work email or employee ID" name="email" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Email or employee ID" value={email} onChange={event => { setEmail(event.target.value); setErrors({}); }} error={errors.email} required />
         <PrimaryButton type="submit">Continue <Icon name="arrow" /></PrimaryButton>

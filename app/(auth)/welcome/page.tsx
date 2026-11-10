@@ -1,2 +1,2 @@
-import { WelcomeScreen } from "@/modules/auth/components/welcome-screen";
-export default function WelcomePage() { return <WelcomeScreen />; }
+import { redirect } from "next/navigation";
+export default function LegacyWelcomePage() { redirect("/library/authentication/sign-in"); }

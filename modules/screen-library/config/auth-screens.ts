@@ -4,8 +4,7 @@ export type AuthScreen = { id: string; title: string; href: string; description:
 export type ScreenGroup = { id: string; title: string; icon: IconName; description: string; screens: AuthScreen[] };
 
 export const authScreenGroups: ScreenGroup[] = [
-  { id: "entry", title: "Welcome & sign in", icon: "login", description: "A considered first impression. A focused way back in.", screens: [
-    { id: "welcome", title: "Welcome", href: "/welcome", description: "The front door to the iFranchise workspace.", kind: "screen" },
+  { id: "entry", title: "Sign in", icon: "login", description: "Sign in with your organization account.", screens: [
     { id: "sign-in", title: "Email / Employee ID", href: "/sign-in", description: "Use a work email or employee ID.", kind: "screen" },
     { id: "password", title: "Password", href: "/sign-in/password", description: "Enter a password with the account in context.", kind: "screen" },
     { id: "loading", title: "Signing in", href: "/sign-in/loading", description: "A stable busy state that prevents repeat submissions.", kind: "state" },
@@ -20,7 +19,7 @@ export const authScreenGroups: ScreenGroup[] = [
   ] },
   { id: "invitation", title: "Invitation & setup", icon: "users", description: "An intentional welcome for every new team member.", screens: [
     { id: "invitation", title: "Email invitation", href: "/invitation", description: "Open an invitation from your email.", kind: "screen" },
-    { id: "account-setup", title: "First-time setup", href: "/invitation/setup", description: "Add a name and create account credentials.", kind: "screen" },
+    { id: "account-setup", title: "First-time setup", href: "/invitation/setup", description: "Create credentials for an administrator-provided account.", kind: "screen" },
     { id: "invitation-expired", title: "Invitation unavailable", href: "/status/invitation-expired", description: "Help when an invitation has expired or was revoked.", kind: "state" },
   ] },
   { id: "verification", title: "Verification", icon: "shield", description: "An additional identity check, when enabled by the organization.", screens: [
@@ -31,7 +30,6 @@ export const authScreenGroups: ScreenGroup[] = [
   { id: "access", title: "Account & access", icon: "lock", description: "Distinct outcomes, with a useful next step for each one.", screens: [
     { id: "authenticated", title: "Authentication success", href: "/demo/authenticated", description: "One success animation after sign-in or authenticator verification, followed by the workspace.", kind: "state" },
     { id: "locked", title: "Account locked", href: "/status/locked", description: "Sign-in is locked pending the configured recovery process.", kind: "state" },
-    { id: "suspended", title: "Temporarily suspended", href: "/status/temporarily-suspended", description: "Access has been paused by the organization.", kind: "state" },
     { id: "deactivated", title: "Account deactivated", href: "/status/deactivated", description: "The account is inactive; business history is retained.", kind: "state" },
     { id: "restricted", title: "Access restricted", href: "/status/access-restricted", description: "The current role does not allow access to this area.", kind: "state" },
   ] },
