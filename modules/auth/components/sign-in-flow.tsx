@@ -55,7 +55,7 @@ export function SignInFlow({ initialStep = "email", initialEmail = "", previewSt
         <TextField label="Work email or employee ID" name="email" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Email or employee ID" value={email} onChange={event => { setEmail(event.target.value); setErrors(current => ({ ...current, email: "" })); setMessage(""); }} error={errors.email} disabled={isLoading} required />
         <PasswordField label="Password" labelAction={<Link className="text-action" href="/forgot-password">Forgot password?</Link>} name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => { setPassword(event.target.value); setErrors({}); setMessage(""); }} error={errors.password} initiallyVisible={previewState === "password-visibility"} autoFocus={initialStep === "email" && !previewState} disabled={isLoading} required />
         {message ? <StatusMessage tone="warning" title="Sign-in unavailable">{message}</StatusMessage> : null}
-        <PrimaryButton type="submit" loading={isLoading} loadingLabel="Signing in…" loadingStyle="pulse">Sign in <Icon name="arrow" /></PrimaryButton>
+        <PrimaryButton type="submit" loading={isLoading} loadingLabel="Signing in…">Sign in <Icon name="arrow" /></PrimaryButton>
       </form>
       <SocialSignIn disabled={isLoading} />
     </AuthCard>}
