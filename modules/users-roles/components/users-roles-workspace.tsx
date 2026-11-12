@@ -382,7 +382,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
 
   const nav = (
     <nav className="review-navigation">
-      {sections.map(item => <Link className={cx("review-overview-link", section === item && "bg-background-secondary-default font-medium text-accent-700")} key={item} href={`/library/modules/roles?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}>{item}</Link>)}
+      {sections.map(item => <Link className="review-overview-link" key={item} href={`/library/modules/roles?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}>{item}</Link>)}
     </nav>
   );
 
@@ -393,8 +393,8 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
           {section !== "Effective access" && (
             <div className="flex shrink-0 items-center justify-between gap-4">
               <div className="flex min-w-0 flex-col gap-1">
-                <h2 className="text-title-1-medium text-text-primary">{section}</h2>
-                <p className="text-body-regular text-text-secondary">{descriptions[section]}</p>
+                <h2 className="ur-title">{section}</h2>
+                <p className="ur-lead">{descriptions[section]}</p>
               </div>
               {section === "Users" && <Button leadingIcon={RiAddLine} onClick={() => { setError(""); setEditUser(blankUser); }}>Add user</Button>}
               {section === "Roles" && <Button leadingIcon={RiAddLine} onClick={() => setEditRole({ id: "", name: "", description: "", system: false, grants: [], restrictions: ["Historical records remain protected."], protectedView: false, protectedEdit: false })}>Create role</Button>}
