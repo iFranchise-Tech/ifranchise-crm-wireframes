@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { RiAddLine, RiFileExcel2Line, RiFilePdf2Line } from "@remixicon/react";
+import { RiAddLine, RiCheckboxCircleLine, RiDeleteBinLine, RiFileExcel2Line, RiFilePdf2Line, RiPauseCircleLine, RiPencilLine, RiShieldCheckLine, RiUserForbidLine, type RemixiconComponentType } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Button } from "@/components/base/buttons/button";
+import { IconButton } from "@/components/base/buttons/icon-button";
 import { CloseButton } from "@/components/base/buttons/close-button";
 import { LinkButton } from "@/components/base/buttons/link-button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -66,7 +67,7 @@ const deviceColumns: BoardColumn[] = [
   { id: "status", name: "Status" },
   { id: "manage", name: "Manage" },
 ];
-const auditColumnDefs: BoardColumn[] = auditColumns.map(column => ({ id: column, name: column, isRowHeader: column === "When" }));
+const auditColumnDefs: BoardColumn[] = auditColumns.map(column => ({ id: column, name: column === "Actor" ? "Changed by" : column, isRowHeader: column === "When" }));
 const avatarColors: AvatarColor[] = ["blue", "lime", "pink", "neutral"];
 
 function isSection(value?: string): value is Section {
@@ -148,14 +149,14 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function exportExcel(rows: Audit[]) {
-  const head = auditColumns.map(column => `<th>${column}</th>`).join("");
+  const head = auditColumns.map(column => `<th>${column === "Actor" ? "Changed by" : column}</th>`).join("");
   const body = rows.map(row => `<tr>${auditCells(row).map(cell => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   downloadBlob(new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" }), "audit-history.xls");
 }
 
 function exportPdf(rows: Audit[]) {
-  const head = auditColumns.map(column => `<th>${column}</th>`).join("");
+  const head = auditColumns.map(column => `<th>${column === "Actor" ? "Changed by" : column}</th>`).join("");
   const body = rows.map(row => `<tr>${auditCells(row).map(cell => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Audit history</title><style>body{font-family:Inter,Helvetica,Arial,sans-serif;color:#171717;padding:28px}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 16px;color:#525252;font-size:12px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e5e5e5;padding:7px 8px;text-align:left;vertical-align:top}th{background:#f7f7f7}</style></head><body><h1>Audit history</h1><p>${rows.length} records · ${escapeHtml(new Date().toLocaleString("en-IN"))}</p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const frame = document.createElement("iframe");
@@ -243,14 +244,23 @@ function FilterSelect({ label, value, options, onChange, className, fit = false 
 
 function Facts({ rows }: { rows: [string, string][] }) {
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+    <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-8 gap-y-3">
       {rows.map(([label, value]) => (
-        <div key={label} className="flex flex-col gap-0.5">
+        <div key={label} className="flex min-w-0 flex-col gap-0.5">
           <dt className="text-caption-1-medium text-text-tertiary">{label}</dt>
           <dd className="text-body-medium text-text-primary">{value}</dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+function ActionIcon({ label, icon, danger, onClick }: { label: string; icon: RemixiconComponentType; danger?: boolean; onClick: () => void }) {
+  return (
+    <span className="ur-action">
+      <IconButton aria-label={label} icon={icon} onClick={onClick} className={danger ? "ur-action-danger" : undefined} />
+      <span className="ur-action-tip" role="tooltip">{label}</span>
+    </span>
   );
 }
 
@@ -288,7 +298,7 @@ function Matrix({ role }: { role: Role }) {
   );
 }
 
-const rowClass = "cursor-pointer outline-none hover:bg-background-secondary-hover";
+const rowClass = "cursor-pointer outline-none";
 
 export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const router = useRouter();
@@ -306,7 +316,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const [deviceStatus, setDeviceStatus] = useState("All statuses");
   const [deviceEmployee, setDeviceEmployee] = useState("All employees");
   const [auditAction, setAuditAction] = useState("All actions");
-  const [auditActor, setAuditActor] = useState("All actors");
+  const [auditActor, setAuditActor] = useState("Anyone");
   const [notice, setNotice] = useState("");
   const [detail, setDetail] = useState<User | null>(null);
   const [roleDetail, setRoleDetail] = useState<Role | null>(null);
@@ -329,14 +339,14 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     setDeviceStatus("All statuses");
     setDeviceEmployee("All employees");
     setAuditAction("All actions");
-    setAuditActor("All actors");
+    setAuditActor("Anyone");
     setError("");
   }, [section]);
 
   const roleName = (id: string) => roles.find(role => role.id === id)?.name || "Unassigned";
   const ask = (next: ConfirmState) => { setReason(""); setConfirm(next); };
   const log = (action: string, target: string, before: string, after: string, entryReason: string) => {
-    setAudit(list => [{ id: `AUD-${Date.now()}`, actor: "Review administrator", action, target, before, after, date: new Date().toLocaleString("en-IN"), reason: entryReason }, ...list]);
+    setAudit(list => [{ id: `AUD-${Date.now()}`, actor: "CRM administrator", action, target, before, after, date: new Date().toLocaleString("en-IN"), reason: entryReason }, ...list]);
     setNotice(`${action}. Sample data updated.`);
   };
 
@@ -426,7 +436,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   });
   const visibleAudit = audit.filter(entry => {
     const text = `${entry.actor} ${entry.action} ${entry.target} ${entry.before} ${entry.after} ${entry.reason} ${entry.date}`.toLowerCase();
-    return text.includes(query.toLowerCase()) && (auditAction === "All actions" || entry.action === auditAction) && (auditActor === "All actors" || entry.actor === auditActor);
+    return text.includes(query.toLowerCase()) && (auditAction === "All actions" || entry.action === auditAction) && (auditActor === "Anyone" || entry.actor === auditActor);
   });
   const managerName = (id: string) => users.find(user => user.id === id)?.name || "";
   const visibleTeams = users.filter(user => {
@@ -640,9 +650,9 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
           {section === "Audit history" && (
             <Panel scroll>
               <Toolbar>
-                <SearchField aria-label="Search audit history" placeholder="Search actor, action or record" value={query} onChange={setQuery} className="min-w-48 flex-1" fieldClassName="ur-field" />
-                <FilterSelect label="Action" value={auditAction} onChange={setAuditAction} options={[{ id: "All actions", label: "All actions" }, ...Array.from(new Set(audit.map(entry => entry.action))).map(action => ({ id: action, label: action }))]} />
-                <FilterSelect label="Actor" value={auditActor} onChange={setAuditActor} options={[{ id: "All actors", label: "All actors" }, ...Array.from(new Set(audit.map(entry => entry.actor))).map(actor => ({ id: actor, label: actor }))]} />
+                <SearchField aria-label="Search audit history" placeholder="Search person, change or record" value={query} onChange={setQuery} className="min-w-48 flex-1" fieldClassName="ur-field" />
+                <FilterSelect fit label="Change" value={auditAction} onChange={setAuditAction} options={[{ id: "All actions", label: "All changes" }, ...Array.from(new Set(audit.map(entry => entry.action))).map(action => ({ id: action, label: action }))]} />
+                <FilterSelect fit label="Changed by" value={auditActor} onChange={setAuditActor} options={[{ id: "Anyone", label: "Anyone" }, ...Array.from(new Set(audit.map(entry => entry.actor))).map(actor => ({ id: actor, label: actor }))]} />
                 <span className="ms-auto flex shrink-0 gap-2">
                   <Button variant="secondary" size="small" leadingIcon={RiFileExcel2Line} onClick={() => exportExcel(visibleAudit)}>Excel</Button>
                   <Button variant="secondary" size="small" leadingIcon={RiFilePdf2Line} onClick={() => exportPdf(visibleAudit)}>PDF</Button>
@@ -671,33 +681,37 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                   )}
                 </TableBody>
               </Table>
-              {!visibleAudit.length && <EmptyNote title="No matching activity" detail="Try another actor, action or record." />}
+              {!visibleAudit.length && <EmptyNote title="No matching activity" detail="Try another person, change or record." />}
               </TableScroll>
             </Panel>
           )}
         </div>
 
         {detail && (
-          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="lg">
-            <ModalHeader title={detail.name} />
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="md">
+            <ModalHeader title={
+              <span className="flex items-center gap-3">
+                <Avatar size="lg" src={photoFor(detail)} alt="" initials={initials(detail.name)} color={avatarColor(detail.name)} className="size-14 shrink-0" />
+                <span className="flex min-w-0 flex-col items-start gap-1.5">
+                  <span>{detail.name}</span>
+                  <Chip variant="subtle" color={statusColor(detail.status)} className={cx("ur-person-status w-fit", statusPill(detail.status))}>{detail.status}</Chip>
+                </span>
+              </span>
+            } />
             <ModalBody>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <Avatar size="lg" src={photoFor(detail)} alt="" initials={initials(detail.name)} color={avatarColor(detail.name)} className="size-14" />
-                  <Chip variant="subtle" color={statusColor(detail.status)} className={cx("w-fit", statusPill(detail.status))}>{detail.status}</Chip>
-                </div>
+                {!!userHistory.length && <div className="flex flex-col items-center gap-1 text-center">{userHistory.map(entry => <p key={entry.id} className="text-caption-1-regular text-text-secondary">{entry.date} · {entry.action}</p>)}</div>}
                 <Facts rows={[["Employee ID", detail.id], ["Email", detail.email], ["Mobile", detail.mobile || "—"], ["CRM role", roleName(detail.roleId)], ["Department", detail.department], ["Designation", detail.designation], ["Reporting manager", users.find(user => user.id === detail.manager)?.name || "—"], ["Team", detail.team || "—"], ["Assigned brand", detail.brand || "—"], ["Last login", detail.lastLogin]]} />
                 {!!userDevices.length && <p className="text-body-regular text-text-secondary"><span className="text-body-medium text-text-primary">Devices </span>{userDevices.map(device => `${device.name} (${device.status})`).join(", ")}</p>}
-                {!!userHistory.length && <div className="flex flex-col gap-1">{userHistory.map(entry => <p key={entry.id} className="text-caption-1-regular text-text-secondary">{entry.date} · {entry.action}</p>)}</div>}
               </div>
             </ModalBody>
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => { setSelected(detail.id); setDetail(null); router.push("/library/modules/roles?view=Effective%20access"); }}>Access</Button>
-              <Button variant="secondary" onClick={() => { setEditUser(detail); setDetail(null); }}>Edit</Button>
-              <Button variant="danger" onClick={() => ask({ title: `Delete ${detail.name}?`, description: "This removes the employee from the review list. Sample history is kept.", apply: entryReason => { setUsers(list => list.filter(user => user.id !== detail.id)); setDetail(null); log("User deleted", detail.name, detail.status, "Deleted", entryReason); } })}>Delete</Button>
-              {detail.status !== "Active" && <Button onClick={() => changeStatus(detail, "Active")}>Activate</Button>}
-              {detail.status === "Active" && <Button variant="secondary" onClick={() => changeStatus(detail, "Temporarily Suspended")}>Suspend</Button>}
-              {detail.status !== "Deactivated" && <Button variant="danger" onClick={() => changeStatus(detail, "Deactivated")}>Deactivate</Button>}
+            <ModalFooter className="gap-3 sm:justify-center">
+              <ActionIcon label="Access" icon={RiShieldCheckLine} onClick={() => { setSelected(detail.id); setDetail(null); router.push("/library/modules/roles?view=Effective%20access"); }} />
+              <ActionIcon label="Edit" icon={RiPencilLine} onClick={() => { setEditUser(detail); setDetail(null); }} />
+              <ActionIcon label="Delete" icon={RiDeleteBinLine} danger onClick={() => ask({ title: `Delete ${detail.name}?`, description: "This removes the employee from the review list. Sample history is kept.", apply: entryReason => { setUsers(list => list.filter(user => user.id !== detail.id)); setDetail(null); log("User deleted", detail.name, detail.status, "Deleted", entryReason); } })} />
+              {detail.status !== "Active" && <ActionIcon label="Activate" icon={RiCheckboxCircleLine} onClick={() => changeStatus(detail, "Active")} />}
+              {detail.status === "Active" && <ActionIcon label="Suspend" icon={RiPauseCircleLine} onClick={() => changeStatus(detail, "Temporarily Suspended")} />}
+              {detail.status !== "Deactivated" && <ActionIcon label="Deactivate" icon={RiUserForbidLine} danger onClick={() => changeStatus(detail, "Deactivated")} />}
             </ModalFooter>
           </Modal>
         )}

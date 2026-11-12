@@ -1,10 +1,10 @@
 /* Users & Roles sits on the review canvas. Cards stay white and only as tall
    as their content, so a short list does not leave a blank slab. */
 .ur-board {
-  background: transparent;
+  background: #fff;
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   scrollbar-width: thin;
-  scrollbar-color: #ddd4e7 transparent;
+  scrollbar-color: #e4e4e7 transparent;
 }
 
 .ur-board .bui-table {
@@ -16,10 +16,10 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: var(--color-accent-50);
+  background-color: #f3f4f6;
   border-top: 0;
-  box-shadow: inset 0 -1px 0 var(--color-accent-100);
-  color: var(--color-text-primary);
+  box-shadow: inset 0 -1px 0 #e4e6ea;
+  color: #1b1e27;
   font-size: var(--text-body-2-semibold);
   font-weight: 600;
   line-height: var(--text-body-2-semibold--line-height);
@@ -36,6 +36,17 @@
 .ur-dialog [slot="title"] {
   color: var(--color-text-primary);
   font-weight: 600;
+}
+
+.ur-person-status {
+  font-size: var(--text-caption-1-medium);
+  font-weight: 500;
+  line-height: var(--text-caption-1-medium--line-height);
+}
+
+.ur-board .bui-table tbody tr:hover,
+.ur-dialog .bui-table tbody tr:hover {
+  background-color: #f7f9fc;
 }
 
 .ur-board .bui-table td {
@@ -87,7 +98,7 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: #ddd4e7 transparent;
+  scrollbar-color: #e4e4e7 transparent;
 }
 
 /* Search and filters sit on the white card, so their fill stays white. */
@@ -125,4 +136,44 @@
 
 .ur-fit-popover [role="option"] {
   white-space: nowrap;
+}
+
+.ur-action {
+  position: relative;
+  display: inline-flex;
+}
+
+.ur-action-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #1b1e27;
+  box-shadow: 0 4px 14px rgb(24 24 27 / 12%), inset 0 0 0 1px #e6e7eb;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 120ms ease;
+}
+
+.ur-action:hover .ur-action-tip,
+.ur-action:focus-within .ur-action-tip {
+  opacity: 1;
+}
+
+.ur-action-danger {
+  color: #c23b45;
+  border-color: #f0d4d7;
+}
+
+.ur-action-danger:hover {
+  background-color: #fff6f7;
+  color: #b4232c;
 }

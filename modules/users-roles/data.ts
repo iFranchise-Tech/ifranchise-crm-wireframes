@@ -161,4 +161,4 @@ export const initialDevices: Device[] = [
 {id:'AND-1042',userId:'IF2026002',name:'Galaxy A55',model:'Samsung Galaxy A55',os:'Android 15',app:'1.0.0',registered:'04 Nov 2026',synced:'11 Nov 2026, 08:45',status:'Approved'},
 {id:'AND-1043',userId:'IF2026009',name:'Pixel 9',model:'Google Pixel 9',os:'Android 16',app:'1.0.0',registered:'10 Nov 2026',synced:'Not synced',status:'Pending approval'}
 ];
-export const initialAudit: Audit[] = [{id:'AUD-1001',actor:'Review administrator',action:'Role reviewed',target:'Reporting Manager',before:'—',after:'Sample permissions reviewed',date:'11 Nov 2026, 08:30',reason:'UI review example'}];
+export const initialAudit: Audit[] = [{id:'AUD-1001',actor:'CRM administrator',action:'Role reviewed',target:'Reporting Manager',before:'—',after:'Sample permissions reviewed',date:'11 Nov 2026, 08:30',reason:'Permission review'}];
