@@ -36,7 +36,7 @@
 @keyframes wave-crest-right { from { transform: translate3d(.9%, -1.5%, 0) scale(1.025, 1.08); } to { transform: translate3d(-.9%, .8%, 0) scale(1.01, .99); } }
 @keyframes wave-light { from { opacity: .3; transform: translate3d(-5%, 1%, 0); } to { opacity: .65; transform: translate3d(5%, -1%, 0); } }
 .auth-column {
-  width: min(100%, 450px); align-self: center; margin: 12px auto; padding: 36px 38px;
+  width: min(100%, 400px); align-self: center; margin: 12px auto; padding: 32px 28px;
   border: 1px solid #e3dfed; border-radius: 24px;
   /* An opaque base also keeps the form readable without backdrop-filter support. */
   background: #fcfbff;
@@ -81,8 +81,8 @@
 .auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { min-height: 54px; border-radius: var(--radius-control); font-size: var(--text-body-semibold); font-weight: var(--text-body-semibold--font-weight); letter-spacing: var(--text-body-semibold--letter-spacing); line-height: var(--text-body-semibold--line-height); }
 .auth-viewport .button-primary svg, .auth-viewport .button-secondary svg { width: 19px; height: 19px; }
 .auth-viewport .text-action, .auth-viewport .auth-back-link { font-size: 14px; }
-.auth-viewport .button-primary { background: #7d5ae4; color: #fff; border-color: transparent; box-shadow: none; }
-.auth-viewport .button-primary:hover:not(:disabled) { background: #724edb; box-shadow: none; }
+.auth-viewport .button-primary { background: #32159b; color: #fff; border-color: transparent; box-shadow: none; }
+.auth-viewport .button-primary:hover:not(:disabled) { background: #271077; box-shadow: none; }
 .auth-viewport .button-secondary { background: #ffffff40; }
 .auth-viewport .provider-button { background: #ffffff80; border-color: #d9d7e6; color: #252030; box-shadow: inset 0 1px #ffffffb3; }
 .auth-viewport .provider-button:hover:not(:disabled) { background: #ffffffbf; border-color: #b8a9d2; }

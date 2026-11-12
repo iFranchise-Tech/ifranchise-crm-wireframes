@@ -38,6 +38,38 @@
   font-weight: 600;
 }
 
+.ur-board button.bg-button-primary,
+.ur-dialog button.bg-button-primary {
+  background-color: var(--brand);
+  background-image: none;
+}
+
+.ur-board button.bg-button-primary::before,
+.ur-dialog button.bg-button-primary::before {
+  background-color: var(--brand-strong);
+  background-image: none;
+}
+
+.ur-board button.bg-button-primary:active:not(:disabled),
+.ur-dialog button.bg-button-primary:active:not(:disabled) {
+  background-color: var(--brand-strong);
+  background-image: none;
+}
+
+.ur-board button.text-accent-600,
+.ur-board a.text-accent-600,
+.ur-dialog button.text-accent-600,
+.ur-dialog a.text-accent-600 {
+  color: var(--brand);
+}
+
+.ur-board button.text-accent-600:active,
+.ur-board a.text-accent-600:active,
+.ur-dialog button.text-accent-600:active,
+.ur-dialog a.text-accent-600:active {
+  color: var(--brand-strong);
+}
+
 .ur-person-status {
   font-size: var(--text-caption-1-medium);
   font-weight: 500;
