@@ -17,6 +17,7 @@
   --focus-ring: 0 0 0 3px #7844db1a;
   position: relative; isolation: isolate; display: grid; grid-template-rows: minmax(0, 1fr) auto;
   height: 100dvh; min-height: 0; padding: 24px 24px 10px; color: var(--ink); background: #f5f4fb;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   color-scheme: light;
 }
 .wave-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #f5f4fb; }
@@ -49,15 +50,15 @@
   }
 }
 .auth-content { width: 100%; min-width: 0; margin: 0 auto; }
-.auth-viewport .auth-title { font-size: 29px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; text-align: center; text-wrap: balance; }
-.auth-viewport .auth-description { margin: 10px 0 26px; font-size: 15px; line-height: 1.5; text-align: center; text-wrap: balance; }
+.auth-viewport .auth-title { font-size: var(--text-title-1-semibold); font-weight: var(--text-title-1-semibold--font-weight); letter-spacing: var(--text-title-1-semibold--letter-spacing); line-height: var(--text-title-1-semibold--line-height); text-align: center; text-wrap: balance; }
+.auth-viewport .auth-description { margin: 8px 0 22px; color: #7b8190; font-size: var(--text-body-regular); font-weight: var(--text-body-regular--font-weight); letter-spacing: var(--text-body-regular--letter-spacing); line-height: var(--text-body-regular--line-height); text-align: center; text-wrap: balance; }
 .auth-viewport .auth-footer { position: relative; max-width: 100%; margin: 16px auto 0; gap: 0 20px; font-size: 12px; font-weight: 500; line-height: 1.5; color: #535363; text-align: center; }
 .auth-viewport .auth-copyright { text-wrap: balance; }
 .auth-viewport .auth-footer nav { gap: 12px; flex-shrink: 0; }
 .auth-viewport .auth-footer nav > span { color: #8c849e; }
 .auth-viewport .auth-footer button { min-height: 36px; padding-inline: 3px; color: #41404f; font-weight: 500; }
 .auth-viewport .auth-footer button:hover { color: var(--brand); }
-.auth-viewport .field-label { font-size: 14px; }
+.auth-viewport .field-label { color: #6a7180; font-size: var(--text-body-2-medium); font-weight: var(--text-body-2-medium--font-weight); letter-spacing: var(--text-body-2-medium--letter-spacing); line-height: var(--text-body-2-medium--line-height); }
 .auth-viewport .field-heading .text-action { font-size: 13px; }
 .auth-viewport .field-control, .auth-viewport .otp-cell { background: #ffffff66; border-color: #d9d7e6; box-shadow: inset 0 1px 2px #65528f04; }
 .auth-viewport .field-control { min-height: 54px; border-radius: var(--radius-control); }
@@ -77,11 +78,11 @@
 .auth-viewport .field-control:has(input:disabled), .auth-viewport .field-control input:disabled { background: #f1f3f8; color: #82798f; }
 .auth-viewport .field-control:has(input:read-only), .auth-viewport .field-control input:read-only { background: #f7f5fa; color: #706b80; }
 .auth-viewport .field-action:hover { color: var(--brand); }
-.auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { min-height: 54px; border-radius: var(--radius-control); font-size: 16px; }
+.auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { min-height: 54px; border-radius: var(--radius-control); font-size: var(--text-body-semibold); font-weight: var(--text-body-semibold--font-weight); letter-spacing: var(--text-body-semibold--letter-spacing); line-height: var(--text-body-semibold--line-height); }
 .auth-viewport .button-primary svg, .auth-viewport .button-secondary svg { width: 19px; height: 19px; }
 .auth-viewport .text-action, .auth-viewport .auth-back-link { font-size: 14px; }
-.auth-viewport .button-primary { background: linear-gradient(180deg, #8250e8 0%, #642bd8 100%); border-color: #7037dd; box-shadow: inset 0 1px 1px #ffffff38, 0 3px 9px #6736bc14; }
-.auth-viewport .button-primary:hover:not(:disabled) { background: linear-gradient(180deg, #7743dc, #5922c7); box-shadow: inset 0 1px 1px #ffffff38, 0 4px 12px #6736bc24; }
+.auth-viewport .button-primary { background: #7d5ae4; color: #fff; border-color: transparent; box-shadow: none; }
+.auth-viewport .button-primary:hover:not(:disabled) { background: #724edb; box-shadow: none; }
 .auth-viewport .button-secondary { background: #ffffff40; }
 .auth-viewport .provider-button { background: #ffffff80; border-color: #d9d7e6; color: #252030; box-shadow: inset 0 1px #ffffffb3; }
 .auth-viewport .provider-button:hover:not(:disabled) { background: #ffffffbf; border-color: #b8a9d2; }

@@ -1,0 +1,53 @@
+/* Users & Roles sits on the review canvas. Cards stay white and only as tall
+   as their content, so a short list does not leave a blank slab. */
+.ur-board {
+  background: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd4e7 transparent;
+}
+
+.ur-board .bui-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--color-accent-100);
+  border-top: 0;
+  box-shadow: inset 0 -1px 0 var(--color-accent-200);
+  color: var(--color-accent-800);
+  font-weight: 600;
+}
+
+/* The table wrapper would trap the sticky header. Let the card scroller own both axes. */
+.ur-scroll > div {
+  overflow: visible;
+}
+
+.ur-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd4e7 transparent;
+}
+
+/* Search and filters sit on the white card, so their fill stays white. */
+.ur-board .ur-field {
+  background-color: var(--color-background-primary-default);
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--color-border-button-default);
+}
+
+.ur-board .ur-field input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.ur-fit-select button {
+  width: max-content;
+}
+
+.ur-fit-select button > span {
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: unset;
+  white-space: nowrap;
+}

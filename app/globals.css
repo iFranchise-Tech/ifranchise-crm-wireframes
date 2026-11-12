@@ -2,18 +2,31 @@
 @import "./tokens.css";
 @import "./auth-scene.css";
 
+/* BoardUI's theme is imported first. Restate the sans family here so the
+   later Tailwind entry does not replace Inter with the default stack.
+   Auth body text stays Satoshi through the unlayered body rule below. */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
 * { box-sizing: border-box; }
 html { min-width: 0; background: var(--paper); }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Satoshi", Arial, sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-h1, h2, h3, h4, h5, h6 { font-family: inherit; }
-button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-button { color: inherit; cursor: pointer; }
+button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-a { color: inherit; text-decoration: none; }
-svg { flex: none; width: 20px; height: 20px; }
 ::selection { background: var(--brand-soft); color: var(--brand-strong); }
-:focus-visible { outline: 3px solid #8961f3; outline-offset: 4px; }
+
+/* Layered so BoardUI utilities (button color, type size, icon size, focus ring)
+   win inside the design system. Auth controls set these same properties in
+   unlayered rules, so they keep the existing look. */
+@layer base {
+  h1, h2, h3, h4, h5, h6 { font-family: inherit; }
+  button, input, textarea { font: inherit; color: inherit; }
+  a { color: inherit; text-decoration: none; }
+  svg { flex: none; width: 20px; height: 20px; }
+  :focus-visible { outline: 3px solid #8961f3; outline-offset: 4px; }
+}
 [hidden] { display: none !important; }
 .brand-wordmark, .brand-symbol { display: inline-flex; flex: none; align-items: center; }
 .brand-wordmark img { display: block; width: 162px; height: auto; aspect-ratio: 910 / 150; object-fit: contain; }
