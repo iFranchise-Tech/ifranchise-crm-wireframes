@@ -22,6 +22,7 @@ import { DirectionProvider } from "@/components/foundations/direction/direction"
 import { cx } from "@/utils/cx";
 import "./users-roles.css";
 import { initialAudit, initialDepartments, initialDevices, initialRoles, initialUsers } from "../data";
+import { portraitFor } from "../portrait";
 import { actions, modules, statuses, type Action, type Audit, type Device, type Role, type User } from "../types";
 
 const sections = ["Users", "Roles", "Effective access", "Departments", "Teams", "Devices", "Audit history"] as const;
@@ -79,6 +80,44 @@ function initials(name: string) {
 function avatarColor(name: string): AvatarColor {
   const sum = [...name].reduce((total, char) => total + char.charCodeAt(0), 0);
   return avatarColors[sum % avatarColors.length];
+}
+
+function statusPill(value: string) {
+  return value === "Active" || value === "Approved" ? "ur-status-active" : undefined;
+}
+
+function photoFor(user: Pick<User, "name" | "avatar">) {
+  return user.avatar || portraitFor(user.name);
+}
+
+function readPhoto(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      const size = 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(url);
+        reject(new Error("Photo could not be prepared."));
+        return;
+      }
+      const scale = Math.max(size / image.width, size / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.86));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Choose an image file."));
+    };
+    image.src = url;
+  });
 }
 
 function statusColor(value: string): ChipColor {
@@ -148,18 +187,28 @@ function TableScroll({ children }: { children: ReactNode }) {
   return <div className="ur-scroll flex-1">{children}</div>;
 }
 
+function EmptyNote({ title, detail, onClear }: { title: string; detail: string; onClear?: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+      <h3 className="text-headline-medium text-text-primary">{title}</h3>
+      <p className="text-body-regular text-text-secondary">{detail}</p>
+      {onClear && <Button variant="secondary" onClick={onClear}>Clear filters</Button>}
+    </div>
+  );
+}
+
 function Toolbar({ children }: { children: ReactNode }) {
   return <div className="flex shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-separator-border p-3">{children}</div>;
 }
 
-function Person({ name, meta, detail }: { name: string; meta: string; detail?: string }) {
+function Person({ name, meta, detail, src }: { name: string; meta?: string; detail?: string; src?: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <Avatar size="sm" initials={initials(name)} color={avatarColor(name)} />
+      <Avatar size="md" src={src || portraitFor(name)} alt="" initials={initials(name)} color={avatarColor(name)} />
       <span className="min-w-0">
-        <span className="block text-body-medium text-text-primary">{name}</span>
-        <span className="block text-caption-1-regular text-text-secondary">{meta}</span>
-        {detail && <span className="block text-caption-1-regular text-text-primary">{detail}</span>}
+        <span className="block text-body-2-medium text-text-primary">{name}</span>
+        {meta && <span className="block text-caption-1-regular text-text-secondary">{meta}</span>}
+        {detail && <span className="block text-caption-1-regular text-text-tertiary">{detail}</span>}
       </span>
     </div>
   );
@@ -171,12 +220,12 @@ function StatusMenu({ label, value, options, onChange }: { label: string; value:
   return (
     <Dropdown isOpen={open} onOpenChange={setOpen}>
       <DropdownTrigger aria-label={label} className="shrink-0 rounded-full">
-        <Chip variant="subtle" color={current.color} className={cx("rounded-full px-3", current.color === "neutral" && "ur-field")}>{current.text}</Chip>
+        <Chip variant="subtle" color={current.color} className={cx("rounded-full px-3", statusPill(current.id), current.color === "neutral" && "ur-field")}>{current.text}</Chip>
       </DropdownTrigger>
       <DropdownPopover aria-label={label} placement="bottom end" className="w-max min-w-56">
         {options.map(option => (
           <DropdownItem key={option.id} selected={option.id === value} onSelect={() => { onChange(option.id); setOpen(false); }}>
-            <Chip variant="subtle" color={option.color} className="rounded-full px-3">{option.text}</Chip>
+            <Chip variant="subtle" color={option.color} className={cx("rounded-full px-3", statusPill(option.id))}>{option.text}</Chip>
           </DropdownItem>
         ))}
       </DropdownPopover>
@@ -186,7 +235,7 @@ function StatusMenu({ label, value, options, onChange }: { label: string; value:
 
 function FilterSelect({ label, value, options, onChange, className, fit = false }: { label: string; value: string; options: { id: string; label: string }[]; onChange: (value: string) => void; className?: string; fit?: boolean }) {
   return (
-    <Select aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={cx(fit ? "ur-fit-select w-max max-w-full shrink-0" : "w-44 shrink-0", className)} triggerClassName={cx("ur-field shadow-none", fit ? "w-auto" : "w-full")} popoverClassName={fit ? "w-max min-w-(--trigger-width)" : "w-(--trigger-width)"}>
+    <Select aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={cx(fit ? "ur-fit-select w-max max-w-full shrink-0" : "w-44 shrink-0", className)} triggerClassName={cx("ur-field shadow-none", fit ? "w-auto" : "w-full")} popoverClassName={fit ? "ur-fit-popover w-max min-w-(--trigger-width)" : "w-(--trigger-width)"}>
       {options.map(option => <SelectItem key={option.id} id={option.id} textValue={option.label}>{option.label}</SelectItem>)}
     </Select>
   );
@@ -253,6 +302,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const [filter, setFilter] = useState("All statuses");
   const [deptFilter, setDeptFilter] = useState("All departments");
   const [roleFilter, setRoleFilter] = useState("All roles");
+  const [managerFilter, setManagerFilter] = useState("All managers");
   const [deviceStatus, setDeviceStatus] = useState("All statuses");
   const [deviceEmployee, setDeviceEmployee] = useState("All employees");
   const [auditAction, setAuditAction] = useState("All actions");
@@ -275,6 +325,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     setFilter("All statuses");
     setDeptFilter("All departments");
     setRoleFilter("All roles");
+    setManagerFilter("All managers");
     setDeviceStatus("All statuses");
     setDeviceEmployee("All employees");
     setAuditAction("All actions");
@@ -359,7 +410,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     },
   });
 
-  const blankUser: User = { id: "", name: "", email: "", mobile: "", department: "Sales", designation: "", roleId: "bda", manager: "", team: "", brand: "", status: "Pending Activation", created: "", lastLogin: "Never" };
+  const blankUser: User = { id: "", name: "", email: "", mobile: "", department: "Sales", designation: "", roleId: "bda", manager: "", team: "", brand: "", status: "Pending Activation", created: "", lastLogin: "Never", avatar: "" };
   const matchesPeople = (user: User) => `${user.name} ${user.id} ${user.email} ${user.department} ${user.designation} ${roleName(user.roleId)}`.toLowerCase().includes(query.toLowerCase());
   const peopleBase = users.filter(user => (deptFilter === "All departments" || user.department === deptFilter) && (roleFilter === "All roles" || user.roleId === roleFilter) && matchesPeople(user));
   const visibleUsers = peopleBase.filter(user => filter === "All statuses" || user.status === filter);
@@ -377,6 +428,19 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     const text = `${entry.actor} ${entry.action} ${entry.target} ${entry.before} ${entry.after} ${entry.reason} ${entry.date}`.toLowerCase();
     return text.includes(query.toLowerCase()) && (auditAction === "All actions" || entry.action === auditAction) && (auditActor === "All actors" || entry.actor === auditActor);
   });
+  const managerName = (id: string) => users.find(user => user.id === id)?.name || "";
+  const visibleTeams = users.filter(user => {
+    const manager = managerName(user.manager);
+    const text = `${user.name} ${user.department} ${user.team} ${manager}`.toLowerCase();
+    const departmentOk = deptFilter === "All departments" || user.department === deptFilter;
+    const managerOk = managerFilter === "All managers" || (managerFilter === "none" ? !user.manager : user.manager === managerFilter);
+    return text.includes(query.toLowerCase()) && departmentOk && managerOk;
+  });
+  const managerOptions = [
+    { id: "All managers", label: "All managers" },
+    { id: "none", label: "No reporting manager" },
+    ...users.filter(user => users.some(report => report.manager === user.id)).map(user => ({ id: user.id, label: user.name })),
+  ];
   const userHistory = detail ? audit.filter(entry => entry.target.includes(detail.name) || entry.target.includes(detail.id)).slice(0, 3) : [];
   const userDevices = detail ? devices.filter(device => device.userId === detail.id) : [];
 
@@ -415,23 +479,23 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
               <Toolbar>
                 <SearchField aria-label="Search users" placeholder="Search name, employee ID or role" value={query} onChange={setQuery} className="min-w-48 flex-1" fieldClassName="ur-field" />
                 <StatusMenu label="Account status" value={filter} options={statusOptions} onChange={setFilter} />
-                <FilterSelect label="Department" value={deptFilter} onChange={setDeptFilter} options={[{ id: "All departments", label: "All departments" }, ...departments.map(department => ({ id: department.name, label: department.name }))]} />
-                <FilterSelect label="CRM role" value={roleFilter} onChange={setRoleFilter} options={[{ id: "All roles", label: "All roles" }, ...roles.map(role => ({ id: role.id, label: role.name }))]} />
+                <FilterSelect fit label="Department" value={deptFilter} onChange={setDeptFilter} options={[{ id: "All departments", label: "All departments" }, ...departments.map(department => ({ id: department.name, label: department.name }))]} />
+                <FilterSelect fit label="CRM role" value={roleFilter} onChange={setRoleFilter} options={[{ id: "All roles", label: "All roles" }, ...roles.map(role => ({ id: role.id, label: role.name }))]} />
               </Toolbar>
               <TableScroll>
-              <Table aria-label="Users" onRowAction={key => setDetail(users.find(user => user.id === String(key)) || null)}>
+              <Table className="ur-people" aria-label="Users" onRowAction={key => setDetail(users.find(user => user.id === String(key)) || null)}>
                 <TableHeader columns={userColumns}>
-                  {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}
+                  {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "employee" ? "ur-avatar-head" : undefined}>{column.name}</TableColumn>}
                 </TableHeader>
                 <TableBody items={visibleUsers}>
                   {user => (
                     <TableRow columns={userColumns} className={rowClass}>
                       {(column: BoardColumn) => (
                         <TableCell>
-                          {column.id === "employee" && <Person name={user.name} meta={user.id} detail={user.designation} />}
+                          {column.id === "employee" && <Person name={user.name} meta={user.id} detail={user.designation} src={photoFor(user)} />}
                           {column.id === "role" && roleName(user.roleId)}
                           {column.id === "department" && <><span className="block">{user.department}</span>{user.team && <span className="block text-caption-1-regular text-text-tertiary">{user.team}</span>}</>}
-                          {column.id === "status" && <Chip variant="subtle" color={statusColor(user.status)}>{user.status}</Chip>}
+                          {column.id === "status" && <Chip variant="subtle" color={statusColor(user.status)} className={statusPill(user.status)}>{user.status}</Chip>}
                           {column.id === "login" && user.lastLogin}
                           {column.id === "manage" && <LinkButton onClick={event => { event.stopPropagation(); setError(""); setEditUser(user); }}>Edit</LinkButton>}
                         </TableCell>
@@ -440,7 +504,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                   )}
                 </TableBody>
               </Table>
-              {!visibleUsers.length && <div className="flex flex-col items-center gap-2 px-6 py-12 text-center"><h3 className="text-headline-medium text-text-primary">No users found</h3><p className="text-body-regular text-text-secondary">Try another name, department, role or account status.</p><Button variant="secondary" onClick={() => { setQuery(""); setFilter("All statuses"); setDeptFilter("All departments"); setRoleFilter("All roles"); }}>Clear filters</Button></div>}
+              {!visibleUsers.length && <EmptyNote title="No users found" detail="Try another name, department, role or account status." onClear={() => { setQuery(""); setFilter("All statuses"); setDeptFilter("All departments"); setRoleFilter("All roles"); }} />}
               </TableScroll>
             </Panel>
           )}
@@ -471,10 +535,10 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
             <Panel scroll>
               <Toolbar>
                 <FilterSelect fit label="Review user" value={selected} onChange={setSelected} options={users.map(user => ({ id: user.id, label: `${user.name} · ${user.id}` }))} />
-                <Chip variant="subtle" color={statusColor(activeUser.status)}>{activeUser.status}</Chip>
+                <Chip variant="subtle" color={statusColor(activeUser.status)} className={statusPill(activeUser.status)}>{activeUser.status}</Chip>
               </Toolbar>
               <TableScroll>
-              {activeUser.status === "Active" ? <Matrix role={roles.find(role => role.id === activeUser.roleId)!} /> : <div className="flex flex-col items-center gap-1 px-6 py-12 text-center"><h3 className="text-headline-medium text-text-primary">Account access is inactive</h3><p className="text-body-regular text-text-secondary">This account cannot access the CRM while its status is {activeUser.status.toLowerCase()}.</p></div>}
+              {activeUser.status === "Active" ? <Matrix role={roles.find(role => role.id === activeUser.roleId)!} /> : <EmptyNote title="Account access is inactive" detail={`This account cannot access the CRM while its status is ${activeUser.status.toLowerCase()}.`} />}
               </TableScroll>
             </Panel>
           )}
@@ -498,20 +562,25 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
 
           {section === "Teams" && (
             <Panel scroll>
+              <Toolbar>
+                <SearchField aria-label="Search teams" placeholder="Search name, department or manager" value={query} onChange={setQuery} className="min-w-48 flex-1" fieldClassName="ur-field" />
+                <FilterSelect label="Department" value={deptFilter} onChange={setDeptFilter} options={[{ id: "All departments", label: "All departments" }, ...departments.map(department => ({ id: department.name, label: department.name }))]} />
+                <FilterSelect label="Reporting manager" value={managerFilter} onChange={setManagerFilter} options={managerOptions} />
+              </Toolbar>
               <TableScroll>
-                <Table aria-label="Reporting relationships">
+                <Table className="ur-people" aria-label="Reporting relationships">
                   <TableHeader columns={reportColumns}>
-                    {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}
+                    {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "employee" ? "ur-avatar-head" : undefined}>{column.name}</TableColumn>}
                   </TableHeader>
-                  <TableBody items={users}>
+                  <TableBody items={visibleTeams}>
                     {user => (
                       <TableRow columns={reportColumns}>
                         {(column: BoardColumn) => (
                           <TableCell>
-                            {column.id === "employee" && user.name}
+                            {column.id === "employee" && <Person name={user.name} src={photoFor(user)} />}
                             {column.id === "department" && user.department}
                             {column.id === "team" && (user.team || "—")}
-                            {column.id === "manager" && (users.find(item => item.id === user.manager)?.name || "—")}
+                            {column.id === "manager" && (managerName(user.manager) || "—")}
                             {column.id === "manage" && <LinkButton onClick={() => { setError(""); setEditUser(user); }}>Edit</LinkButton>}
                           </TableCell>
                         )}
@@ -519,8 +588,9 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                     )}
                   </TableBody>
                 </Table>
-                </TableScroll>
-              </Panel>
+                {!visibleTeams.length && <EmptyNote title="No people found" detail="Try another name, department or reporting manager." onClear={() => { setQuery(""); setDeptFilter("All departments"); setManagerFilter("All managers"); }} />}
+              </TableScroll>
+            </Panel>
           )}
 
           {section === "Devices" && (
@@ -534,7 +604,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
               <TableScroll>
               <Table aria-label="Devices" onRowAction={key => setDeviceDetail(devices.find(device => device.id === String(key)) || null)}>
                 <TableHeader columns={deviceColumns}>
-                  {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}
+                  {(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "employee" ? "ur-avatar-head" : undefined}>{column.name}</TableColumn>}
                 </TableHeader>
                 <TableBody items={visibleDevices}>
                   {device => {
@@ -544,10 +614,10 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                         {(column: BoardColumn) => (
                           <TableCell>
                             {column.id === "device" && <><span className="block text-body-medium">{device.name}</span><span className="block text-caption-1-regular text-text-tertiary">{device.model} · {device.id}</span></>}
-                            {column.id === "employee" && (employee?.name || "Removed employee")}
+                            {column.id === "employee" && (employee ? <Person name={employee.name} src={photoFor(employee)} /> : "Removed employee")}
                             {column.id === "software" && <><span className="block">{device.os}</span><span className="block text-caption-1-regular text-text-tertiary">App {device.app}</span></>}
                             {column.id === "sync" && device.synced}
-                            {column.id === "status" && <Chip variant="subtle" color={statusColor(device.status)}>{device.status}</Chip>}
+                            {column.id === "status" && <Chip variant="subtle" color={statusColor(device.status)} className={statusPill(device.status)}>{device.status}</Chip>}
                             {column.id === "manage" && (
                               <span className="flex flex-wrap gap-2">
                                 {device.status === "Pending approval" && <LinkButton onClick={event => { event.stopPropagation(); ask({ title: "Approve device?", description: `${device.name} · ${device.id}. Device history will be preserved.`, apply: entryReason => { setDevices(list => list.map(item => item.id === device.id ? { ...item, status: "Approved" } : item)); log("Device status changed", device.id, device.status, "Approved", entryReason); } }); }}>Approve</LinkButton>}
@@ -562,7 +632,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                   }}
                 </TableBody>
               </Table>
-              {!visibleDevices.length && <div className="flex flex-col items-center gap-1 px-6 py-12 text-center"><h3 className="text-headline-medium text-text-primary">No devices found</h3><p className="text-body-regular text-text-secondary">Try another employee, device or status.</p></div>}
+              {!visibleDevices.length && <EmptyNote title="No devices found" detail="Try another employee, device or status." />}
               </TableScroll>
             </Panel>
           )}
@@ -601,18 +671,21 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                   )}
                 </TableBody>
               </Table>
-              {!visibleAudit.length && <p className="px-6 py-12 text-center text-body-regular text-text-secondary">No matching activity.</p>}
+              {!visibleAudit.length && <EmptyNote title="No matching activity" detail="Try another actor, action or record." />}
               </TableScroll>
             </Panel>
           )}
         </div>
 
         {detail && (
-          <Modal isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="lg">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="lg">
             <ModalHeader title={detail.name} />
             <ModalBody>
               <div className="flex flex-col gap-4">
-                <Chip variant="subtle" color={statusColor(detail.status)} className="w-fit">{detail.status}</Chip>
+                <div className="flex items-center gap-3">
+                  <Avatar size="lg" src={photoFor(detail)} alt="" initials={initials(detail.name)} color={avatarColor(detail.name)} className="size-14" />
+                  <Chip variant="subtle" color={statusColor(detail.status)} className={cx("w-fit", statusPill(detail.status))}>{detail.status}</Chip>
+                </div>
                 <Facts rows={[["Employee ID", detail.id], ["Email", detail.email], ["Mobile", detail.mobile || "—"], ["CRM role", roleName(detail.roleId)], ["Department", detail.department], ["Designation", detail.designation], ["Reporting manager", users.find(user => user.id === detail.manager)?.name || "—"], ["Team", detail.team || "—"], ["Assigned brand", detail.brand || "—"], ["Last login", detail.lastLogin]]} />
                 {!!userDevices.length && <p className="text-body-regular text-text-secondary"><span className="text-body-medium text-text-primary">Devices </span>{userDevices.map(device => `${device.name} (${device.status})`).join(", ")}</p>}
                 {!!userHistory.length && <div className="flex flex-col gap-1">{userHistory.map(entry => <p key={entry.id} className="text-caption-1-regular text-text-secondary">{entry.date} · {entry.action}</p>)}</div>}
@@ -630,10 +703,23 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {editUser && (
-          <Modal isOpen onOpenChange={open => { if (!open) setEditUser(null); }} size="lg">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setEditUser(null); }} size="lg">
             <ModalHeader title={editUser.created ? "Edit user" : "Add user"} description="Assign an approved role and reporting relationship." />
             <ModalBody>
               <form id="user-form" className="grid grid-cols-2 gap-3" onSubmit={saveUser}>
+                <div className="col-span-2 flex items-center gap-3">
+                  <Avatar size="lg" src={editUser.avatar || (editUser.name ? portraitFor(editUser.name) : undefined)} alt="" initials={initials(editUser.name || "NA")} color={avatarColor(editUser.name || "NA")} className="size-14" />
+                  <label className="inline-flex cursor-pointer items-center rounded-full border border-border-button-default bg-background-primary-default px-3 py-1.5 text-body-2-medium text-text-primary">
+                    Upload photo
+                    <input type="file" accept="image/*" className="sr-only" onChange={event => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      if (!file.type.startsWith("image/")) { setError("Choose an image file."); return; }
+                      readPhoto(file).then(avatar => { setEditUser(current => current ? { ...current, avatar } : current); setError(""); }).catch(() => setError("Choose an image file."));
+                    }} />
+                  </label>
+                </div>
                 <Input label="Employee ID" name="id" defaultValue={editUser.id} isRequired isReadOnly={!!editUser.created} maxLength={120} />
                 <Input label="Full name" name="name" defaultValue={editUser.name} isRequired maxLength={120} />
                 <Input label="Work email" name="email" type="email" defaultValue={editUser.email} isRequired maxLength={120} inputDir="ltr" />
@@ -664,7 +750,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {roleDetail && (
-          <Modal isOpen onOpenChange={open => { if (!open) setRoleDetail(null); }} size="wide">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setRoleDetail(null); }} size="wide">
             <ModalHeader title={roleDetail.name} description={roleDetail.description} />
             <ModalBody>
               <div className="flex flex-col gap-4">
@@ -682,7 +768,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {editRole && (
-          <Modal isOpen onOpenChange={open => { if (!open) setEditRole(null); }} size="lg">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setEditRole(null); }} size="lg">
             <ModalHeader title={editRole.id ? "Edit role" : "Create role"} description="Choose each action explicitly. View permission does not grant editing, approvals or exports." />
             <ModalBody>
               <form id="role-form" className="flex flex-col gap-4" onSubmit={event => {
@@ -749,7 +835,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {departmentForm !== null && (
-          <Modal isOpen onOpenChange={open => { if (!open) setDepartmentForm(null); }} size="md">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDepartmentForm(null); }} size="md">
             <ModalHeader title={departmentForm ? "Edit department" : "Add department"} />
             <ModalBody>
               <form id="department-form" className="flex flex-col gap-3" onSubmit={event => {
@@ -783,7 +869,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {deviceForm && (
-          <Modal isOpen onOpenChange={open => { if (!open) setDeviceForm(null); }} size="lg">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDeviceForm(null); }} size="lg">
             <ModalHeader title={deviceForm.originalId ? "Edit device" : "Register employee device"} />
             <ModalBody>
               <form id="device-form" className="flex flex-col gap-3" onSubmit={saveDevice}>
@@ -810,11 +896,11 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         )}
 
         {deviceDetail && (
-          <Modal isOpen onOpenChange={open => { if (!open) setDeviceDetail(null); }} size="lg">
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDeviceDetail(null); }} size="lg">
             <ModalHeader title={users.find(user => user.id === deviceDetail.userId)?.name || deviceDetail.name} />
             <ModalBody>
               <div className="flex flex-col gap-4">
-                <Chip variant="subtle" color={statusColor(deviceDetail.status)} className="w-fit">{deviceDetail.status}</Chip>
+                <Chip variant="subtle" color={statusColor(deviceDetail.status)} className={cx("w-fit", statusPill(deviceDetail.status))}>{deviceDetail.status}</Chip>
                 <Facts rows={[["Employee", users.find(user => user.id === deviceDetail.userId)?.name || "Removed employee"], ["Employee ID", deviceDetail.userId], ["Device name", deviceDetail.name], ["Device number", deviceDetail.id], ["Device model", deviceDetail.model], ["OS version", deviceDetail.os], ["App version", deviceDetail.app], ["Registered", deviceDetail.registered], ["Last sync", deviceDetail.synced]]} />
               </div>
             </ModalBody>

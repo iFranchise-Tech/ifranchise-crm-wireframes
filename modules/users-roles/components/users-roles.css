@@ -2,19 +2,59 @@
    as their content, so a short list does not leave a blank slab. */
 .ur-board {
   background: transparent;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   scrollbar-width: thin;
   scrollbar-color: #ddd4e7 transparent;
 }
 
-.ur-board .bui-table th {
+.ur-board .bui-table {
+  width: 100%;
+}
+
+.ur-board .bui-table th,
+.ur-dialog .bui-table th {
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: var(--color-accent-100);
+  background-color: var(--color-accent-50);
   border-top: 0;
-  box-shadow: inset 0 -1px 0 var(--color-accent-200);
-  color: var(--color-accent-800);
-  font-weight: 500;
+  box-shadow: inset 0 -1px 0 var(--color-accent-100);
+  color: var(--color-text-primary);
+  font-size: var(--text-body-2-semibold);
+  font-weight: 600;
+  line-height: var(--text-body-2-semibold--line-height);
+  letter-spacing: 0;
+  text-align: start;
+  vertical-align: middle;
+}
+
+.ur-board .bui-table th.text-center,
+.ur-dialog .bui-table th.text-center {
+  text-align: center;
+}
+
+.ur-dialog [slot="title"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.ur-board .bui-table td {
+  color: var(--color-text-primary);
+  font-size: var(--text-body-2-regular);
+  font-weight: 400;
+  line-height: var(--text-body-2-regular--line-height);
+  vertical-align: middle;
+}
+
+/* Employee labels line up with the name, past the round photo. */
+.ur-board .bui-table th.ur-avatar-head {
+  padding-inline-start: 3.375rem;
+}
+
+.ur-status-active {
+  background-color: #e7f6ec;
+  color: #1f7a45;
+  box-shadow: inset 0 0 0 1px #b7e4c7;
 }
 
 .ur-board .ur-title {
@@ -41,6 +81,8 @@
 }
 
 .ur-scroll {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
@@ -59,13 +101,28 @@
   color: var(--color-text-secondary);
 }
 
+.ur-fit-select {
+  width: max-content;
+  max-width: 100%;
+}
+
 .ur-fit-select button {
   width: max-content;
+  max-width: 100%;
 }
 
 .ur-fit-select button > span {
   min-width: max-content;
   overflow: visible;
   text-overflow: unset;
+  white-space: nowrap;
+}
+
+.ur-fit-popover {
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+
+.ur-fit-popover [role="option"] {
   white-space: nowrap;
 }
