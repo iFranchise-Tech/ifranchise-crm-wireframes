@@ -34,8 +34,68 @@
 }
 
 .ur-dialog [slot="title"] {
-  color: var(--color-text-primary);
+  color: #1d1d1f;
   font-weight: 600;
+}
+
+[class*="group/modal"]:has(.ur-person) > [aria-hidden] {
+  background: rgb(232 230 240 / 42%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.ur-person {
+  border: 0;
+  border-radius: 28px;
+  background:
+    radial-gradient(70% 42% at 100% 0%, #f4f0ff 0%, rgb(255 255 255 / 0%) 58%),
+    #fff;
+  box-shadow: 0 24px 70px rgb(40 30 80 / 12%);
+  color: #1d1d1f;
+}
+
+.ur-person-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ur-person-name {
+  color: #1d1d1f;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.ur-person-avatar {
+  background: #efeaff;
+  color: #5b3cc4;
+}
+
+.ur-facts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 11px 0;
+  border-bottom: 1px solid #ececef;
+}
+
+.ur-facts-row:last-child { border-bottom: 0; }
+
+.ur-facts dt {
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.ur-facts dd {
+  margin: 2px 0 0;
+  color: #1d1d1f;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .ur-board button.bg-button-primary,

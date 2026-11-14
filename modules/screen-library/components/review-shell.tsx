@@ -13,13 +13,14 @@ type ReviewShellProps = {
   title: string;
   navigation: ReactNode;
   controls?: ReactNode;
+  className?: string;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, className, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
-  return <div className="review-shell">
+  return <div className={className ? `review-shell ${className}` : "review-shell"}>
     <aside className="review-sidebar" aria-label="Screen library">
       <Link className="review-brand" href="/library" aria-label="Back to screen library"><BrandMark /><span>SCREEN LIBRARY</span></Link>
       <Link className="review-all-modules" href="/library">← All modules</Link>

@@ -242,7 +242,25 @@ function FilterSelect({ label, value, options, onChange, className, fit = false 
   );
 }
 
-function Facts({ rows }: { rows: [string, string][] }) {
+function Facts({ rows, ruled = false }: { rows: [string, string][]; ruled?: boolean }) {
+  if (ruled) {
+    const pairs: [string, string][][] = [];
+    for (let index = 0; index < rows.length; index += 2) pairs.push(rows.slice(index, index + 2));
+    return (
+      <div className="ur-facts">
+        {pairs.map(pair => (
+          <div key={pair[0][0]} className="ur-facts-row">
+            {pair.map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-8 gap-y-3">
       {rows.map(([label, value]) => (
@@ -688,12 +706,12 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
         </div>
 
         {detail && (
-          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="md">
+          <Modal className="ur-dialog ur-person" isOpen onOpenChange={open => { if (!open) setDetail(null); }} size="md">
             <ModalHeader title={
-              <span className="flex items-center gap-3">
-                <Avatar size="lg" src={photoFor(detail)} alt="" initials={initials(detail.name)} color={avatarColor(detail.name)} className="size-14 shrink-0" />
-                <span className="flex min-w-0 flex-col items-start gap-1.5">
-                  <span>{detail.name}</span>
+              <span className="ur-person-id">
+                <Avatar size="lg" src={photoFor(detail)} alt="" initials={initials(detail.name)} color={avatarColor(detail.name)} className="ur-person-avatar size-14 shrink-0" />
+                <span className="flex min-w-0 flex-col items-start gap-1">
+                  <span className="ur-person-name">{detail.name}</span>
                   <Chip variant="subtle" color={statusColor(detail.status)} className={cx("ur-person-status w-fit", statusPill(detail.status))}>{detail.status}</Chip>
                 </span>
               </span>
@@ -701,7 +719,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
             <ModalBody>
               <div className="flex flex-col gap-4">
                 {!!userHistory.length && <div className="flex flex-col items-center gap-1 text-center">{userHistory.map(entry => <p key={entry.id} className="text-caption-1-regular text-text-secondary">{entry.date} · {entry.action}</p>)}</div>}
-                <Facts rows={[["Employee ID", detail.id], ["Email", detail.email], ["Mobile", detail.mobile || "—"], ["CRM role", roleName(detail.roleId)], ["Department", detail.department], ["Designation", detail.designation], ["Reporting manager", users.find(user => user.id === detail.manager)?.name || "—"], ["Team", detail.team || "—"], ["Assigned brand", detail.brand || "—"], ["Last login", detail.lastLogin]]} />
+                <Facts ruled rows={[["Employee ID", detail.id], ["Email", detail.email], ["Mobile", detail.mobile || "—"], ["CRM role", roleName(detail.roleId)], ["Department", detail.department], ["Designation", detail.designation], ["Reporting manager", users.find(user => user.id === detail.manager)?.name || "—"], ["Team", detail.team || "—"], ["Assigned brand", detail.brand || "—"], ["Last login", detail.lastLogin]]} />
                 {!!userDevices.length && <p className="text-body-regular text-text-secondary"><span className="text-body-medium text-text-primary">Devices </span>{userDevices.map(device => `${device.name} (${device.status})`).join(", ")}</p>}
               </div>
             </ModalBody>

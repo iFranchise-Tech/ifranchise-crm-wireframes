@@ -19,9 +19,9 @@ export function ModuleCatalog() {
     <div className="module-grid">{modules.map(module => <Link className="module-card" data-available={module.available || undefined} href={module.href} key={module.id}>
       <div className="module-card-top"><span className="module-icon"><Icon name={module.icon} /></span><span className="module-section">{module.section}</span></div>
       <h2>{module.name}</h2><p>{module.description}</p>
-      <div className="module-card-bottom"><span>{module.id === "roles" ? "Users, roles & access" : module.available ? `${authScreens.length} screens & states` : "PRD scope"}</span><Icon name="arrow" /></div>
+      <div className="module-card-bottom"><span>{module.id === "roles" ? "Users, roles & access" : module.id === "leads" ? "Enquiries, activity & sources" : module.available ? `${authScreens.length} screens & states` : "PRD scope"}</span><Icon name="arrow" /></div>
     </Link>)}</div>
     {modules.length === 0 ? <div className="catalog-empty"><Icon name="search" /><h3>No matching modules</h3><p>Try another name or select a different category.</p><button className="text-action" onClick={() => { setQuery(""); setCategory("All modules"); }}>Clear filters</button></div> : null}
-    <p className="catalog-footnote">Authentication and Users & Roles are available for review. The remaining modules show their PRD scope and will be designed one at a time.</p>
+    <p className="catalog-footnote">Authentication, Users & Roles and Lead Management are available for review. The remaining modules show their PRD scope and will be designed one at a time.</p>
   </section>;
 }
