@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, type ReactNode } from "react";
+import { Breadcrumb, BreadcrumbItem } from "@/components/base/breadcrumb/breadcrumb";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { Icon, type IconName } from "@/modules/auth/components/icon";
 
@@ -13,25 +14,30 @@ type ReviewShellProps = {
   title: string;
   navigation: ReactNode;
   controls?: ReactNode;
+  sidebarAccount?: ReactNode;
+  sidebarFooter?: ReactNode;
   className?: string;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, className, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, className, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   return <div className={className ? `review-shell ${className}` : "review-shell"}>
     <aside className="review-sidebar" aria-label="Screen library">
       <Link className="review-brand" href="/library" aria-label="Back to screen library"><BrandMark /><span>SCREEN LIBRARY</span></Link>
       <Link className="review-all-modules" href="/library">← All modules</Link>
-      <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>
+      {sidebarAccount ?? <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>}
       {navigation}
-      <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>
+      {sidebarFooter ?? <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>}
     </aside>
     <main className="review-workspace">
       <header className="review-toolbar">
         <button className="icon-button review-menu-button" aria-label="Browse module navigation" onClick={() => dialog.current?.showModal()}><Icon name="menu" /></button>
-        <div className="review-breadcrumb"><Link href={overviewHref}>{moduleName}</Link><Icon name="chevron" /><h1>{title}</h1></div>
+        <Breadcrumb className="review-breadcrumb" aria-label="Breadcrumb">
+          <BreadcrumbItem href={overviewHref}>{moduleName}</BreadcrumbItem>
+          <BreadcrumbItem current><h1 className="review-breadcrumb-title">{title}</h1></BreadcrumbItem>
+        </Breadcrumb>
         {controls}
       </header>
       {children}

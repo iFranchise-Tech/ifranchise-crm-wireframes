@@ -35,6 +35,7 @@ import {
   type RemixiconComponentType,
 } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
+import { portalBrands } from "@/modules/brands/types";
 import { portraitFor } from "@/modules/users-roles/portrait";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
@@ -58,7 +59,6 @@ import {
   activityTypes,
   brands,
   budgetRanges,
-  categories,
   enquiryStatuses,
   heardAboutOptions,
   originalSources,
@@ -78,6 +78,7 @@ import "./leads.css";
 
 const navItems = ["Enquiries", "Activity", "Sources"] as const;
 const owners = ["Himani Bhargava Tapadiya", "Shakshay Gupta", "Vivek Rawat", "Ekta Pattanaik", "Swetha Chintada"];
+const activeBrandNames = portalBrands.map(item => item.name);
 const categoryViews = ["Franchise", "Brand expansion", "Job"] as const;
 type Section = (typeof navItems)[number] | (typeof categoryViews)[number];
 type Column = { id: string; name: string; isRowHeader?: boolean };
@@ -433,6 +434,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [logging, setLogging] = useState(false);
   const [addingSource, setAddingSource] = useState(false);
   const [draftCategory, setDraftCategory] = useState<Category>("Franchise");
+  const [draftEnquiryType, setDraftEnquiryType] = useState("Specific brand");
   const [draftCity, setDraftCity] = useState("");
   const [draftState, setDraftState] = useState("");
   const [sourceName, setSourceName] = useState("Website");
@@ -521,6 +523,17 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     const heardAbout = draftHeard;
     const stamp = now();
     const name = value("name");
+    const fileName = (field: string) => {
+      const file = form.get(field);
+      return file instanceof File && file.name ? file.name : "";
+    };
+    const selectedFile = (field: string) => {
+      const file = form.get(field);
+      return file instanceof File && file.name ? file : undefined;
+    };
+    const enteredDate = value("received");
+    const received = enteredDate ? new Date(enteredDate).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : stamp;
+    const brand = kind === "Franchise" ? (draftEnquiryType === "General franchise enquiry" ? "General franchise enquiry" : value("brand")) : kind === "Brand expansion" ? name : value("position");
     const next: Enquiry = {
       id: `ENQ-${2400 + enquiries.length + 1}`,
       category: kind,
@@ -529,26 +542,46 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
       email: value("email"),
       city: value("city"),
       state: value("state"),
-      address: value("address"),
-      brand: kind === "Job" ? value("position") || name : value("brand") || name,
+      address: kind === "Franchise" ? value("preferredLocation") : "",
+      brand: brand || name,
       investment: kind === "Franchise" ? value("budget") || "—" : "—",
       status: "New",
-      focus: kind === "Franchise" ? value("brand") || "General franchise enquiry" : kind === "Job" ? value("position") : value("industry"),
+      focus: kind === "Franchise" ? brand || "General franchise enquiry" : kind === "Job" ? value("position") || "Job application" : value("industry"),
       extra: kind === "Franchise"
-        ? `${value("enquiryType")} · ${value("budget")} · ${value("timeline")}`
+        ? `${draftEnquiryType} · ${value("budget")} · ${value("timeline")}`
         : kind === "Job"
-          ? `${value("qualification")} · ${value("experience")} · ${value("timeline")}`
-          : `${value("presence")} · ${value("timeline")}`,
+          ? `${value("qualification")} · ${value("experience")} · ${value("noticePeriod")}`
+          : `${value("industry")} · ${value("presence")}`,
+      contactPerson: kind === "Brand expansion" ? value("contactPerson") : undefined,
+      enquiryType: kind === "Franchise" ? draftEnquiryType : undefined,
+      timeline: kind === "Franchise" ? value("timeline") : undefined,
+      preferredLocation: kind === "Franchise" ? value("preferredLocation") : undefined,
+      requirements: kind === "Franchise" ? value("requirements") : kind === "Brand expansion" ? value("expansionRequirements") : undefined,
+      remarks: value("remarks"),
+      campaign: value("campaign"),
+      industry: kind === "Brand expansion" ? value("industry") : undefined,
+      website: kind === "Brand expansion" ? value("website") : undefined,
+      description: kind === "Brand expansion" ? value("description") : undefined,
+      presence: kind === "Brand expansion" ? value("presence") : undefined,
+      experience: kind === "Job" ? value("experience") : undefined,
+      noticePeriod: kind === "Job" ? value("noticePeriod") : undefined,
+      resume: kind === "Job" ? fileName("resume") : undefined,
+      resumeFile: kind === "Job" ? selectedFile("resume") : undefined,
+      coverLetterFile: kind === "Job" ? selectedFile("coverLetter") : undefined,
+      coverLetter: kind === "Job" ? fileName("coverLetter") : undefined,
+      portfolio: kind === "Job" ? value("portfolio") : undefined,
+      previousExperience: kind === "Job" ? value("previousExperience") : undefined,
+      skills: kind === "Job" ? value("skills") : undefined,
       originalSource: value("originalSource") || "Direct Enquiry",
       heardAbout,
       heardAboutOther: heardAbout === "Other" ? value("heardOther") : "",
       heardAboutBy: heardAbout ? "Customer" : "",
       heardAboutAt: heardAbout ? stamp : "",
-      owner: "Unassigned",
-      received: stamp,
+      owner: value("owner") || "Unassigned",
+      received,
       salesPipeline: kind !== "Job",
     };
-    if (!next.name || !next.mobile || !next.email || !next.address || !next.city || !next.state) return;
+    if (!next.name || !next.mobile || !next.email || !next.city || !next.state || (kind === "Franchise" && draftEnquiryType === "Specific brand" && !value("brand")) || (kind === "Brand expansion" && !next.contactPerson) || (kind === "Job" && (!value("qualification") || !value("experience") || !value("noticePeriod") || !fileName("resume") || !fileName("coverLetter")))) return;
     setEnquiries(list => [next, ...list]);
     setAdding(false);
   }
@@ -725,7 +758,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               </h2>
               <p className="m-0 text-body-regular text-text-secondary">{description}</p>
             </div>
-            {enquiryView && <Button leadingIcon={RiAddLine} onClick={() => { setDraftCategory(activeCategory && role.categories.includes(activeCategory) ? activeCategory : role.categories[0]); setDraftCity(""); setDraftState(""); setAdding(true); }}>Add Enquiry</Button>}
+            {enquiryView && <Button leadingIcon={RiAddLine} onClick={() => { setDraftCategory(activeCategory && role.categories.includes(activeCategory) ? activeCategory : role.categories[0]); setDraftEnquiryType("Specific brand"); setDraftCity(""); setDraftState(""); setAdding(true); }}>Add Enquiry</Button>}
             {section === "Activity" && <Button leadingIcon={RiAddLine} onClick={() => setLogging(true)}>Add Activity</Button>}
             {section === "Sources" && <Button leadingIcon={RiAddLine} onClick={() => { setSourceName("Website"); setAddingSource(true); }}>Add Source</Button>}
           </div>
@@ -797,7 +830,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 <Table key={role.id} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
                     {(column: Column) => (
-                      <TableColumn isRowHeader={column.isRowHeader}>
+                      <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>
                         {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.name}
                       </TableColumn>
                     )}
@@ -806,7 +839,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                     {enquiry => (
                       <TableRow columns={tableColumns} className="cursor-pointer outline-none">
                         {(column: Column) => (
-                          <TableCell>
+                          <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
                             {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}
@@ -848,7 +881,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                   const enquiry = enquiries.find(item => item.id === activity?.enquiryId);
                   if (enquiry) setOpen(enquiry);
                 }}>
-                  <TableHeader columns={activityColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}</TableHeader>
+                  <TableHeader columns={activityColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
                   <TableBody items={activityPage.rows}>
                     {activity => {
                       const enquiry = enquiries.find(item => item.id === activity.enquiryId);
@@ -856,7 +889,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                       return (
                         <TableRow columns={activityColumns} className="cursor-pointer outline-none">
                           {(column: Column) => (
-                            <TableCell>
+                            <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
                               {column.id === "activity" && (
                                 <span className="ld-activity-cell">
                                   <span className={`ld-activity-icon ld-activity-${mark.tone}`}><mark.icon /></span>
@@ -890,12 +923,12 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                   const item = sources.find(source => source.id === String(key));
                   if (item) setSourceView({ name: item.name, rows: sourceLeads.filter(lead => lead.source === item.name) });
                 }}>
-                  <TableHeader columns={sourceColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}</TableHeader>
+                  <TableHeader columns={sourceColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
                   <TableBody items={sourcePage.rows}>
                     {item => (
                         <TableRow columns={sourceColumns} className="cursor-pointer outline-none">
                           {(column: Column) => (
-                            <TableCell>
+                            <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
                               {column.id === "source" && (
                                 <span className="ld-source-open">
                                   <SourceMark name={item.name} />
@@ -925,10 +958,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {enquiryView && !visibleEnquiries.length && <Empty title="No enquiries found" detail="Try another name, status, brand or city." />}
               {section === "Activity" && !visibleActivities.length && <Empty title="No activity found" detail="Try another enquiry, person or status." />}
               {section === "Sources" && !visibleSources.length && <Empty title="No sources found" detail="Try another name, type or status." />}
+              {enquiryView && visibleEnquiries.length > 0 && <Pager page={enquiryPage.current} pages={enquiryPage.pages} onPage={setPage} label={`Showing ${enquiryPage.start}–${enquiryPage.end} of ${visibleEnquiries.length} enquiries`} />}
+              {section === "Activity" && visibleActivities.length > 0 && <Pager page={activityPage.current} pages={activityPage.pages} onPage={setPage} label={`Showing ${activityPage.start}–${activityPage.end} of ${visibleActivities.length} activities`} />}
+              {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
             </div>
-            {enquiryView && visibleEnquiries.length > 0 && <Pager page={enquiryPage.current} pages={enquiryPage.pages} onPage={setPage} label={`Showing ${enquiryPage.start}–${enquiryPage.end} of ${visibleEnquiries.length} enquiries`} />}
-            {section === "Activity" && visibleActivities.length > 0 && <Pager page={activityPage.current} pages={activityPage.pages} onPage={setPage} label={`Showing ${activityPage.start}–${activityPage.end} of ${visibleActivities.length} activities`} />}
-            {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
           </Panel>
           </div>
           )}
@@ -936,37 +969,62 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
 
         {adding && (
           <Modal className="ld-dialog" isOpen onOpenChange={next => { if (!next) setAdding(false); }} size="lg">
-            <ModalHeader title="Add enquiry" description="Franchise, brand expansion and job enquiries stay in one list. A job enquiry does not enter the sales pipeline." />
+            <ModalHeader title={`Add ${draftCategory === "Franchise" ? "franchise" : draftCategory === "Brand expansion" ? "brand expansion" : "job"} enquiry`} description={draftCategory === "Job" ? "Capture the candidate profile, application source and supporting files." : draftCategory === "Brand expansion" ? "Capture the brand profile and its franchise expansion requirements." : "Capture the prospective franchisee, brand interest and investment plans."} />
             <ModalBody>
               <form id="enquiry-form" className="grid grid-cols-6 gap-3" onSubmit={saveEnquiry}>
-                <Input className="col-span-3" label={draftCategory === "Brand expansion" ? "Brand name" : "Full name"} name="name" isRequired />
-                <div className="col-span-3"><PhoneField /></div>
-                <Input className="col-span-3" label="Email" name="email" type="email" isRequired />
-                <div className="col-span-3">
-                  <LeadSelect aria-label="Start timeline" label="Start timeline" name="timeline" isRequired defaultSelectedKey={timelines[1]}>{timelines.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                </div>
-                <Input className="col-span-3" label="Address" name="address" isRequired />
-                <LeadSelect className="col-span-3" aria-label="Original lead source" label="Original lead source" name="originalSource" isRequired defaultSelectedKey="Website">{originalSources.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                <div className="col-span-3"><SuggestField label="State" name="state" value={draftState} options={stateOptions} onChange={setDraftState} /></div>
-                <div className="col-span-3"><SuggestField label="City" name="city" value={draftCity} options={cityOptions} onChange={city => { setDraftCity(city); const state = stateForCity(city); if (state) setDraftState(state); }} /></div>
+                <LeadSelect className="col-span-3" aria-label="Assigned employee" label="Assigned employee (optional)" name="owner" defaultSelectedKey="Unassigned">{["Unassigned", ...owners].map(item => <SelectItem key={item} id={item}>{item === "Unassigned" ? item : firstName(item)}</SelectItem>)}</LeadSelect>
                 {draftCategory === "Franchise" && <>
-                  <LeadSelect className="col-span-3" aria-label="Interested brand" label="Interested brand" name="brand" isRequired defaultSelectedKey="Brew Theory">{brands.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                  <LeadSelect className="col-span-3" aria-label="Investment budget" label="Investment budget" name="budget" isRequired defaultSelectedKey={budgetRanges[3]}>{budgetRanges.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <Input className="col-span-3" label="Full name" name="name" isRequired />
+                  <div className="col-span-3"><PhoneField /></div>
+                  <Input className="col-span-3" label="Email address" name="email" type="email" isRequired />
+                  <div className="col-span-3"><SuggestField label="City" name="city" value={draftCity} options={cityOptions} onChange={city => { setDraftCity(city); const state = stateForCity(city); if (state) setDraftState(state); }} /></div>
+                  <div className="col-span-3"><SuggestField label="State" name="state" value={draftState} options={stateOptions} onChange={setDraftState} /></div>
+                  <LeadSelect className="col-span-3" aria-label="Enquiry type" label="Franchise enquiry type" name="enquiryType" isRequired selectedKey={draftEnquiryType} onSelectionChange={key => setDraftEnquiryType(String(key))}>{["Specific brand", "General franchise enquiry"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  {draftEnquiryType === "Specific brand" ? <LeadSelect className="col-span-3" aria-label="Interested brand" label="Interested brand" name="brand" isRequired defaultSelectedKey={activeBrandNames[0]}>{activeBrandNames.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect> : <div className="col-span-3 ld-form-note">General franchise enquiry · no specific brand selected</div>}
+                  {draftEnquiryType === "General franchise enquiry" && <input type="hidden" name="brand" value="General franchise enquiry" />}
+                  <LeadSelect className="col-span-3" aria-label="Expected investment budget" label="Expected investment budget" name="budget" isRequired defaultSelectedKey={budgetRanges[0]}>{budgetRanges.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <LeadSelect className="col-span-3" aria-label="Expected business start timeline" label="Expected business start timeline" name="timeline" isRequired defaultSelectedKey={timelines[1]}>{timelines.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <Input className="col-span-3" label="Preferred location (optional)" name="preferredLocation" />
+                  <Input className="col-span-3" label="Campaign (optional)" name="campaign" />
+                  <Textarea className="col-span-6" label="Additional requirements (optional)" name="requirements" />
+                  <Textarea className="col-span-6" label="Customer remarks (optional)" name="remarks" />
                 </>}
                 {draftCategory === "Brand expansion" && <>
+                  <Input className="col-span-3" label="Brand name" name="name" isRequired />
+                  <Input className="col-span-3" label="Contact person name" name="contactPerson" isRequired />
                   <Input className="col-span-3" label="Industry" name="industry" isRequired />
-                  <Input className="col-span-3" label="Current presence" name="presence" isRequired />
+                  <div className="col-span-3"><PhoneField /></div>
+                  <Input className="col-span-3" label="Email address" name="email" type="email" isRequired />
+                  <div className="col-span-3"><SuggestField label="Headquarters city" name="city" value={draftCity} options={cityOptions} onChange={city => { setDraftCity(city); const state = stateForCity(city); if (state) setDraftState(state); }} /></div>
+                  <div className="col-span-3"><SuggestField label="Headquarters state" name="state" value={draftState} options={stateOptions} onChange={setDraftState} /></div>
+                  <Input className="col-span-3" label="Official website" name="website" type="url" isRequired />
+                  <LeadSelect className="col-span-3" aria-label="Lead source" label="Lead source" name="originalSource" isRequired defaultSelectedKey="Website">{originalSources.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <Input className="col-span-3" label="Current business presence (optional)" name="presence" />
+                  <Input className="col-span-3" label="Campaign (optional)" name="campaign" />
+                  <Textarea className="col-span-6" label="Brand description (optional)" name="description" />
+                  <Textarea className="col-span-6" label="Expansion requirements (optional)" name="expansionRequirements" />
+                  <Textarea className="col-span-6" label="Additional remarks (optional)" name="remarks" />
                 </>}
                 {draftCategory === "Job" && <>
-                  <Input className="col-span-3" label="Applied position" name="position" isRequired />
-                  <Input className="col-span-3" label="Qualification" name="qualification" isRequired />
+                  <Input className="col-span-3" label="Candidate full name" name="name" isRequired />
+                  <div className="col-span-3"><PhoneField /></div>
+                  <Input className="col-span-3" label="Email address" name="email" type="email" isRequired />
+                  <Input className="col-span-3" label="Educational qualification" name="qualification" isRequired />
+                  <LeadSelect className="col-span-3" aria-label="Work experience" label="Work experience" name="experience" isRequired defaultSelectedKey="Fresher">{["Fresher", "Experienced"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <LeadSelect className="col-span-3" aria-label="Notice period" label="Notice period" name="noticePeriod" isRequired defaultSelectedKey="Immediate">{["Immediate", "15 days", "30 days", "60 days", "90 days", "Serving notice", "Other"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
+                  <div className="col-span-3"><SuggestField label="Candidate city" name="city" value={draftCity} options={cityOptions} onChange={city => { setDraftCity(city); const state = stateForCity(city); if (state) setDraftState(state); }} /></div>
+                  <div className="col-span-3"><SuggestField label="Candidate state" name="state" value={draftState} options={stateOptions} onChange={setDraftState} /></div>
+                  <Input className="col-span-3" label="Applied position (optional)" name="position" />
+                  <label className="ld-file-field col-span-3"><span>Resume <b>*</b></span><input type="file" name="resume" accept=".pdf,.doc,.docx" required /></label>
+                  <label className="ld-file-field col-span-3"><span>Cover letter <b>*</b></span><input type="file" name="coverLetter" accept=".pdf,.doc,.docx,.txt" required /></label>
+                  <Input className="col-span-3" label="Portfolio link (optional)" name="portfolio" type="url" placeholder="https://…" />
+                  <Input className="col-span-3" label="Campaign (optional)" name="campaign" />
+                  <Textarea className="col-span-6" label="Previous work experience (optional)" name="previousExperience" />
+                  <Textarea className="col-span-6" label="Relevant skills (optional)" name="skills" />
+                  <Textarea className="col-span-6" label="Candidate remarks (optional)" name="remarks" />
                 </>}
-                {draftCategory === "Franchise" && <LeadSelect className="col-span-3" aria-label="Enquiry type" label="Enquiry type" name="enquiryType" isRequired defaultSelectedKey="Specific brand">{["Specific brand", "General franchise enquiry"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>}
-                {draftCategory === "Job" && <LeadSelect className="col-span-3" aria-label="Experience" label="Experience" name="experience" isRequired defaultSelectedKey="Fresher">{["Fresher", "Experienced"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>}
-                {draftCategory === "Brand expansion" && <Input className="col-span-3" label="Website" name="website" isRequired />}
-                <LeadSelect className="col-span-3" aria-label="Category" label="Category" isRequired selectedKey={draftCategory} onSelectionChange={key => setDraftCategory(String(key) as Category)}>
-                  {categories.filter(item => role.categories.includes(item)).map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}
-                </LeadSelect>
+                {draftCategory !== "Brand expansion" && <LeadSelect className="col-span-3" aria-label="Lead source" label={draftCategory === "Job" ? "Application source" : "Lead source"} name="originalSource" isRequired defaultSelectedKey="Website">{originalSources.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>}
+                <Input className="col-span-3" label={draftCategory === "Job" ? "Application date and time" : "Enquiry date and time"} name="received" type="datetime-local" defaultValue={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} isRequired />
               </form>
             </ModalBody>
             <ModalFooter>

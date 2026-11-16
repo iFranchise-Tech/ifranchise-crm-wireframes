@@ -56,6 +56,25 @@ export type Enquiry = {
   received: string;
   salesPipeline: boolean;
   resume?: string;
+  resumeFile?: File;
+  coverLetterFile?: File;
+  contactPerson?: string;
+  enquiryType?: string;
+  timeline?: string;
+  preferredLocation?: string;
+  requirements?: string;
+  remarks?: string;
+  campaign?: string;
+  industry?: string;
+  website?: string;
+  description?: string;
+  presence?: string;
+  experience?: string;
+  noticePeriod?: string;
+  coverLetter?: string;
+  portfolio?: string;
+  previousExperience?: string;
+  skills?: string;
 };
 
 export type Activity = {

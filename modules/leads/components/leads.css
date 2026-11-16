@@ -71,14 +71,14 @@ body:has(.ld-shell) {
 }
 
 .ld-scroll > div {
-  height: 100%;
+  height: auto;
   min-height: 0;
-  overflow: auto;
+  flex: none;
+  overflow: visible;
   overscroll-behavior: contain;
 }
 
 .ld-scroll-fit,
-.ld-scroll-fit > div,
 .ld-board .ld-fit-table {
   overflow-x: hidden;
 }
@@ -183,9 +183,35 @@ body:has(.ld-shell) {
   text-align: center;
 }
 
+.ld-board .bui-table th.ld-status-heading,
+.ld-dialog .bui-table th.ld-status-heading {
+  text-align: center;
+}
+
+.ld-board .bui-table td.ld-status-cell {
+  vertical-align: middle;
+  text-align: center;
+}
+
 .ld-status-button,
 .ld-pill {
   margin-inline: auto;
+}
+
+.ld-status-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.ld-status-button .ld-pill {
+  display: inline-flex;
+  min-width: 112px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .ld-date-trigger {
@@ -204,6 +230,27 @@ body:has(.ld-shell) {
   font-weight: 500;
   text-align: start;
 }
+
+.ld-file-field {
+  display: flex;
+  min-width: 0;
+  min-height: 76px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #e3e3e8;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #1d1d1f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ld-file-field > span { display: flex; align-items: center; gap: 3px; }
+.ld-file-field > span b { color: #d92d20; }
+.ld-file-field input { width: 100%; min-width: 0; color: #6e6e73; font: inherit; font-size: 11px; }
+.ld-file-field input::file-selector-button { margin-inline-end: 8px; border: 0; border-radius: 7px; background: #f1edff; color: var(--brand); padding: 5px 8px; font: inherit; font-weight: 650; cursor: pointer; }
+.ld-form-note { display: flex; align-items: center; border-radius: 12px; background: #f7f4ff; padding: 0 12px; color: #5b3cc4; font-size: 12px; font-weight: 550; }
 
 .ld-calendar-pop {
   width: auto !important;
