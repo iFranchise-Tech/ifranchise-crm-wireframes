@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { authScreens, reviewHref } from "./modules/screen-library/config/auth-screens";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   poweredByHeader: false,
   devIndicators: false,
   allowedDevOrigins: ["127.0.0.1"],
