@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RiArrowRightLine, RiCalendarLine, RiCheckboxCircleLine, RiGroupLine, RiHistoryLine, RiLayoutColumnLine, RiListCheck2, RiMoreLine, RiPhoneLine, RiSearchLine, RiStackLine, RiStore2Line, RiUserLine, RiUserAddLine } from "@remixicon/react";
+import type { Selection } from "react-aria-components";
+import { RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleLine, RiGroupLine, RiLayoutColumnLine, RiMoreLine, RiPhoneLine, RiStore2Line, RiUserLine } from "@remixicon/react";
+import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
+import { SearchField } from "@/components/base/search-field/search-field";
+import { Select, SelectItem } from "@/components/base/select/select";
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
 import { sourceLeads } from "@/modules/leads/data";
 import { initialUsers } from "@/modules/users-roles/data";
 import "./assignment.css";
@@ -36,6 +41,17 @@ const bdas = initialUsers.filter(user => user.roleId === "bda" && user.status ==
 const coordinator = "Anitha K";
 const leadSet = sourceLeads.filter(lead => lead.category !== "Job").slice(0, 24);
 const stages: Stage[] = ["Central Allocation", "Reporting Manager", "BDA Assignment"];
+const assignmentColumns = [
+  { id: "select", name: "" },
+  { id: "opportunity", name: "Opportunity", isRowHeader: true },
+  { id: "source", name: "Source" },
+  { id: "category", name: "Enquiry Category" },
+  { id: "owner", name: "Assigned To" },
+  { id: "stage", name: "Assignment Stage" },
+  { id: "created", name: "Created On" },
+  { id: "action", name: "" },
+];
+const assignmentStageColors: Record<Stage, ChipColor> = { "Central Allocation": "purple", "Reporting Manager": "yellow", "BDA Assignment": "lime" };
 
 function initials(name: string) { return name.split(" ").map(part => part[0]).slice(0, 2).join("").toUpperCase(); }
 function ownerLabel(item?: Assignment) { return item?.bda ?? item?.manager ?? coordinator; }
@@ -89,21 +105,22 @@ const initialHistory: HistoryItem[] = leadSet.slice(8, 12).map((lead, index) => 
 
 export function AssignmentWorkspace() {
   const [tab, setTab] = useState<"Assign Leads" | "Assignment History">("Assign Leads");
-  const [view, setView] = useState<"board" | "list">("board");
   const [assignments, setAssignments] = useState(initialAssignments);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [checked, setChecked] = useState<string[]>([]);
-  const [dropTarget, setDropTarget] = useState<Stage | null>(null);
   const [targetRole, setTargetRole] = useState<TargetRole>("Reporting Manager");
   const [assignee, setAssignee] = useState(managers[0] ?? "");
   const [reason, setReason] = useState("");
   const [history, setHistory] = useState(initialHistory);
   const [storageReady, setStorageReady] = useState(false);
   const [search, setSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All sources");
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [ownerFilter, setOwnerFilter] = useState("All owners");
-  const [openMenu, setOpenMenu] = useState<Stage | null>(null);
+  const [stageFilter, setStageFilter] = useState("All stages");
+  const [historyTypeFilter, setHistoryTypeFilter] = useState("All assignment types");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     try {
@@ -133,14 +150,26 @@ export function AssignmentWorkspace() {
   const targetStage = stageForTarget(targetRole);
   const assigneeOptions = targetRole === "Reporting Manager" ? managers : targetRole === "BDA" ? bdas : [];
   const filteredLeads = leadSet.filter(lead => {
-    const owner = assignments[lead.id] ? ownerLabel(assignments[lead.id]) : "";
+    const assignment = assignments[lead.id];
+    const owner = assignment ? ownerLabel(assignment) : "";
     const query = search.trim().toLowerCase();
     return (!query || [lead.name, lead.code, lead.phone].some(value => value.toLowerCase().includes(query)))
       && (sourceFilter === "All sources" || lead.source === sourceFilter)
       && (categoryFilter === "All categories" || lead.category === categoryFilter)
-      && (ownerFilter === "All owners" || owner === ownerFilter);
+      && (ownerFilter === "All owners" || owner === ownerFilter)
+      && (stageFilter === "All stages" || assignment?.stage === stageFilter);
   });
-  const filteredHistory = tab === "Assignment History" ? history : [];
+  const filteredHistory = tab === "Assignment History" ? history.filter(item => {
+    const query = historySearch.trim().toLowerCase();
+    return (!query || [item.opportunityId, item.leadId, item.previousOwner, item.newOwner, item.assignedBy, item.assignmentReason].some(value => value.toLowerCase().includes(query)))
+      && (historyTypeFilter === "All assignment types" || item.assignmentType === historyTypeFilter);
+  }) : [];
+  const pageSize = 10;
+  const pages = Math.max(1, Math.ceil((tab === "Assign Leads" ? filteredLeads.length : filteredHistory.length) / pageSize));
+  const currentPage = Math.min(page, pages);
+  const leadRows = filteredLeads.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const historyRows = filteredHistory.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const visibleCount = tab === "Assign Leads" ? filteredLeads.length : filteredHistory.length;
   const currentNewOwner = targetRole === "Central Allocation" ? `Central Allocation · ${coordinator}` : `${targetRole} · ${assignee || "Select an owner"}`;
   const previousOwner = selected ? ownerFor(selectedAssignment) : "—";
   const previousStaff = selectedAssignment?.stage === "BDA Assignment" ? selectedAssignment.bda : selectedAssignment?.stage === "Reporting Manager" ? selectedAssignment.manager : coordinator;
@@ -158,28 +187,6 @@ export function AssignmentWorkspace() {
     setTargetRole(target);
     setAssignee(options[0] ?? "");
     setReason("");
-    setOpenMenu(null);
-  }
-
-  function openColumnAction(stage: Stage, action: "assign" | "bulk" | "transfer" | "history" | "details") {
-    setOpenMenu(null);
-    if (action === "history") { setTab("Assignment History"); return; }
-    const lead = leadSet.find(item => assignments[item.id]?.stage === stage);
-    if (action === "bulk" && checked.length) {
-      const selectedLead = leadSet.find(item => item.id === checked[0]);
-      if (selectedLead) openAssignment(selectedLead, stage === "Central Allocation" ? "Reporting Manager" : "BDA");
-      return;
-    }
-    if (lead) openAssignment(lead, action === "assign" && stage === "Central Allocation" ? "Reporting Manager" : "BDA");
-  }
-
-  function handleDrop(event: React.DragEvent<HTMLElement>, stage: Stage) {
-    event.preventDefault();
-    setDropTarget(null);
-    const leadId = event.dataTransfer.getData("text/opportunity-id");
-    const lead = leadSet.find(item => item.id === leadId);
-    if (!lead || assignments[lead.id]?.stage === stage) return;
-    openAssignment(lead, stage === "Central Allocation" ? "Central Allocation" : stage === "Reporting Manager" ? "Reporting Manager" : "BDA");
   }
 
   function saveAssignments() {
@@ -247,33 +254,55 @@ export function AssignmentWorkspace() {
 
       <div className="assignment-content">
         <div className="assignment-tabs" role="tablist" aria-label="Assignment views">
-          {tabItems.map(label => <button key={label} role="tab" aria-selected={tab === label} className={tab === label ? "is-active" : ""} onClick={() => setTab(label)}>{label}</button>)}
+          {tabItems.map(label => <button key={label} role="tab" aria-selected={tab === label} className={tab === label ? "is-active" : ""} onClick={() => { setTab(label); setPage(1); }}>{label}</button>)}
           {tab === "Assign Leads" && checked.length > 0 ? <Button className="assignment-bulk-button" leadingIcon={RiArrowRightLine} onClick={() => { const lead = leadSet.find(item => item.id === checked[0]); if (lead) openAssignment(lead); }}>Assign {checked.length} selected</Button> : null}
-          <div className="assignment-view-toggle" role="group" aria-label="Board layout"><button aria-pressed={view === "board"} className={view === "board" ? "is-active" : ""} onClick={() => setView("board")} aria-label="Board view"><RiLayoutColumnLine /></button><button aria-pressed={view === "list"} className={view === "list" ? "is-active" : ""} onClick={() => setView("list")} aria-label="List view"><RiListCheck2 /></button></div>
         </div>
 
-        {tab === "Assign Leads" ? <>
+        {tab === "Assign Leads" ? <section className="assignment-table-panel">
           <div className="assignment-toolbar">
-            <label className="assignment-search"><RiSearchLine /><input aria-label="Search opportunities" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by opportunity ID, company or phone…" /></label>
-            <select aria-label="Filter by source" value={sourceFilter} onChange={event => setSourceFilter(event.target.value)}><option>All sources</option>{Array.from(new Set(leadSet.map(lead => lead.source))).map(source => <option key={source}>{source}</option>)}</select>
-            <select aria-label="Filter by category" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option>All categories</option>{Array.from(new Set(leadSet.map(lead => lead.category))).map(category => <option key={category}>{category}</option>)}</select>
-            <select aria-label="Filter by owner" value={ownerFilter} onChange={event => setOwnerFilter(event.target.value)}><option>All owners</option>{managerOwnerFilter.map(owner => <option key={owner}>{owner}</option>)}</select>
+            <SearchField aria-label="Search opportunities" placeholder="Search by name, phone or opportunity ID" value={search} onChange={value => { setSearch(value); setPage(1); }} className="assignment-search-field" />
+            <Select aria-label="Filter by assignment stage" selectedKey={stageFilter} onSelectionChange={key => { setStageFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full"><SelectItem key="All stages" id="All stages">All stages</SelectItem>{stages.map(stage => <SelectItem key={stage} id={stage}>{stage}</SelectItem>)}</Select>
+            <Select aria-label="Filter by source" selectedKey={sourceFilter} onSelectionChange={key => { setSourceFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full"><SelectItem key="All sources" id="All sources">All sources</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.source))).map(source => <SelectItem key={source} id={source}>{source}</SelectItem>)}</Select>
+            <Select aria-label="Filter by category" selectedKey={categoryFilter} onSelectionChange={key => { setCategoryFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full"><SelectItem key="All categories" id="All categories">All categories</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.category))).map(category => <SelectItem key={category} id={category}>{category}</SelectItem>)}</Select>
+            <Select aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => { setOwnerFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-filter-owner" triggerClassName="w-full"><SelectItem key="All owners" id="All owners">All owners</SelectItem>{managerOwnerFilter.map(owner => <SelectItem key={owner} id={owner}>{owner}</SelectItem>)}</Select>
           </div>
-          <div className="assignment-board-wrap"><div className={`assignment-board ${view === "list" ? "is-list" : ""}`}>
-            {stages.map((stage, stageIndex) => {
-              const Icon = stageIndex === 0 ? RiStackLine : stageIndex === 1 ? RiUserLine : RiGroupLine;
-              const rows = filteredLeads.filter(lead => assignments[lead.id]?.stage === stage);
-              return <section className={`assignment-lane lane-${stageIndex} ${dropTarget === stage ? "is-drop-target" : ""}`} key={stage} aria-label={stage} onDragOver={event => { event.preventDefault(); setDropTarget(stage); }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(null); }} onDrop={event => handleDrop(event, stage)}>
-                <header className="assignment-lane-header"><div className="lane-icon"><Icon /></div><div className="lane-heading"><h2>{stage}</h2><p>{stage === "Central Allocation" ? "New opportunities from all sources." : stage === "Reporting Manager" ? "Assigned to reporting managers." : "Assigned to sales BDAs."}</p></div><span className="lane-count">{rows.length}</span><div className="lane-menu-wrap"><button className="lane-menu-trigger" aria-label={`${stage} actions`} aria-expanded={openMenu === stage} onClick={() => setOpenMenu(openMenu === stage ? null : stage)}><RiMoreLine /></button>{openMenu === stage ? <div className="lane-menu" role="menu"><button role="menuitem" onClick={() => openColumnAction(stage, "assign")}><RiUserAddLine />Assign {stageIndex === 0 ? "to reporting manager" : "opportunity"}</button><button role="menuitem" disabled={!checked.length} onClick={() => openColumnAction(stage, "bulk")}><RiStackLine />Bulk assign</button><button role="menuitem" onClick={() => openColumnAction(stage, "transfer")}><RiHistoryLine />Reassign / transfer</button><button role="menuitem" onClick={() => openColumnAction(stage, "history")}><RiHistoryLine />View assignment history</button></div> : null}</div></header>
-                <div className="assignment-lane-list">{rows.map(lead => <article key={lead.id} className={`assignment-lead ${checked.includes(lead.id) ? "is-checked" : ""}`} draggable tabIndex={0} aria-label={`${lead.name}, ${lead.code}. Drag to change assignment stage, or open to assign.`} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openAssignment(lead); } }} onDragStart={event => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/opportunity-id", lead.id); }} onDragEnd={() => setDropTarget(null)} onClick={() => openAssignment(lead)}>
-                  <Checkbox aria-label={`Select ${lead.name}`} isSelected={checked.includes(lead.id)} onClick={event => event.stopPropagation()} onChange={isSelected => setChecked(current => isSelected ? [...current, lead.id] : current.filter(id => id !== lead.id))} />
-                  <div className="assignment-lead-main"><span className="lead-card-top"><span>{lead.code}</span><time>{lead.when}</time></span><strong>{lead.name}</strong><span className="lead-phone"><RiPhoneLine />{lead.phone}</span><span className="lead-tags"><em className={`source-tag source-${lead.source.toLowerCase().replace(/[^a-z]/g, "")}`}>{lead.source}</em><em>{lead.category}</em></span>{assignments[lead.id]?.stage !== "Central Allocation" ? <span className="lead-owner"><span>{initials(ownerLabel(assignments[lead.id]))}</span>{ownerLabel(assignments[lead.id])}</span> : null}</div>
-                </article>)}</div>
-                {!rows.length ? <p className="assignment-empty">{search || sourceFilter !== "All sources" || categoryFilter !== "All categories" || ownerFilter !== "All owners" ? "No matching opportunities" : "Drop an opportunity here"}</p> : null}
-              </section>;
-            })}
-          </div></div>
-        </> : <section className="assignment-history-panel"><div className="history-scroll"><table><thead><tr><th>Opportunity ID</th><th>Lead ID</th><th>Assignment type</th><th>Previous owner</th><th>New owner</th><th>Assigned by</th><th>Previous department / team</th><th>New department / team</th><th>Assignment date</th><th>Assignment time</th><th>Reason</th></tr></thead><tbody>{filteredHistory.map(item => <tr key={item.id}><td>{item.opportunityId}</td><td>{item.leadId}</td><td><span className={`history-kind kind-${item.assignmentType.toLowerCase().split(" ")[0]}`}>{item.assignmentType}</span></td><td>{item.previousOwner}</td><td>{item.newOwner}</td><td>{item.assignedBy}</td><td>{item.previousDepartment} / {item.previousTeam}</td><td>{item.newDepartment} / {item.newTeam}</td><td>{item.assignmentDate}</td><td>{item.assignmentTime}</td><td>{item.assignmentReason}</td></tr>)}</tbody></table>{filteredHistory.length === 0 ? <p className="assignment-empty">No assignment history yet.</p> : null}</div></section>}
+          {checked.length > 0 ? <div className="assignment-bulk-row"><span>{checked.length} selected</span><Button size="small" leadingIcon={RiArrowRightLine} onClick={() => { const lead = leadSet.find(item => item.id === checked[0]); if (lead) openAssignment(lead); }}>Assign selected</Button><Button size="small" variant="ghost" onClick={() => setChecked([])}>Clear selection</Button></div> : null}
+          <div className="assignment-table-scroll">
+            <Table aria-label="Opportunities for assignment" size="sm" className="assignment-record-table" containerClassName="assignment-table-overflow" selectionMode="multiple" selectedKeys={new Set(checked)} onSelectionChange={(keys: Selection) => setChecked(keys === "all" ? leadRows.map(lead => lead.id) : Array.from(keys, key => String(key)))} onRowAction={key => { const lead = leadSet.find(item => item.id === String(key)); if (lead) openAssignment(lead); }}>
+              <TableHeader columns={assignmentColumns}>{column => <TableColumn isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.id === "select" ? <Checkbox slot="selection" aria-label="Select all opportunities" /> : column.name}</TableColumn>}</TableHeader>
+              <TableBody items={leadRows}>
+                {lead => <TableRow columns={assignmentColumns} className="assignment-record-row cursor-pointer outline-none">
+                  {column => <TableCell>
+                    {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${lead.name}`} />}
+                    {column.id === "opportunity" && <span className="assignment-opportunity"><strong>{lead.name}</strong><small>{lead.code}</small></span>}
+                    {column.id === "source" && <span className={`assignment-source source-${lead.source.toLowerCase().replace(/[^a-z]/g, "")}`}>{lead.source}</span>}
+                    {column.id === "category" && <span className="assignment-category">{lead.category}</span>}
+                    {column.id === "owner" && <span className="assignment-owner"><span>{assignments[lead.id]?.stage === "Central Allocation" ? "—" : initials(ownerLabel(assignments[lead.id]))}</span><span><strong>{assignments[lead.id]?.stage === "Central Allocation" ? "Unassigned" : ownerLabel(assignments[lead.id])}</strong><small>{assignments[lead.id]?.stage === "Central Allocation" ? "Central Allocation" : assignments[lead.id]?.stage}</small></span></span>}
+                    {column.id === "stage" && <Chip variant="caption" color={assignmentStageColors[assignments[lead.id]?.stage ?? "Central Allocation"]} className="assignment-stage-pill">{assignments[lead.id]?.stage ?? "Central Allocation"}</Chip>}
+                    {column.id === "created" && <span className="assignment-created">{lead.when}</span>}
+                    {column.id === "action" && <Button size="small" variant="secondary" leadingIcon={RiArrowRightLine} onClick={event => { event.stopPropagation(); openAssignment(lead); }}>{assignments[lead.id]?.stage === "Central Allocation" ? "Assign" : "Reassign"}</Button>}
+                  </TableCell>}
+                </TableRow>}
+              </TableBody>
+            </Table>
+            {leadRows.length === 0 ? <div className="assignment-empty-state">No opportunities match these filters.</div> : null}
+          </div>
+          <div className="assignment-pager"><span>Showing {visibleCount ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, visibleCount)} of {visibleCount} opportunities</span><div><button aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><RiArrowLeftSLine /></button><span>Page {currentPage} of {pages}</span><button aria-label="Next page" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}><RiArrowRightSLine /></button></div></div>
+        </section> : <section className="assignment-table-panel assignment-history-panel">
+          <div className="assignment-toolbar assignment-history-toolbar"><SearchField aria-label="Search assignment history" placeholder="Search opportunity, owner or reason" value={historySearch} onChange={value => { setHistorySearch(value); setPage(1); }} className="assignment-search-field" /><Select aria-label="Filter by assignment type" selectedKey={historyTypeFilter} onSelectionChange={key => { setHistoryTypeFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full"><SelectItem key="All assignment types" id="All assignment types">All assignment types</SelectItem>{["Initial Assignment", "Reassignment", "Transfer"].map(type => <SelectItem key={type} id={type}>{type}</SelectItem>)}</Select></div>
+          <div className="assignment-table-scroll"><Table aria-label="Assignment history" size="sm" className="assignment-history-table" containerClassName="assignment-table-overflow"><TableHeader columns={[{ id: "opportunityId", name: "Opportunity ID" }, { id: "assignmentType", name: "Assignment Type" }, { id: "previousOwner", name: "Previous Owner" }, { id: "newOwner", name: "New Owner" }, { id: "assignedBy", name: "Assigned By" }, { id: "previousTeam", name: "Previous Department / Team" }, { id: "newTeam", name: "New Department / Team" }, { id: "dateTime", name: "Date & Time" }, { id: "reason", name: "Reason" }]}>{column => <TableColumn>{column.name}</TableColumn>}</TableHeader><TableBody items={historyRows}>{item => <TableRow columns={[{ id: "opportunityId" }, { id: "assignmentType" }, { id: "previousOwner" }, { id: "newOwner" }, { id: "assignedBy" }, { id: "previousTeam" }, { id: "newTeam" }, { id: "dateTime" }, { id: "reason" }]}>{column => <TableCell>
+            {column.id === "opportunityId" && <span className="assignment-history-id"><strong>{item.opportunityId}</strong><small>{item.leadId}</small></span>}
+            {column.id === "assignmentType" && <Chip variant="caption" color={item.assignmentType === "Initial Assignment" ? "purple" : item.assignmentType === "Transfer" ? "blue" : "yellow"} className="assignment-stage-pill">{item.assignmentType}</Chip>}
+            {column.id === "previousOwner" && item.previousOwner}
+            {column.id === "newOwner" && item.newOwner}
+            {column.id === "assignedBy" && item.assignedBy}
+            {column.id === "previousTeam" && `${item.previousDepartment} / ${item.previousTeam}`}
+            {column.id === "newTeam" && `${item.newDepartment} / ${item.newTeam}`}
+            {column.id === "dateTime" && <span className="assignment-history-date">{item.assignmentDate}<small>{item.assignmentTime}</small></span>}
+            {column.id === "reason" && item.assignmentReason}
+          </TableCell>}</TableRow>}</TableBody></Table>{historyRows.length === 0 ? <div className="assignment-empty-state">No assignment history matches these filters.</div> : null}</div>
+          <div className="assignment-pager"><span>Showing {visibleCount ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, visibleCount)} of {visibleCount} records</span><div><button aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><RiArrowLeftSLine /></button><span>Page {currentPage} of {pages}</span><button aria-label="Next page" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}><RiArrowRightSLine /></button></div></div>
+        </section>}
       </div>
     </main>
 
@@ -282,7 +311,7 @@ export function AssignmentWorkspace() {
         <ModalHeader title={targetRole === "Central Allocation" ? "Return Opportunity to Central Allocation" : targetRole === "BDA" ? "Assign Opportunity to BDA" : "Assign Opportunity"} description={targetRole === "BDA" ? "Distribute this opportunity to a sales BDA." : undefined} icon={RiGroupLine} />
         <ModalBody className="assignment-confirm-body">
           <div className="assignment-lead-summary"><div className="summary-icon"><RiStore2Line /></div><div className="summary-contact"><small>{selected.code}</small><strong>{selected.name}</strong><span><RiUserLine />{selected.email}<RiPhoneLine />{selected.phone}</span></div><div className="summary-data"><small>Source</small><strong>{selected.source}</strong></div><div className="summary-data"><small>Enquiry category</small><strong>{selected.category}</strong></div><div className="summary-data"><small>Created on</small><strong><RiCalendarLine />{selected.when}</strong></div></div>
-          <div className="assignment-hierarchy"><strong>Assignment hierarchy</strong><div className="hierarchy-track">{stages.map((stage, index) => { const current = selectedAssignment?.stage === stage; const passed = (selectedAssignment ? stages.indexOf(selectedAssignment.stage) : 0) > index; const Icon = index === 0 ? RiStackLine : index === 1 ? RiUserLine : RiGroupLine; return <div className={`hierarchy-stage ${current ? "is-current" : ""} ${passed ? "is-passed" : ""}`} key={stage}><Icon /><span>{stage === "BDA Assignment" ? "BDA" : stage}{current ? <small>(Current stage)</small> : null}</span>{index < stages.length - 1 ? <RiArrowRightLine className="hierarchy-arrow" /> : null}</div>; })}</div></div>
+          <div className="assignment-hierarchy"><strong>Assignment hierarchy</strong><div className="hierarchy-track">{stages.map((stage, index) => { const current = selectedAssignment?.stage === stage; const passed = (selectedAssignment ? stages.indexOf(selectedAssignment.stage) : 0) > index; const Icon = index === 0 ? RiLayoutColumnLine : index === 1 ? RiUserLine : RiGroupLine; return <div className={`hierarchy-stage ${current ? "is-current" : ""} ${passed ? "is-passed" : ""}`} key={stage}><Icon /><span>{stage === "BDA Assignment" ? "BDA" : stage}{current ? <small>(Current stage)</small> : null}</span>{index < stages.length - 1 ? <RiArrowRightLine className="hierarchy-arrow" /> : null}</div>; })}</div></div>
           <div className="assignment-target"><strong>Assign to <i>*</i></strong><div className="target-options">{(selectedAssignment?.stage === "Central Allocation" ? ["Reporting Manager", "BDA"] as const : ["Central Allocation", "Reporting Manager", "BDA"] as const).map(role => <label key={role}><input type="radio" name="assignment-target" checked={targetRole === role} onChange={() => { const next = role as TargetRole; setTargetRole(next); setAssignee((next === "Reporting Manager" ? managers : next === "BDA" ? bdas : [])[0] ?? ""); }} />{role}</label>)}</div></div>
           <div className="assignment-confirm-fields">
             {targetRole !== "Central Allocation" ? <div className="assignee-field"><label htmlFor="assignment-assignee">Select {targetRole === "Reporting Manager" ? "reporting manager" : "BDA"} <i>*</i></label><select id="assignment-assignee" value={assignee} onChange={event => setAssignee(event.target.value)}>{assigneeOptions.map(name => <option key={name}>{name}</option>)}</select></div> : <div className="assignee-field"><label>New owner</label><div className="central-owner-preview">Central Allocation · {coordinator}</div></div>}
