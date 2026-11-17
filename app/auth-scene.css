@@ -23,15 +23,16 @@
 .wave-scene { position: fixed; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; background: #f5f4fb; }
 /* Overscan keeps the moving image edges outside the viewport. Only transform
    and opacity animate, independently of the stationary form. */
-.wave-scene-landscape { position: absolute; inset: -5%; display: block; width: 110%; height: 110%; max-width: none; object-fit: cover; object-position: center; transform-origin: center bottom; animation: wave-flow 20s ease-in-out infinite alternate; }
+.wave-scene-landscape { position: absolute; inset: -5%; display: block; width: 110%; height: 110%; max-width: none; object-fit: cover; object-position: center; transform-origin: center bottom; animation: wave-appear .7s ease-out both, wave-flow 9s ease-in-out infinite alternate; }
 /* Feathered crests rise at different speeds, giving the dotted fabric depth
    without a canvas, extra downloads, or a first-frame renderer swap. */
-.wave-scene-crest-left { mask-image: linear-gradient(90deg, #000 12%, #000c 28%, transparent 53%); transform-origin: left bottom; animation: wave-crest-left 11s ease-in-out infinite alternate; }
-.wave-scene-crest-right { mask-image: linear-gradient(90deg, transparent 47%, #000c 72%, #000 88%); transform-origin: right bottom; animation: wave-crest-right 14s ease-in-out infinite alternate; }
-.wave-scene-light { position: absolute; inset: -12%; background: radial-gradient(ellipse at 22% 74%, #ffffffb3, transparent 36%), radial-gradient(ellipse at 85% 65%, #dcd0ff66, transparent 32%); animation: wave-light 12s ease-in-out infinite alternate; }
+.wave-scene-crest-left { mask-image: linear-gradient(90deg, #000 12%, #000c 28%, transparent 53%); transform-origin: left bottom; animation: wave-appear .7s ease-out both, wave-crest-left 5s ease-in-out infinite alternate; }
+.wave-scene-crest-right { mask-image: linear-gradient(90deg, transparent 47%, #000c 72%, #000 88%); transform-origin: right bottom; animation: wave-appear .7s ease-out both, wave-crest-right 7s ease-in-out infinite alternate; }
+.wave-scene-light { position: absolute; inset: -12%; background: radial-gradient(ellipse at 22% 74%, #ffffffb3, transparent 36%), radial-gradient(ellipse at 85% 65%, #dcd0ff66, transparent 32%); animation: wave-appear .7s ease-out both, wave-light 6s ease-in-out infinite alternate; }
 /* A stationary wash keeps moving dots away from the footer's reading surface. */
 .wave-scene::after { content: ""; position: absolute; inset: auto 0 0; height: 110px; background: linear-gradient(0deg, #f6f5fc 8%, #f6f5fce6 38%, transparent); }
 @keyframes wave-flow { from { transform: translate3d(-1.2%, .5%, 0) scale(1.01, 1); } to { transform: translate3d(1.2%, -.8%, 0) scale(1.025, 1.045); } }
+@keyframes wave-appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes wave-crest-left { from { transform: translate3d(-1.4%, 1%, 0) scale(1.01, .98); } to { transform: translate3d(.6%, -1.8%, 0) scale(1.04, 1.1); } }
 @keyframes wave-crest-right { from { transform: translate3d(.9%, -1.5%, 0) scale(1.025, 1.08); } to { transform: translate3d(-.9%, .8%, 0) scale(1.01, .99); } }
 @keyframes wave-light { from { opacity: .3; transform: translate3d(-5%, 1%, 0); } to { opacity: .65; transform: translate3d(5%, -1%, 0); } }
@@ -81,8 +82,8 @@
 .auth-viewport .button-primary, .auth-viewport .button-secondary, .auth-viewport .provider-button { min-height: 54px; border-radius: var(--radius-control); font-size: var(--text-body-semibold); font-weight: var(--text-body-semibold--font-weight); letter-spacing: var(--text-body-semibold--letter-spacing); line-height: var(--text-body-semibold--line-height); }
 .auth-viewport .button-primary svg, .auth-viewport .button-secondary svg { width: 19px; height: 19px; }
 .auth-viewport .text-action, .auth-viewport .auth-back-link { font-size: 14px; }
-.auth-viewport .button-primary { background: #32159b; color: #fff; border-color: transparent; box-shadow: none; }
-.auth-viewport .button-primary:hover:not(:disabled) { background: #271077; box-shadow: none; }
+.auth-viewport .button-primary { background: var(--color-cta-primary); color: #fff; border-color: transparent; box-shadow: none; }
+.auth-viewport .button-primary:hover:not(:disabled) { background: var(--color-cta-primary-hover); box-shadow: none; }
 .auth-viewport .button-secondary { background: #ffffff40; }
 .auth-viewport .provider-button { background: #ffffff80; border-color: #d9d7e6; color: #252030; box-shadow: inset 0 1px #ffffffb3; }
 .auth-viewport .provider-button:hover:not(:disabled) { background: #ffffffbf; border-color: #b8a9d2; }

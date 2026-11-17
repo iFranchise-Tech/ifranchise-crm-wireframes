@@ -1457,3 +1457,31 @@ button.bp-stat:hover { background: #fafafa; }
 .bp-shell .bp-users-main { min-height: 0; grid-template-rows: auto minmax(0,1fr); }
 .bp-shell .bp-users-table-wrap { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .bp-shell .bp-report-table-card .bp-table-card { max-height: min(58svh,680px); overflow: auto; }
+
+/* Primary actions across the portal share the authentication CTA color. */
+.bp-shell .bp-save,
+.bp-shell .bp-event-edit,
+.bp-shell .bp-hero-cta,
+.bp-shell .bp-discovery-submit,
+.bp-shell .bp-calendar-controls > button.bp-calendar-new,
+.bp-shell .bp-event-meet > a,
+.bp-shell .bp-notice-meeting-service > a,
+.bp-shell .bp-meeting-link,
+.bp-shell .bp-upcoming-feature .bp-upcoming-join {
+  border-color: var(--color-cta-primary);
+  background: var(--color-cta-primary);
+  color: var(--color-text-white);
+}
+.bp-shell .bp-save:hover:not(:disabled),
+.bp-shell .bp-event-edit:hover:not(:disabled),
+.bp-shell .bp-hero-cta:hover,
+.bp-shell .bp-discovery-submit:hover,
+.bp-shell .bp-calendar-controls > button.bp-calendar-new:hover,
+.bp-shell .bp-event-meet > a:hover,
+.bp-shell .bp-notice-meeting-service > a:hover,
+.bp-shell .bp-meeting-link:hover,
+.bp-shell .bp-upcoming-feature .bp-upcoming-join:hover {
+  border-color: var(--color-cta-primary-hover);
+  background: var(--color-cta-primary-hover);
+  color: var(--color-text-white);
+}

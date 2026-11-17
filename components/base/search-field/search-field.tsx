@@ -105,8 +105,8 @@ export function SearchField({
             ref={inputRef}
             size={size}
             placeholder={placeholder}
-            fieldClassName={cx(shape === "pill" && "rounded-full", fieldClassName)}
-            className="[&::-webkit-search-cancel-button]:hidden"
+            fieldClassName={cx("border border-border-button-default bg-background-primary-default", shape === "pill" && "rounded-full", fieldClassName)}
+            className="placeholder:text-text-secondary [&::-webkit-search-cancel-button]:hidden"
             leadingAddon={
               // The icon and the light share one 20px box and cross-fade.
               <span aria-hidden className="relative ms-1 size-5 shrink-0">

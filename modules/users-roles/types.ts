@@ -1,6 +1,6 @@
 export const actions = ['View', 'Create', 'Edit', 'Delete', 'Assign', 'Approve', 'Verify', 'Export', 'Configure', 'Administer'] as const;
 export type Action = typeof actions[number];
-export const modules = ['Lead Management', 'Lead Assignment', 'Sales Pipeline', 'Meetings & Follow-ups', 'Payment Verification', 'Invoice Management', 'Marketing & Meta', 'Calling Records', 'MIS Reports', 'HR & Job Enquiries', 'System Administration'] as const;
+export const modules = ['Lead Management', 'Lead Assignment', 'Sales Pipeline', 'Meetings & Follow-ups', 'Payment Verification', 'Invoice Management', 'Marketing & Meta', 'Calling Records', 'MIS Reports', 'System Administration'] as const;
 export type ModuleName = typeof modules[number];
 export type Grant = { module: ModuleName; actions: Action[]; scope: string };
 export type Role = { id: string; name: string; description: string; system: boolean; grants: Grant[]; restrictions: string[]; protectedView: boolean; protectedEdit: boolean };

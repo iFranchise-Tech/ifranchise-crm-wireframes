@@ -9,12 +9,12 @@ import {
   RiArrowDownSLine,
   RiArrowLeftSLine,
   RiArrowRightSLine,
-  RiBriefcaseLine,
   RiBuilding4Line,
   RiCalendarLine,
   RiCheckboxCircleLine,
   RiDeleteBinLine,
   RiFlag2Line,
+  RiFilter3Line,
   RiGlobalLine,
   RiGroupLine,
   RiInformationLine,
@@ -26,6 +26,7 @@ import {
   RiPencilLine,
   RiPhoneLine,
   RiPlayCircleLine,
+  RiSettings3Line,
   RiStackLine,
   RiStickyNoteLine,
   RiStore2Line,
@@ -35,8 +36,13 @@ import {
   type RemixiconComponentType,
 } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
+import { ColumnManagerModal } from "@/modules/screen-library/components/column-manager-modal";
+import { AdvancedLeadFilters } from "./advanced-lead-filters";
+import type { LeadAdvancedFilters, LeadFilterField } from "./advanced-lead-filters";
+import { readTableColumns, saveActiveCrmRole, saveOrganizationTableColumns, savePersonalTableColumns } from "@/modules/screen-library/lib/table-columns";
 import { portalBrands } from "@/modules/brands/types";
 import { portraitFor } from "@/modules/users-roles/portrait";
+import { initialUsers } from "@/modules/users-roles/data";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Button } from "@/components/base/buttons/button";
@@ -79,7 +85,7 @@ import "./leads.css";
 const navItems = ["Enquiries", "Activity", "Sources"] as const;
 const owners = ["Himani Bhargava Tapadiya", "Shakshay Gupta", "Vivek Rawat", "Ekta Pattanaik", "Swetha Chintada"];
 const activeBrandNames = portalBrands.map(item => item.name);
-const categoryViews = ["Franchise", "Brand expansion", "Job"] as const;
+const categoryViews = ["Franchise", "Brand expansion"] as const;
 type Section = (typeof navItems)[number] | (typeof categoryViews)[number];
 type Column = { id: string; name: string; isRowHeader?: boolean };
 
@@ -96,6 +102,10 @@ const franchiseColumns: Column[] = [
   { id: "created", name: "Created On" },
   actionsColumn,
 ];
+const franchiseAvailableColumns: Column[] = [
+  { id: "person", name: "Enquiry", isRowHeader: true }, { id: "brand", name: "Interested Brand" }, { id: "location", name: "Location" }, { id: "investment", name: "Investment Capacity" }, { id: "owner", name: "Assigned To" }, { id: "status", name: "Status" }, { id: "created", name: "Created On" },
+  { id: "phone", name: "Mobile Number" }, { id: "email", name: "Email Address" }, { id: "state", name: "State" }, { id: "leadSource", name: "Lead Source" }, { id: "enquiryType", name: "Enquiry Type" }, { id: "timeline", name: "Start Timeline" }, { id: "preferredLocation", name: "Preferred Location" }, { id: "campaign", name: "Campaign" },
+];
 const brandColumns: Column[] = [
   selectColumn,
   { id: "person", name: "Enquiry", isRowHeader: true },
@@ -107,16 +117,9 @@ const brandColumns: Column[] = [
   { id: "created", name: "Created On" },
   actionsColumn,
 ];
-const jobColumns: Column[] = [
-  selectColumn,
-  { id: "person", name: "Candidate", isRowHeader: true },
-  { id: "position", name: "Position" },
-  { id: "location", name: "Location" },
-  { id: "profile", name: "Profile" },
-  { id: "owner", name: "Assigned To" },
-  { id: "status", name: "Status" },
-  { id: "created", name: "Created On" },
-  actionsColumn,
+const brandAvailableColumns: Column[] = [
+  { id: "person", name: "Enquiry", isRowHeader: true }, { id: "industry", name: "Industry" }, { id: "location", name: "Location" }, { id: "presence", name: "Presence" }, { id: "owner", name: "Assigned To" }, { id: "status", name: "Status" }, { id: "created", name: "Created On" },
+  { id: "contactPerson", name: "Contact Person" }, { id: "phone", name: "Mobile Number" }, { id: "email", name: "Email Address" }, { id: "state", name: "Headquarters State" }, { id: "website", name: "Website" }, { id: "leadSource", name: "Lead Source" }, { id: "campaign", name: "Campaign" },
 ];
 const activityColumns: Column[] = [
   { id: "activity", name: "Activity", isRowHeader: true },
@@ -146,20 +149,27 @@ const heardColumns: Column[] = [
 const enquiryTabs: { id: (typeof categoryViews)[number]; label: string; icon: RemixiconComponentType }[] = [
   { id: "Franchise", label: "Franchise Enquiries", icon: RiStore2Line },
   { id: "Brand expansion", label: "Brand Expansion Enquiries", icon: RiBuilding4Line },
-  { id: "Job", label: "Job Enquiries", icon: RiBriefcaseLine },
 ];
 
-const jobCategories = ["Franchise", "Brand expansion", "Job"] as Category[];
 const salesCategories = ["Franchise", "Brand expansion"] as Category[];
 const leadSections = ["Enquiries", "Activity", "Sources"] as const;
+const crmSources = initialSources.map(source => {
+  const rows = sourceLeads.filter(lead => lead.source === source.name && lead.category !== "Job");
+  return {
+    ...source,
+    leads: rows.length,
+    qualified: rows.filter(lead => lead.status === "Qualified" || lead.status === "Converted").length,
+    converted: rows.filter(lead => lead.status === "Converted").length,
+  };
+});
 const accessRoles = [
-  { id: "ceo", name: "Mohammad Abrar", title: "Superadmin", categories: jobCategories, sections: leadSections, canDelete: true },
-  { id: "sumanth", name: "Gangaram Sumanth Reddy", label: "Sumanth Reddy", title: "Superadmin", categories: jobCategories, sections: leadSections, canDelete: true },
-  { id: "shakshay", name: "Shakshay Gupta", title: "Admin", categories: jobCategories, sections: leadSections, canDelete: true },
-  { id: "shiwali", name: "Shiwali Singh", title: "Admin", categories: jobCategories, sections: leadSections, canDelete: true },
-  { id: "swetha", name: "Swetha Chintada", title: "Admin", categories: jobCategories, sections: leadSections, canDelete: true },
+  { id: "ceo", name: "Mohammad Abrar", title: "Superadmin", categories: salesCategories, sections: leadSections, canDelete: true },
+  { id: "sumanth", name: "Gangaram Sumanth Reddy", label: "Sumanth Reddy", title: "Superadmin", categories: salesCategories, sections: leadSections, canDelete: true },
+  { id: "shakshay", name: "Shakshay Gupta", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
+  { id: "shiwali", name: "Shiwali Singh", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
+  { id: "swetha", name: "Swetha Chintada", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
   { id: "sales", name: "Himani Bhargava Tapadiya", title: "Sales", categories: salesCategories, sections: leadSections, canDelete: false },
-  { id: "hr", name: "Ekta Pattanaik", title: "HR", categories: jobCategories, sections: leadSections, canDelete: false },
+  { id: "hr", name: "Ekta Pattanaik", title: "HR", categories: salesCategories, sections: leadSections, canDelete: false },
 ];
 type AccessRole = (typeof accessRoles)[number];
 
@@ -298,6 +308,86 @@ function FilterSelect({ label, value, options, onChange, width = "w-[158px]" }: 
   );
 }
 
+function advancedFieldValue(enquiry: Enquiry, field: string): string {
+  const values: Record<string, string | undefined> = {
+    person: enquiry.name,
+    name: enquiry.name,
+    id: enquiry.id,
+    brand: enquiry.brand,
+    contactPerson: enquiry.contactPerson || enquiry.name,
+    industry: enquiry.industry || enquiry.focus,
+    position: enquiry.focus,
+    presence: enquiry.presence || enquiry.extra,
+    profile: enquiry.extra,
+    location: enquiry.city,
+    city: enquiry.city,
+    state: enquiry.state,
+    phone: enquiry.mobile,
+    email: enquiry.email,
+    leadSource: enquiry.originalSource,
+    enquiryType: enquiry.enquiryType || enquiry.category,
+    timeline: enquiry.timeline,
+    preferredLocation: enquiry.preferredLocation || enquiry.address,
+    campaign: enquiry.campaign,
+    website: enquiry.website,
+    qualification: enquiry.focus,
+    experience: enquiry.experience,
+    noticePeriod: enquiry.noticePeriod,
+    resume: enquiry.resume,
+    coverLetter: enquiry.coverLetter,
+    portfolio: enquiry.portfolio,
+    investment: enquiry.investment,
+    owner: enquiry.owner,
+    status: enquiry.status,
+    created: enquiry.received,
+  };
+  return values[field] ?? "";
+}
+
+function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: LeadAdvancedFilters, fields: LeadFilterField[]) {
+  const fieldRules = filters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator));
+  const ruleMatches = fieldRules.map(rule => {
+    const actual = advancedFieldValue(enquiry, rule.field);
+    const expected = rule.value;
+    const left = actual.toLocaleLowerCase();
+    const right = expected.toLocaleLowerCase();
+    const field = fields.find(item => item.id === rule.field);
+    if (rule.operator === "is empty") return !actual.trim();
+    if (rule.operator === "is not empty") return Boolean(actual.trim());
+    if (field?.type === "date") {
+      const actualDate = new Date(actual);
+      const expectedDate = new Date(`${expected}T00:00:00`);
+      if (Number.isNaN(actualDate.getTime()) || Number.isNaN(expectedDate.getTime())) return false;
+      if (rule.operator === "before") return actualDate < expectedDate;
+      if (rule.operator === "after") return actualDate > expectedDate;
+      return actualDate.toDateString() === expectedDate.toDateString();
+    }
+    switch (rule.operator) {
+      case "is": return left === right;
+      case "is not": return left !== right;
+      case "does not contain": return !left.includes(right);
+      case "starts with": return left.startsWith(right);
+      default: return left.includes(right);
+    }
+  });
+  const fieldsMatch = !ruleMatches.length || (filters.match === "all" ? ruleMatches.every(Boolean) : ruleMatches.some(Boolean));
+  const related = activities.filter(activity => activity.enquiryId === enquiry.id);
+  let activityMatch = true;
+  const activityFilterActive = filters.activity !== "any" || filters.activityKind !== "All activities" || filters.activityStatus !== "All statuses";
+  if (activityFilterActive) {
+    const selectedKind = filters.activityKind === "All activities" ? null : filters.activityKind;
+    const matchingActivities = related.filter(activity => {
+      const kind = activity.type === "Other Communication" ? "Notes" : activity.kind === "call" ? "Calls" : activity.kind === "meeting" ? "Meetings" : activity.kind === "email" ? "Emails" : "Follow-ups";
+      return (!selectedKind || kind === selectedKind) && (filters.activityStatus === "All statuses" || activity.status === filters.activityStatus);
+    });
+    if (filters.activity === "without") activityMatch = related.length === 0;
+    else activityMatch = matchingActivities.length > 0;
+  }
+  const hasAttachment = Boolean(enquiry.resume || enquiry.resumeFile || enquiry.coverLetterFile || enquiry.coverLetter || enquiry.portfolio || related.some(activity => activity.attachments?.length));
+  const attachmentMatch = filters.attachment === "any" || (filters.attachment === "with" ? hasAttachment : !hasAttachment);
+  return fieldsMatch && activityMatch && attachmentMatch;
+}
+
 function Stat({ icon: Icon, value, label, tone, onClick }: { icon: RemixiconComponentType; value: string | number; label: string; tone: string; onClick?: () => void }) {
   return (
     <button type="button" className={cx("ld-stat", `ld-tone-${tone}`)} onClick={onClick}>
@@ -412,7 +502,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const role = accessRoles.find(item => item.id === roleId) ?? accessRoles[0];
   const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [activities, setActivities] = useState(initialActivities);
-  const [sources, setSources] = useState(initialSources);
+  const [sources, setSources] = useState(crmSources);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
   const [brand, setBrand] = useState("All brands");
@@ -438,10 +528,13 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [draftCity, setDraftCity] = useState("");
   const [draftState, setDraftState] = useState("");
   const [sourceName, setSourceName] = useState("Website");
-  const [note, setNote] = useState("");
   const [draftHeard, setDraftHeard] = useState("");
   const [pendingDelete, setPendingDelete] = useState<{ name: string; run: () => void } | null>(null);
   const [roleOpen, setRoleOpen] = useState(false);
+  const [columnManagerOpen, setColumnManagerOpen] = useState(false);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
+  const [columnIds, setColumnIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -453,6 +546,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     setRelated("All enquiries");
     setAssignee("All people");
     setSourceKind("All types");
+    setAdvancedFilters(null);
+    setAdvancedFiltersOpen(false);
     setSelected(new Set());
     setOpen(null);
     setPage(1);
@@ -461,6 +556,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   useEffect(() => {
     setRoleOpen(false);
   }, [roleId]);
+
+  useEffect(() => { saveActiveCrmRole({ id: role.id, name: role.name, title: role.title }); }, [role.id, role.name, role.title]);
 
   useEffect(() => {
     if (section === "Activity" || section === "Sources") {
@@ -473,17 +570,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
 
   useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId]);
 
-  const scopedEnquiries = useMemo(() => enquiries.filter(item => role.categories.includes(item.category)), [enquiries, role]);
+  const scopedEnquiries = useMemo(() => enquiries.filter(item => item.category !== "Job" && role.categories.includes(item.category)), [enquiries, role]);
   const scopedActivities = useMemo(() => activities.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activities, scopedEnquiries]);
-
-  const visibleEnquiries = useMemo(() => scopedEnquiries.filter(enquiry => {
-    const text = `${enquiry.name} ${enquiry.brand} ${enquiry.city} ${enquiry.owner} ${enquiry.id} ${enquiry.mobile} ${enquiry.email}`.toLowerCase();
-    return text.includes(query.toLowerCase())
-      && (!activeCategory || enquiry.category === activeCategory)
-      && (status === "All statuses" || enquiry.status === status)
-      && (brand === "All brands" || enquiry.brand === brand)
-      && (location === "All locations" || enquiry.city === location);
-  }), [scopedEnquiries, query, activeCategory, status, brand, location]);
 
   const visibleActivities = useMemo(() => scopedActivities.filter(activity => {
     const enquiry = scopedEnquiries.find(item => item.id === activity.enquiryId);
@@ -502,19 +590,90 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
       && (sourceKind === "All types" || item.kind === sourceKind)
       && (status === "All statuses" || activeLabel === status);
   }), [sources, query, sourceKind, status]);
-  const enquiryPage = slicePage(visibleEnquiries, page);
   const activityPage = slicePage(visibleActivities, page);
   const sourcePage = slicePage(visibleSources, page);
 
   const brandsInView = [...new Set(scopedEnquiries.filter(item => !activeCategory || item.category === activeCategory).map(item => item.brand))];
   const citiesInView = [...new Set(scopedEnquiries.filter(item => !activeCategory || item.category === activeCategory).map(item => item.city))];
   const visiblePool = scopedEnquiries.filter(item => !activeCategory || item.category === activeCategory);
-  const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
   const columnKind = activeCategory ?? (role.categories.length === 1 ? role.categories[0] : "Franchise");
-  const tableColumns = columnKind === "Job" ? jobColumns : columnKind === "Brand expansion" ? brandColumns : franchiseColumns;
-  const showBrandFilter = tableColumns.some(column => column.id === "brand");
+  const enquiryColumns = columnKind === "Brand expansion" ? brandColumns : franchiseColumns;
+  const baseColumns = enquiryView ? enquiryColumns : section === "Activity" ? activityColumns : sourceColumns;
+  const availableColumnDefs = enquiryView
+    ? columnKind === "Brand expansion" ? brandAvailableColumns : franchiseAvailableColumns
+    : (section === "Activity" ? activityColumns : sourceColumns).filter(column => column.id !== "actions");
+  const configurableColumnDefs = availableColumnDefs.filter(column => column.id !== "select" && column.id !== "actions");
+  const advancedFilterFields = useMemo<LeadFilterField[]>(() => {
+    const selectOptions: Record<string, string[]> = {
+      brand: [...new Set(scopedEnquiries.map(item => item.brand).filter((value): value is string => Boolean(value)))],
+      city: [...new Set(scopedEnquiries.map(item => item.city).filter((value): value is string => Boolean(value)))],
+      location: [...new Set(scopedEnquiries.map(item => item.city).filter((value): value is string => Boolean(value)))],
+      state: [...new Set(scopedEnquiries.map(item => item.state).filter((value): value is string => Boolean(value)))],
+      owner: [...new Set(scopedEnquiries.map(item => item.owner).filter((value): value is string => Boolean(value)))],
+      status: [...new Set(scopedEnquiries.map(item => item.status))],
+      leadSource: [...new Set(scopedEnquiries.map(item => item.originalSource).filter((value): value is string => Boolean(value)))],
+      enquiryType: [...new Set(scopedEnquiries.map(item => item.enquiryType || item.category).filter((value): value is string => Boolean(value)))],
+      investment: [...new Set(scopedEnquiries.map(item => item.investment).filter((value): value is string => Boolean(value)))],
+      timeline: [...new Set(scopedEnquiries.map(item => item.timeline).filter((value): value is string => Boolean(value)))],
+      experience: [...new Set(scopedEnquiries.map(item => item.experience).filter((value): value is string => Boolean(value)))],
+      noticePeriod: [...new Set(scopedEnquiries.map(item => item.noticePeriod).filter((value): value is string => Boolean(value)))],
+    };
+    const selectFields = new Set(Object.keys(selectOptions));
+    return [
+      { id: "id", name: "Enquiry ID", type: "text" },
+      ...configurableColumnDefs.map(column => ({
+        id: column.id,
+        name: column.name,
+        type: column.id === "created" ? "date" as const : selectFields.has(column.id) ? "select" as const : "text" as const,
+        options: selectOptions[column.id],
+      })),
+    ];
+  }, [configurableColumnDefs, scopedEnquiries]);
+  const visibleEnquiries = useMemo(() => scopedEnquiries.filter(enquiry => {
+    const text = `${enquiry.name} ${enquiry.brand} ${enquiry.city} ${enquiry.owner} ${enquiry.id} ${enquiry.mobile} ${enquiry.email}`.toLowerCase();
+    return text.includes(query.toLowerCase())
+      && (!activeCategory || enquiry.category === activeCategory)
+      && (status === "All statuses" || enquiry.status === status)
+      && (brand === "All brands" || enquiry.brand === brand)
+      && (location === "All locations" || enquiry.city === location)
+      && (!advancedFilters || matchesLeadCriteria(enquiry, scopedActivities, advancedFilters, advancedFilterFields));
+  }), [scopedEnquiries, scopedActivities, query, activeCategory, status, brand, location, advancedFilters, advancedFilterFields]);
+  const enquiryPage = slicePage(visibleEnquiries, page);
+  const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
+  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length + Number(advancedFilters.activity !== "any" || advancedFilters.activityKind !== "All activities" || advancedFilters.activityStatus !== "All statuses") + Number(advancedFilters.attachment !== "any") : 0;
+  const defaultColumnIds = baseColumns.filter(column => column.id !== "select" && column.id !== "actions").map(column => column.id);
+  const requiredColumnId = enquiryView ? "person" : section === "Activity" ? "activity" : "source";
+  const columnScope = `leads:${section}`;
+  useEffect(() => {
+    setColumnIds(readTableColumns(columnScope, role.id, configurableColumnDefs, [requiredColumnId], defaultColumnIds));
+  // The category view defines the set of available fields; role changes select a separate personal layout.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnScope, role.id]);
+  const visibleColumnIds = columnIds.length ? columnIds.filter(id => configurableColumnDefs.some(column => column.id === id)) : defaultColumnIds;
+  const tableColumns: Column[] = [selectColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const showBrandFilter = configurableColumnDefs.some(column => column.id === "brand");
   const leadTotal = sources.reduce((sum, item) => sum + item.leads, 0);
   const convertedTotal = sources.reduce((sum, item) => sum + item.converted, 0);
+  function saveColumns(ids: string[], organizationDefault: boolean) {
+    const normalized = [...new Set([requiredColumnId, ...ids.filter(id => configurableColumnDefs.some(column => column.id === id))])];
+    setColumnIds(normalized);
+    savePersonalTableColumns(columnScope, role.id, normalized);
+    if (organizationDefault && role.title === "Superadmin") saveOrganizationTableColumns(columnScope, normalized);
+    setColumnManagerOpen(false);
+  }
+  function exportSelectedEnquiries(ids: string[]) {
+    const rows = scopedEnquiries.filter(enquiry => ids.includes(enquiry.id));
+    const headers = ["Enquiry ID", "Category", "Full Name", "Mobile Number", "Email Address", "City", "State", "Interested Brand / Position", "Status", "Assigned Employee", "Lead Source", "Created On"];
+    const csv = [headers, ...rows.map(enquiry => [enquiry.id, enquiry.category, enquiry.name, enquiry.mobile, enquiry.email, enquiry.city, enquiry.state, enquiry.brand, enquiry.status, enquiry.owner, enquiry.originalSource, enquiry.received])]
+      .map(row => row.map(value => `"${String(value ?? "").replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ifranchise-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
   function saveEnquiry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -635,37 +794,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     setAddingSource(false);
   }
 
-  function sendNote(extra?: { files: { name: string }[]; schedule?: string }) {
-    if (!open) return;
-    const text = note.trim();
-    const files = extra?.files ?? [];
-    if (!text && !files.length && !extra?.schedule) return;
-    const stamp = now();
-    setActivities(list => [{
-      id: `ACT-${Date.now()}`,
-      enquiryId: open.id,
-      title: "Note added",
-      kind: "follow-up",
-      status: "Completed",
-      due: extra?.schedule || stamp,
-      type: "Other Communication",
-      when: stamp,
-      direction: "—",
-      summary: text || (files.length ? "Files shared with this note." : "Follow-up scheduled."),
-      outcome: "Other",
-      followUp: extra?.schedule || "",
-      attachments: files.map(file => file.name),
-      manual: true,
-      createdBy: role.name,
-      createdAt: stamp,
-    }, ...list]);
-    setNote("");
-  }
-
   const leadActivities = open ? activities.filter(activity => activity.enquiryId === open.id) : [];
   const heading = open ? open.id : section === "Activity" ? "Activities" : section === "Sources" ? "Lead Sources" : enquiryTabs.find(tab => tab.id === section)?.label ?? "Enquiries";
   const description = enquiryView
-    ? "Manage all incoming enquiries across franchise, brand expansion and jobs."
+    ? "Manage all incoming franchise and brand expansion enquiries."
     : section === "Activity"
       ? "Track calls, meetings, emails, follow-ups and notes."
       : "Manage and track all the channels that bring enquiries into iFranchise.";
@@ -687,7 +819,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
           <DropdownTrigger className="ld-role" aria-label={`${role.name}, ${role.title}`}>
             <Avatar size="sm" src={portraitFor(role.name)} initials={initials(role.name)} alt="" />
             <span><strong>{"label" in role && role.label ? role.label : shortName(role.name)}</strong><em>{role.title}</em></span>
-            <RiArrowDownSLine className="size-4 text-text-tertiary" />
+            <RiArrowDownSLine className="size-4 text-text-secondary" />
           </DropdownTrigger>
           <DropdownPopover aria-label="Switch role" placement="bottom end" className="w-[280px]">
             {accessRoles.map(item => (
@@ -704,15 +836,14 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             <EnquiryDetail
               enquiry={open}
               activities={leadActivities}
-              note={note}
-              onNote={setNote}
               owners={owners}
+              contacts={[...enquiries.map(item => ({ name: item.name, email: item.email })), ...initialUsers.map(item => ({ name: item.name, email: item.email }))]}
+              canDelete={role.canDelete}
               onBack={() => setOpen(null)}
               onSave={patch => {
                 setEnquiries(list => list.map(item => item.id === open.id ? { ...item, ...patch } : item));
                 setOpen(current => current && current.id === open.id ? { ...current, ...patch } : current);
               }}
-              onChangeOwner={() => { setAssignOwner(owners.includes(open.owner) ? open.owner : owners[0]); setAssignIds([open.id]); }}
               onStatus={status => { setStatusChoice(status); setStatusIds([open.id]); }}
               onSchedule={update => {
                 if (update.id) {
@@ -723,14 +854,14 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 setActivities(list => [{
                   id: `ACT-${Date.now()}`,
                   enquiryId: open.id,
-                  title: "Follow-up call",
-                  kind: "follow-up",
+                  title: update.title ?? "Follow-up call",
+                  kind: update.kind ?? "follow-up",
                   status: "Scheduled",
                   due: update.due,
-                  type: "Phone Call",
+                  type: update.type ?? "Phone Call",
                   when: update.due,
                   direction: "Outgoing",
-                  summary: "Follow-up scheduled.",
+                  summary: update.summary ?? "Follow-up scheduled.",
                   outcome: "Follow-up Required",
                   followUp: update.due,
                   meetLink: update.meetLink,
@@ -739,9 +870,55 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                   createdAt: stamp,
                 }, ...list]);
               }}
-              onSendNote={sendNote}
-              actor={role.name}
               onPatchActivity={(id, patch) => setActivities(list => list.map(item => item.id === id ? { ...item, ...patch } : item))}
+              onDeleteActivity={id => setActivities(list => list.filter(item => item.id !== id))}
+              onDeleteEnquiry={() => setPendingDelete({ name: open.name, run: () => { setEnquiries(list => list.filter(item => item.id !== open.id)); setActivities(list => list.filter(item => item.enquiryId !== open.id)); setOpen(current => current?.id === open.id ? null : current); } })}
+              onCreateTask={task => {
+                const stamp = now();
+                setActivities(list => [{
+                  id: `ACT-${Date.now()}`,
+                  enquiryId: open.id,
+                  title: task.title,
+                  kind: "follow-up",
+                  status: task.status,
+                  due: task.due,
+                  type: "Task",
+                  when: task.due,
+                  direction: "—",
+                  summary: task.summary,
+                  outcome: "Follow-up Required",
+                  followUp: task.due,
+                  manual: true,
+                  createdBy: role.name,
+                  createdAt: stamp,
+                  priority: task.priority,
+                  assignedTo: task.assignedTo,
+                  reminder: task.reminder,
+                  reminderTiming: task.reminderTiming,
+                }, ...list]);
+              }}
+              onCreateNote={noteDraft => {
+                const stamp = now();
+                setActivities(list => [{
+                  id: `ACT-${Date.now()}`,
+                  enquiryId: open.id,
+                  title: noteDraft.title,
+                  kind: "follow-up",
+                  status: "Completed",
+                  due: stamp,
+                  type: "Other Communication",
+                  when: stamp,
+                  direction: "—",
+                  summary: noteDraft.detail,
+                  outcome: "Other",
+                  followUp: "",
+                  manual: true,
+                  createdBy: role.name,
+                  createdAt: stamp,
+                  noteType: noteDraft.noteType,
+                  pinned: noteDraft.pinned,
+                }, ...list]);
+              }}
             />
           ) : (
           <div className="contents">
@@ -814,20 +991,36 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 <FilterSelect label="Source type" value={sourceKind} onChange={setSourceKind} options={["All types", ...sourceKinds]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "Active", "Inactive"]} />
               </>}
+              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setAdvancedFiltersOpen(current => !current)}>{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</Button>}
+              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiSettings3Line} onClick={() => setColumnManagerOpen(true)}>Columns</Button>
             </div>
             {enquiryView && selectedIds.length > 0 && (
               <div className="ld-bulk">
                 <span className="text-body-2-medium">{selectedIds.length} selected</span>
                 <Button size="small" variant="secondary" onClick={() => { setStatusChoice(""); setStatusIds(selectedIds); }}>Update status</Button>
                 <Button size="small" variant="secondary" onClick={() => { setAssignOwner(owners[0]); setAssignIds(selectedIds); }}>Assign</Button>
+                <Button size="small" variant="secondary" onClick={() => exportSelectedEnquiries(selectedIds)}>Export selected</Button>
                 {role.canDelete && <Button size="small" variant="secondary" onClick={() => setPendingDelete({ name: `${selectedIds.length} enquiries`, run: () => { setEnquiries(list => list.filter(item => !selectedIds.includes(item.id))); setActivities(list => list.filter(item => !selectedIds.includes(item.enquiryId))); setSelected(new Set()); } })}>Delete</Button>}
                 <Button size="small" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
               </div>
             )}
 
-            <div className={section === "Activity" ? "ld-scroll ld-scroll-fit" : "ld-scroll"}>
+            <div className={cx("ld-record-layout", advancedFiltersOpen && enquiryView && "is-filter-open")}>
+            {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
+              fields={advancedFilterFields}
+              scope={columnScope}
+              userId={role.id}
+              resultCount={visibleEnquiries.length}
+              countFor={filters => scopedEnquiries.filter(enquiry => matchesLeadCriteria(enquiry, scopedActivities, filters, advancedFilterFields)).length}
+              activeFilterCount={advancedFilterCount}
+              onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
+              onClear={() => { setAdvancedFilters(null); setPage(1); }}
+              onClose={() => setAdvancedFiltersOpen(false)}
+            />}
+            <div className={cx("ld-record-content", section === "Activity" && "ld-scroll-fit")}>
+            <div className="ld-scroll">
               {enquiryView && (
-                <Table key={role.id} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
                     {(column: Column) => (
                       <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>
@@ -843,11 +1036,27 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                             {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}
+                            {column.id === "contactPerson" && (enquiry.contactPerson || enquiry.name)}
                             {column.id === "industry" && enquiry.focus}
                             {column.id === "position" && enquiry.focus}
                             {column.id === "presence" && enquiry.extra}
                             {column.id === "profile" && enquiry.extra}
                             {column.id === "location" && <span className="inline-flex items-center gap-1 text-text-secondary"><RiMapPin2Line className="size-4 text-text-tertiary" />{enquiry.city}</span>}
+                            {column.id === "state" && enquiry.state}
+                            {column.id === "phone" && enquiry.mobile}
+                            {column.id === "email" && enquiry.email}
+                            {column.id === "leadSource" && enquiry.originalSource}
+                            {column.id === "enquiryType" && (enquiry.enquiryType || enquiry.category)}
+                            {column.id === "timeline" && (enquiry.timeline || "—")}
+                            {column.id === "preferredLocation" && (enquiry.preferredLocation || enquiry.address || "—")}
+                            {column.id === "campaign" && (enquiry.campaign || "—")}
+                            {column.id === "website" && (enquiry.website || "—")}
+                            {column.id === "qualification" && (enquiry.focus || "—")}
+                            {column.id === "experience" && (enquiry.experience || "—")}
+                            {column.id === "noticePeriod" && (enquiry.noticePeriod || "—")}
+                            {column.id === "resume" && (enquiry.resume || "—")}
+                            {column.id === "coverLetter" && (enquiry.coverLetter || "—")}
+                            {column.id === "portfolio" && (enquiry.portfolio || "—")}
                             {column.id === "investment" && enquiry.investment}
                             {column.id === "owner" && <Assignee name={enquiry.owner} />}
                             {column.id === "status" && (
@@ -876,18 +1085,18 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               )}
 
               {section === "Activity" && (
-                <Table key={role.id} aria-label="Activities" className="ld-activity-table" containerClassName="ld-fit-table" onRowAction={key => {
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Activities" className="ld-activity-table" containerClassName="ld-fit-table" onRowAction={key => {
                   const activity = activities.find(item => item.id === String(key));
                   const enquiry = enquiries.find(item => item.id === activity?.enquiryId);
                   if (enquiry) setOpen(enquiry);
                 }}>
-                  <TableHeader columns={activityColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
+                  <TableHeader columns={dataColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
                   <TableBody items={activityPage.rows}>
                     {activity => {
                       const enquiry = enquiries.find(item => item.id === activity.enquiryId);
                       const mark = activityMark(activity);
                       return (
-                        <TableRow columns={activityColumns} className="cursor-pointer outline-none">
+                        <TableRow columns={dataColumns} className="cursor-pointer outline-none">
                           {(column: Column) => (
                             <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
                               {column.id === "activity" && (
@@ -919,14 +1128,14 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               )}
 
               {section === "Sources" && (
-                <Table key={role.id} aria-label="Lead sources" onRowAction={key => {
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Lead sources" onRowAction={key => {
                   const item = sources.find(source => source.id === String(key));
                   if (item) setSourceView({ name: item.name, rows: sourceLeads.filter(lead => lead.source === item.name) });
                 }}>
-                  <TableHeader columns={sourceColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
+                  <TableHeader columns={dataColumns}>{(column: Column) => <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>{column.name}</TableColumn>}</TableHeader>
                   <TableBody items={sourcePage.rows}>
                     {item => (
-                        <TableRow columns={sourceColumns} className="cursor-pointer outline-none">
+                        <TableRow columns={dataColumns} className="cursor-pointer outline-none">
                           {(column: Column) => (
                             <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
                               {column.id === "source" && (
@@ -961,6 +1170,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {enquiryView && visibleEnquiries.length > 0 && <Pager page={enquiryPage.current} pages={enquiryPage.pages} onPage={setPage} label={`Showing ${enquiryPage.start}–${enquiryPage.end} of ${visibleEnquiries.length} enquiries`} />}
               {section === "Activity" && visibleActivities.length > 0 && <Pager page={activityPage.current} pages={activityPage.pages} onPage={setPage} label={`Showing ${activityPage.start}–${activityPage.end} of ${visibleActivities.length} activities`} />}
               {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
+            </div>
+            </div>
             </div>
           </Panel>
           </div>
@@ -1200,6 +1411,16 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             <ModalFooter><Button variant="secondary" onClick={() => setRateText(null)}>Close</Button></ModalFooter>
           </Modal>
         )}
+        <ColumnManagerModal
+          isOpen={columnManagerOpen}
+          onOpenChange={setColumnManagerOpen}
+          availableColumns={configurableColumnDefs}
+          selectedIds={visibleColumnIds}
+          requiredIds={[requiredColumnId]}
+          isSuperAdmin={role.title === "Superadmin"}
+          scopeLabel={enquiryView ? `${columnKind} enquiries` : section === "Activity" ? "lead activity" : "lead sources"}
+          onSave={saveColumns}
+        />
       </ReviewShell>
     </DirectionProvider>
   );

@@ -9,7 +9,7 @@ export const metadata = { title: "Authentication overview · iFranchise review" 
 export default async function AuthenticationOverview({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
   const query = await searchParams;
   const mode = query.mode === "mobile" ? "mobile" : "desktop";
-  return <ReviewShell moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title="Module overview" navigation={<AuthNavigation screenId="overview" mode={mode} />} controls={<span className="review-toolbar-status"><span className="status-dot" />Ready for review</span>}>
+  return <ReviewShell className="auth-review-shell" moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title="Module overview" navigation={<AuthNavigation screenId="overview" mode={mode} />} controls={<span className="review-toolbar-status"><span className="status-dot" />Ready for review</span>}>
     <div className="review-information"><div className="module-overview">
       <div className="module-summary"><div><h2>Authentication</h2><p>{authScreens.length} screens across sign-in, recovery, setup and account access.</p></div><Link className="library-primary" href={reviewHref("sign-in", mode)}>Open first screen <Icon name="arrow" /></Link></div>
       <div className="module-metrics" aria-label="Authentication module details">
