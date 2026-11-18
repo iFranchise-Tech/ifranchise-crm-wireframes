@@ -345,7 +345,7 @@ export function SalesPipelineWorkspace() {
             <Button iconOnly variant={view === "list" ? "primary" : "secondary"} className="size-10" leadingIcon={RiFileList3Line} aria-label="List view" title="List view" aria-pressed={view === "list"} onClick={() => setView("list")} />
           </div>
           <IconButton icon={RiFilter3Line} className={cx("size-10", activeFilterCount > 0 && "bg-accent-50 text-accent-700")} aria-label="Advanced filters" title={activeFilterCount ? `Advanced filters (${activeFilterCount} applied)` : "Advanced filters"} aria-pressed={advancedFiltersOpen || activeFilterCount > 0} onClick={() => setAdvancedFiltersOpen(true)} />
-          <IconButton icon={RiLayoutColumnLine} className="size-10" aria-label="Manage columns" title="Manage list columns" onClick={() => { setView("list"); setColumnsOpen(true); }} />
+          <IconButton icon={RiLayoutColumnLine} className="size-10" aria-label="Customize columns" title="Customize list columns" onClick={() => { setView("list"); setColumnsOpen(true); }} />
         </div>
         <Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} className="sp-active-pipeline" triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select><Button className="h-10" leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
     </div>

@@ -26,7 +26,10 @@ import {
   RiPencilLine,
   RiPhoneLine,
   RiPlayCircleLine,
-  RiSettings3Line,
+  RiLayoutColumnLine,
+  RiBarChartBoxLine,
+  RiStarLine,
+  RiStarFill,
   RiStackLine,
   RiStickyNoteLine,
   RiStore2Line,
@@ -45,6 +48,7 @@ import { portraitFor } from "@/modules/users-roles/portrait";
 import { initialUsers } from "@/modules/users-roles/data";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
+import { IconButton } from "@/components/base/buttons/icon-button";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown, DropdownDivider, DropdownItem, DropdownPopover, DropdownTrigger } from "@/components/base/dropdown/dropdown";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -90,6 +94,7 @@ type Section = (typeof navItems)[number] | (typeof categoryViews)[number];
 type Column = { id: string; name: string; isRowHeader?: boolean };
 
 const selectColumn: Column = { id: "select", name: "" };
+const favouriteColumn: Column = { id: "favourite", name: "Favourite" };
 const actionsColumn: Column = { id: "actions", name: "" };
 const franchiseColumns: Column[] = [
   selectColumn,
@@ -369,17 +374,7 @@ function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: 
   });
   const fieldsMatch = !ruleMatches.length || ruleMatches.every(Boolean);
   const related = activities.filter(activity => activity.enquiryId === enquiry.id);
-  let activityMatch = true;
-  const activityFilterActive = filters.activity !== "any" || filters.activityKind !== "All activities" || filters.activityStatus !== "All statuses";
-  if (activityFilterActive) {
-    const selectedKind = filters.activityKind === "All activities" ? null : filters.activityKind;
-    const matchingActivities = related.filter(activity => {
-      const kind = activity.type === "Other Communication" ? "Notes" : activity.kind === "call" ? "Calls" : activity.kind === "meeting" ? "Meetings" : activity.kind === "email" ? "Emails" : "Follow-ups";
-      return (!selectedKind || kind === selectedKind) && (filters.activityStatus === "All statuses" || activity.status === filters.activityStatus);
-    });
-    if (filters.activity === "without") activityMatch = related.length === 0;
-    else activityMatch = matchingActivities.length > 0;
-  }
+  const activityMatch = filters.activity === "any" || (filters.activity === "with" ? related.length > 0 : related.length === 0);
   const hasAttachment = Boolean(enquiry.resume || enquiry.resumeFile || enquiry.coverLetterFile || enquiry.coverLetter || enquiry.portfolio || related.some(activity => activity.attachments?.length));
   const attachmentMatch = filters.attachment === "any" || (filters.attachment === "with" ? hasAttachment : !hasAttachment);
   return fieldsMatch && activityMatch && attachmentMatch;
@@ -533,6 +528,34 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
   const [columnIds, setColumnIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [showOverview, setShowOverview] = useState(false);
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [favourites, setFavourites] = useState<{ profile: string; ids: string[] }>({ profile: "", ids: [] });
+  const favouriteIds = useMemo(() => new Set(favourites.profile === roleId ? favourites.ids : []), [favourites, roleId]);
+
+  useEffect(() => {
+    let ids: string[] = [];
+    try {
+      const stored: unknown = JSON.parse(window.localStorage.getItem(`ifranchise:lead-favourites:${roleId}`) ?? "[]");
+      if (Array.isArray(stored)) ids = [...new Set(stored.filter((id): id is string => typeof id === "string"))];
+    } catch { /* Ignore outdated or unavailable browser preferences. */ }
+    setFavourites({ profile: roleId, ids });
+  }, [roleId]);
+
+  useEffect(() => {
+    if (favourites.profile !== roleId) return;
+    try {
+      window.localStorage.setItem(`ifranchise:lead-favourites:${roleId}`, JSON.stringify(favourites.ids));
+    } catch { /* Keep favourites available in this session when storage is unavailable. */ }
+  }, [favourites, roleId]);
+
+  function toggleFavourite(id: string) {
+    setFavourites(current => {
+      const ids = new Set(current.profile === roleId ? current.ids : []);
+      if (ids.has(id)) ids.delete(id); else ids.add(id);
+      return { profile: roleId, ids: [...ids] };
+    });
+  }
 
   useEffect(() => {
     const activeProfile = readActiveCrmRole();
@@ -541,6 +564,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
 
   useEffect(() => {
     setQuery("");
+    setShowOverview(false);
+    setFavouritesOnly(false);
     setStatus("All statuses");
     setBrand("All brands");
     setLocation("All locations");
@@ -568,7 +593,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     if (section !== category) router.replace(`/library/modules/leads?view=${encodeURIComponent(category)}`);
   }, [role, section, activeCategory, router]);
 
-  useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId]);
+  useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId, favouritesOnly]);
 
   const scopedEnquiries = useMemo(() => enquiries.filter(item => item.category !== "Job" && role.categories.includes(item.category)), [enquiries, role]);
   const scopedActivities = useMemo(() => activities.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activities, scopedEnquiries]);
@@ -629,18 +654,19 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
       })),
     ];
   }, [configurableColumnDefs, scopedEnquiries]);
-  const visibleEnquiries = useMemo(() => scopedEnquiries.filter(enquiry => {
+  const matchingEnquiryPool = useMemo(() => scopedEnquiries.filter(enquiry => {
     const text = `${enquiry.name} ${enquiry.brand} ${enquiry.city} ${enquiry.owner} ${enquiry.id} ${enquiry.mobile} ${enquiry.email}`.toLowerCase();
     return text.includes(query.toLowerCase())
       && (!activeCategory || enquiry.category === activeCategory)
+      && (!favouritesOnly || favouriteIds.has(enquiry.id))
       && (status === "All statuses" || enquiry.status === status)
       && (brand === "All brands" || enquiry.brand === brand)
-      && (location === "All locations" || enquiry.city === location)
-      && (!advancedFilters || matchesLeadCriteria(enquiry, scopedActivities, advancedFilters, advancedFilterFields));
-  }), [scopedEnquiries, scopedActivities, query, activeCategory, status, brand, location, advancedFilters, advancedFilterFields]);
+      && (location === "All locations" || enquiry.city === location);
+  }), [scopedEnquiries, query, activeCategory, status, brand, location, favouritesOnly, favouriteIds]);
+  const visibleEnquiries = useMemo(() => matchingEnquiryPool.filter(enquiry => !advancedFilters || matchesLeadCriteria(enquiry, scopedActivities, advancedFilters, advancedFilterFields)), [matchingEnquiryPool, scopedActivities, advancedFilters, advancedFilterFields]);
   const enquiryPage = slicePage(visibleEnquiries, page);
   const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
-  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length + Number(advancedFilters.activity !== "any" || advancedFilters.activityKind !== "All activities" || advancedFilters.activityStatus !== "All statuses") + Number(advancedFilters.attachment !== "any") : 0;
+  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length + Number(advancedFilters.activity !== "any") + Number(advancedFilters.attachment !== "any") : 0;
   const defaultColumnIds = baseColumns.filter(column => column.id !== "select" && column.id !== "actions").map(column => column.id);
   const requiredColumnId = enquiryView ? "person" : section === "Activity" ? "activity" : "source";
   const columnScope = `leads:${section}`;
@@ -650,9 +676,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnScope, role.id]);
   const visibleColumnIds = columnIds.length ? columnIds.filter(id => configurableColumnDefs.some(column => column.id === id)) : defaultColumnIds;
-  const tableColumns: Column[] = [selectColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const tableColumns: Column[] = [selectColumn, favouriteColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
   const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
   const showBrandFilter = configurableColumnDefs.some(column => column.id === "brand");
+  const favouritesCount = visiblePool.filter(item => favouriteIds.has(item.id)).length;
   const leadTotal = sources.reduce((sum, item) => sum + item.leads, 0);
   const convertedTotal = sources.reduce((sum, item) => sum + item.converted, 0);
   function saveColumns(ids: string[], organizationDefault: boolean) {
@@ -922,7 +949,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             />
           ) : (
           <div className="contents">
-          <div className="flex shrink-0 items-center justify-between gap-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1">
               <h2 className="m-0 flex items-center gap-1 text-title-2-medium text-text-primary">
                 {heading}
@@ -935,31 +962,34 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               </h2>
               <p className="m-0 text-body-regular text-text-secondary">{description}</p>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" leadingIcon={RiBarChartBoxLine} aria-expanded={showOverview} aria-controls="lead-quick-overview" onClick={() => setShowOverview(current => !current)}>Quick overview</Button>
             {enquiryView && <Button leadingIcon={RiAddLine} onClick={() => { setDraftCategory(activeCategory && role.categories.includes(activeCategory) ? activeCategory : role.categories[0]); setDraftEnquiryType("Specific brand"); setDraftCity(""); setDraftState(""); setAdding(true); }}>Add Enquiry</Button>}
             {section === "Activity" && <Button leadingIcon={RiAddLine} onClick={() => setLogging(true)}>Add Activity</Button>}
             {section === "Sources" && <Button leadingIcon={RiAddLine} onClick={() => { setSourceName("Website"); setAddingSource(true); }}>Add Source</Button>}
+            </div>
           </div>
 
-          {enquiryView && (
-            <div className="ld-stats shrink-0">
-              <Stat icon={RiUser3Line} value={visiblePool.length} label="Total Enquiries" tone="purple" onClick={() => setStatus("All statuses")} />
-              <Stat icon={RiStackLine} value={visiblePool.filter(item => item.status === "New").length} label="New" tone="purple" onClick={() => setStatus(current => current === "New" ? "All statuses" : "New")} />
-              <Stat icon={RiLoopRightLine} value={visiblePool.filter(item => item.status === "In Progress").length} label="In Progress" tone="yellow" onClick={() => setStatus(current => current === "In Progress" ? "All statuses" : "In Progress")} />
-              <Stat icon={RiCheckboxCircleLine} value={visiblePool.filter(item => item.status === "Qualified").length} label="Qualified" tone="green" onClick={() => setStatus(current => current === "Qualified" ? "All statuses" : "Qualified")} />
-              <Stat icon={RiFlag2Line} value={visiblePool.filter(item => item.status === "Converted").length} label="Converted" tone="blue" onClick={() => setStatus(current => current === "Converted" ? "All statuses" : "Converted")} />
+          {showOverview && enquiryView && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats shrink-0">
+              <Stat icon={RiUser3Line} value={visibleEnquiries.length} label="Total Enquiries" tone="purple" onClick={() => setStatus("All statuses")} />
+              <Stat icon={RiStackLine} value={visibleEnquiries.filter(item => item.status === "New").length} label="New" tone="purple" onClick={() => setStatus(current => current === "New" ? "All statuses" : "New")} />
+              <Stat icon={RiLoopRightLine} value={visibleEnquiries.filter(item => item.status === "In Progress").length} label="In Progress" tone="yellow" onClick={() => setStatus(current => current === "In Progress" ? "All statuses" : "In Progress")} />
+              <Stat icon={RiCheckboxCircleLine} value={visibleEnquiries.filter(item => item.status === "Qualified").length} label="Qualified" tone="green" onClick={() => setStatus(current => current === "Qualified" ? "All statuses" : "Qualified")} />
+              <Stat icon={RiFlag2Line} value={visibleEnquiries.filter(item => item.status === "Converted").length} label="Converted" tone="blue" onClick={() => setStatus(current => current === "Converted" ? "All statuses" : "Converted")} />
             </div>
           )}
-          {section === "Activity" && (
-            <div className="ld-stats shrink-0">
-              <Stat icon={RiStackLine} value={scopedActivities.length} label="Total Activities" tone="purple" onClick={() => setActivityKind("All types")} />
-              <Stat icon={RiPhoneLine} value={scopedActivities.filter(item => item.kind === "call").length} label="Calls" tone="purple" onClick={() => setActivityKind(current => current === "Calls" ? "All types" : "Calls")} />
-              <Stat icon={RiCalendarLine} value={scopedActivities.filter(item => item.kind === "meeting").length} label="Meetings" tone="purple" onClick={() => setActivityKind(current => current === "Meetings" ? "All types" : "Meetings")} />
-              <Stat icon={RiMailLine} value={scopedActivities.filter(item => item.kind === "email").length} label="Emails" tone="purple" onClick={() => setActivityKind(current => current === "Emails" ? "All types" : "Emails")} />
-              <Stat icon={RiTimeLine} value={scopedActivities.filter(item => item.kind === "follow-up" && item.type !== "Other Communication").length} label="Follow-ups" tone="purple" onClick={() => setActivityKind(current => current === "Follow-ups" ? "All types" : "Follow-ups")} />
+          {showOverview && section === "Activity" && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats shrink-0">
+              <Stat icon={RiStackLine} value={visibleActivities.length} label="Total Activities" tone="purple" onClick={() => setActivityKind("All types")} />
+              <Stat icon={RiPhoneLine} value={visibleActivities.filter(item => item.kind === "call").length} label="Calls" tone="purple" onClick={() => setActivityKind(current => current === "Calls" ? "All types" : "Calls")} />
+              <Stat icon={RiCalendarLine} value={visibleActivities.filter(item => item.kind === "meeting").length} label="Meetings" tone="purple" onClick={() => setActivityKind(current => current === "Meetings" ? "All types" : "Meetings")} />
+              <Stat icon={RiMailLine} value={visibleActivities.filter(item => item.kind === "email").length} label="Emails" tone="purple" onClick={() => setActivityKind(current => current === "Emails" ? "All types" : "Emails")} />
+              <Stat icon={RiTimeLine} value={visibleActivities.filter(item => item.kind === "follow-up" && item.type !== "Other Communication").length} label="Follow-ups" tone="purple" onClick={() => setActivityKind(current => current === "Follow-ups" ? "All types" : "Follow-ups")} />
             </div>
           )}
-          {section === "Sources" && (
-            <div className="ld-stats ld-stats-4 shrink-0">
+          {showOverview && section === "Sources" && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats ld-stats-4 shrink-0">
               <Stat icon={RiStackLine} value={sources.length} label="Total Sources" tone="purple" onClick={() => { setStatus("All statuses"); setSourceKind("All types"); }} />
               <Stat icon={RiPlayCircleLine} value={sources.filter(item => item.active).length} label="Active Sources" tone="green" onClick={() => setStatus(current => current === "Active" ? "All statuses" : "Active")} />
               <Stat icon={RiGroupLine} value={leadTotal.toLocaleString("en-IN")} label="Total Leads" tone="purple" onClick={() => setSourceView({ name: "All", rows: sourceLeads })} />
@@ -968,6 +998,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
           )}
 
           <Panel>
+            {enquiryView && <div className="flex shrink-0 items-center gap-2 border-b border-separator-border px-3 py-2" role="group" aria-label="Enquiry lists">
+              <Button size="small" variant={favouritesOnly ? "ghost" : "primary"} aria-pressed={!favouritesOnly} onClick={() => { setFavouritesOnly(false); setSelected(new Set()); }}>All enquiries</Button>
+              <Button size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setSelected(new Set()); }}>Favourites ({favouritesCount})</Button>
+            </div>}
             <div className="ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3">
               <SearchField
                 aria-label={`Search ${heading.toLowerCase()}`}
@@ -991,8 +1025,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 <FilterSelect label="Source type" value={sourceKind} onChange={setSourceKind} options={["All types", ...sourceKinds]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "Active", "Inactive"]} />
               </>}
-              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setAdvancedFiltersOpen(current => !current)}>{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</Button>}
-              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiSettings3Line} onClick={() => setColumnManagerOpen(true)}>Columns</Button>
+              <div className="ld-toolbar-actions ms-auto flex max-w-full flex-wrap items-center gap-2">
+              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} aria-expanded={advancedFiltersOpen} aria-controls="lead-advanced-filters" onClick={() => setAdvancedFiltersOpen(current => !current)}>{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</Button>}
+              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} onClick={() => setColumnManagerOpen(true)}>Customize columns</Button>
+              </div>
             </div>
             {enquiryView && selectedIds.length > 0 && (
               <div className="ld-bulk">
@@ -1006,34 +1042,25 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             )}
 
             <div className={cx("ld-record-layout", advancedFiltersOpen && enquiryView && "is-filter-open")}>
-            {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
-              fields={advancedFilterFields}
-              scope={columnScope}
-              userId={role.id}
-              resultCount={visibleEnquiries.length}
-              countFor={filters => scopedEnquiries.filter(enquiry => matchesLeadCriteria(enquiry, scopedActivities, filters, advancedFilterFields)).length}
-              activeFilterCount={advancedFilterCount}
-              onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
-              onClear={() => { setAdvancedFilters(null); setPage(1); }}
-              onClose={() => setAdvancedFiltersOpen(false)}
-            />}
+
             <div className={cx("ld-record-content", section === "Activity" && "ld-scroll-fit")}>
             <div className="ld-scroll">
               {enquiryView && (
                 <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
                     {(column: Column) => (
-                      <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>
-                        {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.name}
+                      <TableColumn isRowHeader={column.isRowHeader} aria-label={column.id === "favourite" ? "Favourite" : undefined} className={cx(column.id === "status" && "ld-status-heading", column.id === "favourite" && "ld-favourite-cell")}>
+                        {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}
                       </TableColumn>
                     )}
                   </TableHeader>
-                  <TableBody items={enquiryPage.rows}>
+                  <TableBody items={enquiryPage.rows} dependencies={[favouriteIds]}>
                     {enquiry => (
-                      <TableRow columns={tableColumns} className="cursor-pointer outline-none">
+                      <TableRow columns={tableColumns} dependencies={[enquiry, favouriteIds.has(enquiry.id)]} className="cursor-pointer outline-none">
                         {(column: Column) => (
-                          <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
+                          <TableCell className={cx(column.id === "status" && "ld-status-cell", column.id === "favourite" && "ld-favourite-cell")}>
                             {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
+                            {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(enquiry.id) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(enquiry.id) ? "Remove" : "Add"} ${enquiry.name} ${favouriteIds.has(enquiry.id) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(enquiry.id)} title={favouriteIds.has(enquiry.id) ? "Remove from favourites" : "Add to favourites"} className={cx("border-0 bg-transparent shadow-none", favouriteIds.has(enquiry.id) ? "text-accent-700" : "text-foreground-icon-secondary")} onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(enquiry.id); }} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}
                             {column.id === "contactPerson" && (enquiry.contactPerson || enquiry.name)}
@@ -1164,7 +1191,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 </Table>
               )}
 
-              {enquiryView && !visibleEnquiries.length && <Empty title="No enquiries found" detail="Try another name, status, brand or city." />}
+              {enquiryView && !visibleEnquiries.length && <Empty title={favouritesOnly ? "No favourite enquiries found" : "No enquiries found"} detail={favouritesOnly ? "Star an enquiry to save it here, or adjust your filters." : "Try another name, status, brand or city."} />}
               {section === "Activity" && !visibleActivities.length && <Empty title="No activity found" detail="Try another enquiry, person or status." />}
               {section === "Sources" && !visibleSources.length && <Empty title="No sources found" detail="Try another name, type or status." />}
               {enquiryView && visibleEnquiries.length > 0 && <Pager page={enquiryPage.current} pages={enquiryPage.pages} onPage={setPage} label={`Showing ${enquiryPage.start}–${enquiryPage.end} of ${visibleEnquiries.length} enquiries`} />}
@@ -1172,6 +1199,23 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
             </div>
             </div>
+            {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
+              id="lead-advanced-filters"
+              initialFilters={advancedFilters}
+              title="Advanced filters"
+              description="Choose the enquiries to show."
+              recordLabel="enquiries"
+              searchPlaceholder="Find a field"
+              fields={advancedFilterFields}
+              scope={columnScope}
+              userId={role.id}
+              resultCount={visibleEnquiries.length}
+              countFor={filters => matchingEnquiryPool.filter(enquiry => matchesLeadCriteria(enquiry, scopedActivities, filters, advancedFilterFields)).length}
+              activeFilterCount={advancedFilterCount}
+              onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
+              onClear={() => { setAdvancedFilters(null); setPage(1); }}
+              onClose={() => setAdvancedFiltersOpen(false)}
+            />}
             </div>
           </Panel>
           </div>

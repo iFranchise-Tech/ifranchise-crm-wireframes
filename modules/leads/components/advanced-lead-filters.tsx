@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiFilter3Line, RiSaveLine } from "@remixicon/react";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { cx } from "@/utils/cx";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -31,13 +32,13 @@ const emptyFilters: LeadAdvancedFilters = {
 };
 
 const storageKey = (scope: string, userId: string) => `ifranchise:advanced-filters:${scope}:${userId}`;
-const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ ...filters, match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
+const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ ...filters, match: "all", activityKind: "All activities", activityStatus: "All statuses", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
 
 export function AdvancedLeadFilters({
+  id,
   fields,
   scope,
   userId,
-  resultCount,
   countFor,
   onApply,
   onClear,
@@ -51,6 +52,7 @@ export function AdvancedLeadFilters({
   className,
   searchPlaceholder = "Search fields and related records",
 }: {
+  id?: string;
   fields: LeadFilterField[];
   scope: string;
   userId: string;
@@ -68,6 +70,7 @@ export function AdvancedLeadFilters({
   className?: string;
   searchPlaceholder?: string;
 }) {
+  const scrollFade = useScrollFade();
   const [draft, setDraft] = useState<LeadAdvancedFilters>(() => cloneFilters(initialFilters ?? emptyFilters));
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [fieldSearch, setFieldSearch] = useState("");
@@ -112,7 +115,7 @@ export function AdvancedLeadFilters({
   }
 
   function apply(filters: LeadAdvancedFilters) {
-    const normalized: LeadAdvancedFilters = { ...filters, match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })).filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
+    const normalized: LeadAdvancedFilters = { ...cloneFilters(filters), rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })).filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
     setDraft(cloneFilters(filters));
     onApply(normalized);
   }
@@ -120,7 +123,7 @@ export function AdvancedLeadFilters({
   function saveCurrent() {
     const name = saveName.trim();
     if (!name || saved.length >= 10) return;
-    const normalized: LeadAdvancedFilters = { ...draft, match: "all", rules: draft.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
+    const normalized: LeadAdvancedFilters = { ...cloneFilters(draft), rules: draft.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
     apply(normalized);
     const next = [...saved, { id: `filter-${Date.now()}`, name, filters: cloneFilters(normalized) }];
     setSaved(next);
@@ -145,7 +148,7 @@ export function AdvancedLeadFilters({
   }
 
   return (
-    <aside className={cx("ld-advanced-filter-panel", className)} aria-label="Advanced filters">
+    <aside id={id} className={cx("ld-advanced-filter-panel", className)} aria-label="Advanced filters">
       <header className="ld-advanced-filter-header">
         <div className="ld-advanced-filter-title">
           <span className="ld-advanced-filter-icon"><RiFilter3Line aria-hidden="true" /></span>
@@ -154,6 +157,7 @@ export function AdvancedLeadFilters({
         <Button iconOnly aria-label="Close advanced filters" size="small" variant="ghost" leadingIcon={RiCloseLine} onClick={onClose} />
       </header>
 
+      <div className="ld-filter-body-wrap"><div className="ld-filter-body" onScroll={scrollFade.onScroll}>
       <SearchField aria-label="Search filter fields" placeholder={searchPlaceholder} value={fieldSearch} onChange={setFieldSearch} className="ld-advanced-filter-search" fieldClassName="bg-background-primary-default" />
       {fieldSearch && <div className="ld-filter-field-suggestions" aria-label="Matching filter fields">
         {filteredFields.slice(0, 5).map(field => <button type="button" key={field.id} onClick={() => { setDraft(current => ({ ...current, rules: [...current.rules, { id: `rule-${Date.now()}`, field: field.id, operator: operators(field)[0], value: "" }] })); setFieldSearch(""); }}>{field.name}<RiAddLine aria-hidden="true" /></button>)}
@@ -204,24 +208,20 @@ export function AdvancedLeadFilters({
         </div>
       </section>
 
-      {showRelatedRecords && <section className="ld-filter-section">
-        <div className="ld-filter-section-title"><h4>Related records</h4><span>Activities & files</span></div>
-        <label className="ld-filter-label" htmlFor="ld-activity-presence">Activities</label>
-        <Select id="ld-activity-presence" aria-label="Related activity presence" selectedKey={draft.activity} onSelectionChange={key => setDraft(current => ({ ...current, activity: String(key) as LeadAdvancedFilters["activity"] }))} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
-          <SelectItem id="any" key="any">Any activity state</SelectItem><SelectItem id="with" key="with">With any activity</SelectItem><SelectItem id="without" key="without">Without any activity</SelectItem>
-        </Select>
-        <div className="ld-filter-related-grid">
-          <Select aria-label="Activity type" selectedKey={draft.activityKind} onSelectionChange={key => setDraft(current => ({ ...current, activityKind: String(key) }))} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
-            {["All activities", "Calls", "Meetings", "Emails", "Follow-ups", "Notes"].map(value => <SelectItem id={value} key={value}>{value}</SelectItem>)}
-          </Select>
-          <Select aria-label="Activity status" selectedKey={draft.activityStatus} onSelectionChange={key => setDraft(current => ({ ...current, activityStatus: String(key) }))} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
-            {["All statuses", "Completed", "Scheduled", "In Progress", "Pending"].map(value => <SelectItem id={value} key={value}>{value}</SelectItem>)}
-          </Select>
+      {showRelatedRecords && <section className="ld-filter-section" aria-label="Activity and file filters">
+        <div className="ld-filter-section-title"><h4>Activity & files</h4></div>
+        <div className="flex flex-col gap-2" role="group" aria-label="Activities">
+          <span className="text-body-2-medium text-text-primary">Activities</span>
+          <div className="grid grid-cols-3 gap-1">
+            {([{ id: "any", label: "Any" }, { id: "with", label: "With activity" }, { id: "without", label: "No activity" }] as const).map(option => <Button key={option.id} size="small" variant={draft.activity === option.id ? "primary" : "secondary"} className="px-2 text-caption-1-medium" aria-pressed={draft.activity === option.id} onClick={() => setDraft(current => ({ ...current, activity: option.id, activityKind: "All activities", activityStatus: "All statuses" }))}>{option.label}</Button>)}
+          </div>
         </div>
-        <label className="ld-filter-label" htmlFor="ld-attachment-presence">Attachments</label>
-        <Select id="ld-attachment-presence" aria-label="Attachment presence" selectedKey={draft.attachment} onSelectionChange={key => setDraft(current => ({ ...current, attachment: String(key) as LeadAdvancedFilters["attachment"] }))} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
-          <SelectItem id="any" key="any">Any attachment state</SelectItem><SelectItem id="with" key="with">With attachments</SelectItem><SelectItem id="without" key="without">Without attachments</SelectItem>
-        </Select>
+        <div className="flex flex-col gap-2" role="group" aria-label="Files">
+          <span className="text-body-2-medium text-text-primary">Files</span>
+          <div className="grid grid-cols-3 gap-1">
+            {([{ id: "any", label: "Any" }, { id: "with", label: "With files" }, { id: "without", label: "No files" }] as const).map(option => <Button key={option.id} size="small" variant={draft.attachment === option.id ? "primary" : "secondary"} className="px-2 text-caption-1-medium" aria-pressed={draft.attachment === option.id} onClick={() => setDraft(current => ({ ...current, attachment: option.id }))}>{option.label}</Button>)}
+          </div>
+        </div>
       </section>}
 
       <section className="ld-filter-save">
@@ -229,8 +229,9 @@ export function AdvancedLeadFilters({
         {saved.length >= 10 && <span>You have reached the 10 saved filters per view limit.</span>}
       </section>
 
+      </div><ScrollFade progress={scrollFade.progress} surfaceClassName="from-background-primary-default" /></div>
       <footer className="ld-advanced-filter-footer">
-        <span>{resultCount} matching {recordLabel}{activeFilterCount > 0 ? ` · ${activeFilterCount} filters applied` : ""}</span>
+        <span>{countFor(draft)} matching {recordLabel}{activeFilterCount > 0 ? ` · ${activeFilterCount} filters applied` : ""}</span>
         <div>
           <Button size="small" variant="ghost" onClick={() => { setDraft(cloneFilters(emptyFilters)); onClear(); }}>Clear</Button>
           <Button size="small" onClick={() => apply(draft)}>Apply filters</Button>
