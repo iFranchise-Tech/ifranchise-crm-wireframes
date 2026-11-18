@@ -393,7 +393,7 @@ export function SalesPipelineWorkspace() {
 
     <Modal isOpen={advancedFiltersOpen} onOpenChange={setAdvancedFiltersOpen} size="sm" aria-label="Advanced opportunity filters">
       <ModalBody className="p-0">
-        <AdvancedLeadFilters fields={filterFields} scope={columnScope} userId={profile.id} title="Advanced filters" description="Narrow down your opportunities." recordLabel="opportunities" showRelatedRecords={false} className="sp-advanced-panel" searchPlaceholder="Search opportunity fields"
+        <AdvancedLeadFilters fields={filterFields} scope={columnScope} userId={profile.id} title="Advanced filters" description="Narrow down your opportunities." recordLabel="opportunities" className="sp-advanced-panel" searchPlaceholder="Search opportunity fields"
           initialFilters={advancedFilters} resultCount={filtered.length} activeFilterCount={activeFilterCount}
           countFor={filters => quickFiltered.filter(item => matchesOpportunityFilters(item, filters, stages)).length}
           onApply={filters => { setAdvancedFilters(filters); setAdvancedFiltersOpen(false); }}

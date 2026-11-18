@@ -13,26 +13,40 @@ export type LeadFilterRule = { id: string; field: string; operator: string; valu
 export type LeadAdvancedFilters = {
   match: "all" | "any";
   rules: LeadFilterRule[];
-  activity: "any" | "with" | "without";
-  activityKind: string;
-  activityStatus: string;
-  attachment: "any" | "with" | "without";
 };
 export type LeadFilterField = { id: string; name: string; type: "text" | "date" | "select"; options?: string[] };
+
+function filterValuePrompt(field: LeadFilterField): string {
+  const prompts: Record<string, string> = {
+    person: field.name === "Enquiry" ? "Enter an enquiry name" : `Enter ${field.name.toLowerCase()}`,
+    id: "Enter an enquiry ID",
+    brand: "Select a brand",
+    owner: "Select an assignee",
+    status: "Select a status",
+    stage: "Select a stage",
+    city: "Select a city",
+    location: "Select a location",
+    state: "Select a state",
+    leadSource: "Select a lead source",
+    enquiryType: "Select an enquiry type",
+    investment: "Select an investment range",
+    timeline: "Select a requirement timeline",
+    experience: "Select an experience range",
+    noticePeriod: "Select a notice period",
+    created: "Select a creation date",
+  };
+  return prompts[field.id] ?? `${field.type === "text" ? "Enter" : "Select"} ${field.name.toLowerCase()}`;
+}
 
 type SavedFilter = { id: string; name: string; filters: LeadAdvancedFilters };
 
 const emptyFilters: LeadAdvancedFilters = {
   match: "all",
   rules: [{ id: "rule-1", field: "person", operator: "is", value: "" }],
-  activity: "any",
-  activityKind: "All activities",
-  activityStatus: "All statuses",
-  attachment: "any",
 };
 
 const storageKey = (scope: string, userId: string) => `ifranchise:advanced-filters:${scope}:${userId}`;
-const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ ...filters, match: "all", activityKind: "All activities", activityStatus: "All statuses", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
+const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
 
 export function AdvancedLeadFilters({
   id,
@@ -48,9 +62,8 @@ export function AdvancedLeadFilters({
   title = "Filter leads by",
   description = "Build and save a focused lead view.",
   recordLabel = "leads",
-  showRelatedRecords = true,
   className,
-  searchPlaceholder = "Search fields and related records",
+  searchPlaceholder = "Find a field",
 }: {
   id?: string;
   fields: LeadFilterField[];
@@ -66,7 +79,6 @@ export function AdvancedLeadFilters({
   title?: string;
   description?: string;
   recordLabel?: string;
-  showRelatedRecords?: boolean;
   className?: string;
   searchPlaceholder?: string;
 }) {
@@ -178,7 +190,7 @@ export function AdvancedLeadFilters({
       </section>}
 
       <section className="ld-filter-section">
-        <div className="ld-filter-section-title"><h4>Filter by fields</h4><span>{draft.rules.length} criteria</span></div>
+        <div className="ld-filter-section-title"><h4>Filter by fields</h4><span>{draft.rules.length} {draft.rules.length === 1 ? "criterion" : "criteria"}</span></div>
         <div className="ld-filter-match-row">
           <span>Match</span>
           <span className="text-body-medium text-text-primary">All criteria</span>
@@ -190,15 +202,17 @@ export function AdvancedLeadFilters({
             const fieldOperators = operators(field);
             return <div className="ld-filter-rule" key={rule.id}>
               <div className="ld-filter-rule-head"><span>{field.name}</span><button type="button" aria-label={`Remove ${field.name} filter`} onClick={() => setDraft(current => ({ ...current, rules: current.rules.filter(item => item.id !== rule.id) }))}><RiCloseLine aria-hidden="true" /></button></div>
+              <div className="ld-filter-rule-selects">
               <Select aria-label={`${field.name} field`} selectedKey={field.id} onSelectionChange={key => updateRule(rule.id, { field: String(key) })} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
                 {fields.map(option => <SelectItem id={option.id} key={option.id}>{option.name}</SelectItem>)}
               </Select>
               <Select aria-label={`${field.name} condition`} selectedKey={fieldOperators.includes(rule.operator) ? rule.operator : fieldOperators[0]} onSelectionChange={key => updateRule(rule.id, { operator: String(key), value: "" })} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
                 {fieldOperators.map(operator => <SelectItem id={operator} key={operator}>{operator}</SelectItem>)}
               </Select>
-              {!(["is empty", "is not empty"].includes(rule.operator)) && (field.type === "select" ? <Select aria-label={`${field.name} value`} selectedKey={rule.value || "__choose__"} onSelectionChange={key => { const value = String(key); if (value !== "__choose__") updateRule(rule.id, { value }); }} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
-                <SelectItem id="__choose__" key="__choose__">Choose a value</SelectItem>{(field.options ?? []).map(value => <SelectItem id={value} key={value}>{value}</SelectItem>)}
-              </Select> : <Input aria-label={`${field.name} value`} type={field.type === "date" ? "date" : "text"} value={rule.value} onChange={value => updateRule(rule.id, { value })} placeholder={field.type === "date" ? "Choose a date" : `Enter ${field.name.toLowerCase()}`} className="ld-filter-value" fieldClassName="border border-border-button-default bg-background-primary-default" />)}
+              </div>
+              {!(["is empty", "is not empty"].includes(rule.operator)) && (field.type === "select" ? <Select aria-label={`${field.name} value`} selectedKey={rule.value || null} placeholder={filterValuePrompt(field)} onSelectionChange={key => updateRule(rule.id, { value: key == null ? "" : String(key) })} size="sm" className="ld-filter-compact-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-(--trigger-width)">
+                {(field.options ?? []).map(value => <SelectItem id={value} key={value}>{value}</SelectItem>)}
+              </Select> : <Input aria-label={`${field.name} value`} type={field.type === "date" ? "date" : "text"} value={rule.value} onChange={value => updateRule(rule.id, { value })} placeholder={filterValuePrompt(field)} className="ld-filter-value" fieldClassName="border border-border-button-default bg-background-primary-default" />)}
             </div>;
           })}
         </div>
@@ -207,22 +221,6 @@ export function AdvancedLeadFilters({
           <span>All criteria must match.</span>
         </div>
       </section>
-
-      {showRelatedRecords && <section className="ld-filter-section" aria-label="Activity and file filters">
-        <div className="ld-filter-section-title"><h4>Activity & files</h4></div>
-        <div className="flex flex-col gap-2" role="group" aria-label="Activities">
-          <span className="text-body-2-medium text-text-primary">Activities</span>
-          <div className="grid grid-cols-3 gap-1">
-            {([{ id: "any", label: "Any" }, { id: "with", label: "With activity" }, { id: "without", label: "No activity" }] as const).map(option => <Button key={option.id} size="small" variant={draft.activity === option.id ? "primary" : "secondary"} className="px-2 text-caption-1-medium" aria-pressed={draft.activity === option.id} onClick={() => setDraft(current => ({ ...current, activity: option.id, activityKind: "All activities", activityStatus: "All statuses" }))}>{option.label}</Button>)}
-          </div>
-        </div>
-        <div className="flex flex-col gap-2" role="group" aria-label="Files">
-          <span className="text-body-2-medium text-text-primary">Files</span>
-          <div className="grid grid-cols-3 gap-1">
-            {([{ id: "any", label: "Any" }, { id: "with", label: "With files" }, { id: "without", label: "No files" }] as const).map(option => <Button key={option.id} size="small" variant={draft.attachment === option.id ? "primary" : "secondary"} className="px-2 text-caption-1-medium" aria-pressed={draft.attachment === option.id} onClick={() => setDraft(current => ({ ...current, attachment: option.id }))}>{option.label}</Button>)}
-          </div>
-        </div>
-      </section>}
 
       <section className="ld-filter-save">
         {isSaving ? <div className="ld-filter-save-entry"><Input aria-label="Saved filter name" placeholder="Name this filter" value={saveName} onChange={setSaveName} maxLength={48} fieldClassName="border border-border-button-default bg-background-primary-default" /><Button size="small" onClick={saveCurrent} disabled={!saveName.trim() || saved.length >= 10}>Save</Button></div> : <Button size="small" variant="secondary" leadingIcon={RiSaveLine} onClick={() => setIsSaving(true)} disabled={saved.length >= 10}>Save current filter</Button>}

@@ -304,7 +304,7 @@ function Panel({ children }: { children: ReactNode }) {
 function FilterSelect({ label, value, options, onChange, width = "w-[158px]" }: { label: string; value: string; options: Array<string | { id: string; label: string }>; onChange: (value: string) => void; width?: string }) {
   const items = options.map(option => typeof option === "string" ? { id: option, label: option } : option);
   return (
-    <LeadSelect aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={`${width} shrink-0`} triggerClassName="w-full shadow-none">
+    <LeadSelect aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={cx("ld-toolbar-select shrink-0", width)} triggerClassName="w-full shadow-none">
       {items.map(option => <SelectItem key={option.id} id={option.id}>{option.label}</SelectItem>)}
     </LeadSelect>
   );
@@ -346,7 +346,7 @@ function advancedFieldValue(enquiry: Enquiry, field: string): string {
   return values[field] ?? "";
 }
 
-function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: LeadAdvancedFilters, fields: LeadFilterField[]) {
+function matchesLeadCriteria(enquiry: Enquiry, filters: LeadAdvancedFilters, fields: LeadFilterField[]) {
   const fieldRules = filters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator));
   const ruleMatches = fieldRules.map(rule => {
     const actual = advancedFieldValue(enquiry, rule.field);
@@ -372,12 +372,7 @@ function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: 
       default: return left.includes(right);
     }
   });
-  const fieldsMatch = !ruleMatches.length || ruleMatches.every(Boolean);
-  const related = activities.filter(activity => activity.enquiryId === enquiry.id);
-  const activityMatch = filters.activity === "any" || (filters.activity === "with" ? related.length > 0 : related.length === 0);
-  const hasAttachment = Boolean(enquiry.resume || enquiry.resumeFile || enquiry.coverLetterFile || enquiry.coverLetter || enquiry.portfolio || related.some(activity => activity.attachments?.length));
-  const attachmentMatch = filters.attachment === "any" || (filters.attachment === "with" ? hasAttachment : !hasAttachment);
-  return fieldsMatch && activityMatch && attachmentMatch;
+  return !ruleMatches.length || ruleMatches.every(Boolean);
 }
 
 function Stat({ icon: Icon, value, label, tone, onClick }: { icon: RemixiconComponentType; value: string | number; label: string; tone: string; onClick?: () => void }) {
@@ -663,10 +658,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
       && (brand === "All brands" || enquiry.brand === brand)
       && (location === "All locations" || enquiry.city === location);
   }), [scopedEnquiries, query, activeCategory, status, brand, location, favouritesOnly, favouriteIds]);
-  const visibleEnquiries = useMemo(() => matchingEnquiryPool.filter(enquiry => !advancedFilters || matchesLeadCriteria(enquiry, scopedActivities, advancedFilters, advancedFilterFields)), [matchingEnquiryPool, scopedActivities, advancedFilters, advancedFilterFields]);
+  const visibleEnquiries = useMemo(() => matchingEnquiryPool.filter(enquiry => !advancedFilters || matchesLeadCriteria(enquiry, advancedFilters, advancedFilterFields)), [matchingEnquiryPool, advancedFilters, advancedFilterFields]);
   const enquiryPage = slicePage(visibleEnquiries, page);
   const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
-  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length + Number(advancedFilters.activity !== "any") + Number(advancedFilters.attachment !== "any") : 0;
+  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length : 0;
   const defaultColumnIds = baseColumns.filter(column => column.id !== "select" && column.id !== "actions").map(column => column.id);
   const requiredColumnId = enquiryView ? "person" : section === "Activity" ? "activity" : "source";
   const columnScope = `leads:${section}`;
@@ -1000,12 +995,12 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
           <Panel>
             {enquiryView && <div className="flex shrink-0 items-center gap-2 border-b border-separator-border px-3 py-2" role="group" aria-label="Enquiry lists">
               <Button size="small" variant={favouritesOnly ? "ghost" : "primary"} aria-pressed={!favouritesOnly} onClick={() => { setFavouritesOnly(false); setSelected(new Set()); }}>All enquiries</Button>
-              <Button size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setSelected(new Set()); }}>Favourites ({favouritesCount})</Button>
+              <Button className="ld-favourites-list-button" size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setSelected(new Set()); }}>Favourites ({favouritesCount})</Button>
             </div>}
-            <div className="ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3">
+            <div className={cx("ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3", enquiryView && "ld-enquiry-toolbar", enquiryView && !showBrandFilter && "ld-enquiry-toolbar-no-brand")}>
               <SearchField
                 aria-label={`Search ${heading.toLowerCase()}`}
-                placeholder={section === "Activity" ? "Search activity, notes or enquiry ID" : section === "Sources" ? "Search source name..." : "Search by name, phone, email or enquiry ID"}
+                placeholder={section === "Activity" ? "Search activity, notes or enquiry ID" : section === "Sources" ? "Search source name..." : "Search enquiries"}
                 value={query}
                 onChange={setQuery}
                 className="min-w-0 flex-1"
@@ -1013,7 +1008,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {enquiryView && <>
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "New", "In Progress", "Qualified", "Converted"]} />
                 {showBrandFilter && <FilterSelect label="Interested brand" value={brand} onChange={setBrand} options={["All brands", ...brandsInView]} />}
-                <FilterSelect label="Location" value={location} onChange={setLocation} options={["All locations", ...citiesInView]} />
+                <FilterSelect label="Location" width="ld-location-filter" value={location} onChange={setLocation} options={["All locations", ...citiesInView]} />
               </>}
               {section === "Activity" && <>
                 <FilterSelect label="Activity type" value={activityKind} onChange={setActivityKind} options={["All types", "Calls", "Meetings", "Emails", "Follow-ups", "Notes"]} />
@@ -1025,9 +1020,9 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 <FilterSelect label="Source type" value={sourceKind} onChange={setSourceKind} options={["All types", ...sourceKinds]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "Active", "Inactive"]} />
               </>}
-              <div className="ld-toolbar-actions ms-auto flex max-w-full flex-wrap items-center gap-2">
-              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} aria-expanded={advancedFiltersOpen} aria-controls="lead-advanced-filters" onClick={() => setAdvancedFiltersOpen(current => !current)}>{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</Button>}
-              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} onClick={() => setColumnManagerOpen(true)}>Customize columns</Button>
+              <div className="ld-toolbar-actions ms-auto flex max-w-full items-center gap-2">
+              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} aria-label={advancedFilterCount ? `Advanced filters (${advancedFilterCount})` : "Advanced filters"} title="Advanced filters" aria-expanded={advancedFiltersOpen} aria-controls="lead-advanced-filters" onClick={() => setAdvancedFiltersOpen(current => !current)}><span className="ld-toolbar-action-label">{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</span></Button>}
+              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} aria-label="Customize columns" title="Customize columns" onClick={() => setColumnManagerOpen(true)}><span className="ld-toolbar-action-label">Customize columns</span></Button>
               </div>
             </div>
             {enquiryView && selectedIds.length > 0 && (
@@ -1060,7 +1055,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                         {(column: Column) => (
                           <TableCell className={cx(column.id === "status" && "ld-status-cell", column.id === "favourite" && "ld-favourite-cell")}>
                             {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
-                            {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(enquiry.id) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(enquiry.id) ? "Remove" : "Add"} ${enquiry.name} ${favouriteIds.has(enquiry.id) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(enquiry.id)} title={favouriteIds.has(enquiry.id) ? "Remove from favourites" : "Add to favourites"} className={cx("border-0 bg-transparent shadow-none", favouriteIds.has(enquiry.id) ? "text-accent-700" : "text-foreground-icon-secondary")} onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(enquiry.id); }} />}
+                            {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(enquiry.id) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(enquiry.id) ? "Remove" : "Add"} ${enquiry.name} ${favouriteIds.has(enquiry.id) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(enquiry.id)} title={favouriteIds.has(enquiry.id) ? "Remove from favourites" : "Add to favourites"} className="ld-favourite-button border-0 bg-transparent text-foreground-icon-secondary shadow-none" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(enquiry.id); }} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}
                             {column.id === "contactPerson" && (enquiry.contactPerson || enquiry.name)}
@@ -1210,7 +1205,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               scope={columnScope}
               userId={role.id}
               resultCount={visibleEnquiries.length}
-              countFor={filters => matchingEnquiryPool.filter(enquiry => matchesLeadCriteria(enquiry, scopedActivities, filters, advancedFilterFields)).length}
+              countFor={filters => matchingEnquiryPool.filter(enquiry => matchesLeadCriteria(enquiry, filters, advancedFilterFields)).length}
               activeFilterCount={advancedFilterCount}
               onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
               onClear={() => { setAdvancedFilters(null); setPage(1); }}
