@@ -45,6 +45,10 @@ export type Enquiry = {
   brand: string;
   investment: string;
   status: EnquiryStatus;
+  active?: boolean;
+  disqualified?: boolean;
+  score?: number;
+  stage?: string;
   focus: string;
   extra: string;
   originalSource: string;
@@ -95,6 +99,12 @@ export type Activity = {
   createdAt: string;
   meetLink?: string;
   attachments?: string[];
+  priority?: "High" | "Medium" | "Low";
+  assignedTo?: string;
+  reminder?: boolean;
+  reminderTiming?: string;
+  noteType?: string;
+  pinned?: boolean;
 };
 
 export type SourceLead = {

@@ -20,7 +20,6 @@ import {
   MENU_ITEM_ACTIVE,
   MENU_ITEMS_CONTAINER,
   MENU_POPOVER_SURFACE,
-  MENU_POPOVER_WIDTH,
 } from "@/components/base/dropdown/menu-styles";
 import { Label } from "@/components/base/input/label";
 import { ChevronDownSmall } from "@/components/foundations/icons/chevrons";
@@ -147,7 +146,7 @@ export function Select<T extends object>({
             isNonModal
             offset={4}
             className={cx(
-              MENU_POPOVER_WIDTH,
+              "w-max min-w-full max-w-[calc(100vw-32px)]",
               MENU_POPOVER_SURFACE,
               // Listbox rows already space themselves 4px apart, so the
               // surface sits a touch tighter than the action-menu Dropdown.

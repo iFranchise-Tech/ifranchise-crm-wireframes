@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AuthNavigation } from "./auth-navigation";
 import { ReviewShell } from "./review-shell";
-import { Icon } from "@/modules/auth/components/icon";
 import { authScreens, getAuthScreen, reviewHref, type AuthScreen } from "../config/auth-screens";
 type Mode = "desktop" | "mobile";
 
@@ -27,7 +26,10 @@ export function ScreenViewer({ screen, initialMode }: { screen: AuthScreen; init
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
       const data = event.data;
       if (data?.type === "ifranchise:preview-ready") frame.current?.contentWindow?.postMessage({ type: "ifranchise:select-screen", screen: selected.current }, window.location.origin);
-      if (data?.type === "ifranchise:screen-changed" && typeof data.screen === "string" && getAuthScreen(data.screen) && data.screen !== selected.current) window.history.pushState(null, "", reviewHref(data.screen, mode));
+      if (data?.type === "ifranchise:screen-changed" && typeof data.screen === "string" && getAuthScreen(data.screen) && data.screen !== selected.current) {
+        selected.current = data.screen;
+        router.replace(reviewHref(data.screen, mode), { scroll: false });
+      }
       if (data?.type === "ifranchise:open-library" && typeof data.href === "string" && /^\/library(?:\/modules\/[a-z-]+)?$/.test(data.href)) router.push(data.href);
       if (data?.type === "ifranchise:open-workspace") router.push(`/demo/workspace${mode === "mobile" ? "?mode=mobile" : ""}`);
     };
@@ -48,10 +50,7 @@ export function ScreenViewer({ screen, initialMode }: { screen: AuthScreen; init
   const width = mode === "mobile" ? Math.min(390, availableWidth) : availableWidth;
   const height = availableHeight;
   function changeMode(next: Mode) { setMode(next); window.history.replaceState(null, "", reviewHref(screen.id, next)); }
-  return <ReviewShell moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title={screen.title} navigation={<AuthNavigation screenId={screen.id} mode={mode} />} controls={<div className="preview-mode-control" role="group" aria-label="Preview size">
-    <button aria-label="Desktop" aria-pressed={mode === "desktop"} onClick={() => changeMode("desktop")}><Icon name="desktop" /><span>Desktop</span></button>
-    <button aria-label="Mobile" aria-pressed={mode === "mobile"} onClick={() => changeMode("mobile")}><Icon name="mobile" /><span>Mobile</span></button>
-  </div>}>
+  return <ReviewShell className="auth-review-shell" moduleName="Authentication" icon="lock" subtitle={`${authScreens.length} screens & states`} overviewHref={reviewHref("overview", mode)} title={screen.title} navigation={<AuthNavigation screenId={screen.id} mode={mode} />}>
     <div className="review-stage" ref={stage} data-mode={mode}>
       <div className="review-frame-wrap" style={{ width, height, visibility: measured ? "visible" : "hidden" }}>
         <iframe ref={frame} className="review-frame" title={`${screen.title} — ${mode} preview`} src={source.current} style={{ width, height }} />

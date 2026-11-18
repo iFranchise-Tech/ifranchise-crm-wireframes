@@ -8,7 +8,6 @@ export function AuthNavigation({ screenId, mode }: { screenId: string; mode: "de
   const activeGroup = getScreenGroup(screenId);
   const accordionName = useId();
   return <nav className="review-navigation" aria-label="Authentication screens">
-    <Link className="review-overview-link" href={reviewHref("overview", mode)} aria-current={screenId === "overview" ? "page" : undefined}><Icon name="grid" />Module overview</Link>
     {authScreenGroups.map(group => <details className="review-nav-group" name={accordionName} key={`${group.id}-${activeGroup?.id}`} open={group.id === activeGroup?.id}>
       <summary><Icon name={group.icon} /><span>{group.title}</span><Icon name="chevron" /></summary>
       <ul>{group.screens.map(screen => <li key={screen.id}><Link href={reviewHref(screen.id, mode)} prefetch={false} onClick={event => {

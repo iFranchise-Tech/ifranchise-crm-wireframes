@@ -159,6 +159,11 @@
  * Figma. Direction inferred — confirm visually against Figma.
  * --------------------------------------------------------------------------- */
 :root {
+  /* Primary calls to action match the product authentication pages. */
+  --color-cta-primary: #32159b;
+  --color-cta-primary-hover: #271077;
+  --color-cta-primary-active: #1e0d5b;
+
   /* Foreground (icons + on-fill content) */
   --color-foreground-full:               var(--color-white);
   --color-foreground-icon-primary:       var(--color-neutral-950);
@@ -409,9 +414,9 @@
   --color-chart-agents-bar-active: var(--color-purple-400);
 
   /* Button gradients */
-  --gradient-button-primary-default:  linear-gradient(180deg, var(--color-accent-500)    0%, var(--color-accent-600)    100%);
-  --gradient-button-primary-hover:    linear-gradient(180deg, var(--color-accent-400)    0%, var(--color-accent-500)    100%);
-  --gradient-button-primary-active:   linear-gradient(180deg, var(--color-accent-600)    0%, var(--color-accent-700)    100%);
+  --gradient-button-primary-default:  linear-gradient(180deg, var(--color-cta-primary) 0%, var(--color-cta-primary) 100%);
+  --gradient-button-primary-hover:    linear-gradient(180deg, var(--color-cta-primary-hover) 0%, var(--color-cta-primary-hover) 100%);
+  --gradient-button-primary-active:   linear-gradient(180deg, var(--color-cta-primary-active) 0%, var(--color-cta-primary-active) 100%);
   --gradient-button-primary-disabled: linear-gradient(180deg, var(--color-neutral-200) 0%, var(--color-neutral-300) 100%);
 
   --gradient-button-danger-default:   linear-gradient(180deg, var(--color-red-500) 0%, var(--color-red-600) 100%);
@@ -642,6 +647,9 @@
  * Tailwind reads the *current* computed value of the variable, so light↔dark
  * flips work without rebuild. */
 @theme inline {
+  --color-cta-primary: var(--color-cta-primary);
+  --color-cta-primary-hover: var(--color-cta-primary-hover);
+  --color-cta-primary-active: var(--color-cta-primary-active);
   --color-foreground-full:            var(--color-foreground-full);
   --color-foreground-icon-primary:    var(--color-foreground-icon-primary);
   --color-foreground-icon-hover:      var(--color-foreground-icon-hover);
