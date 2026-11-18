@@ -63,6 +63,7 @@ import { cx } from "@/utils/cx";
 import { EnquiryDetail } from "./enquiry-detail";
 import { SourceLeadsPanel } from "./source-leads-panel";
 import { cityOptions, DateField, LeadSelect, leadTimes, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
+import { useLeadFavourites } from "@/modules/leads/lib/use-lead-favourites";
 import { initialActivities, initialEnquiries, initialSources, sourceLeads } from "../data";
 import {
   activityStatuses,
@@ -525,32 +526,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [page, setPage] = useState(1);
   const [showOverview, setShowOverview] = useState(false);
   const [favouritesOnly, setFavouritesOnly] = useState(false);
-  const [favourites, setFavourites] = useState<{ profile: string; ids: string[] }>({ profile: "", ids: [] });
-  const favouriteIds = useMemo(() => new Set(favourites.profile === roleId ? favourites.ids : []), [favourites, roleId]);
-
-  useEffect(() => {
-    let ids: string[] = [];
-    try {
-      const stored: unknown = JSON.parse(window.localStorage.getItem(`ifranchise:lead-favourites:${roleId}`) ?? "[]");
-      if (Array.isArray(stored)) ids = [...new Set(stored.filter((id): id is string => typeof id === "string"))];
-    } catch { /* Ignore outdated or unavailable browser preferences. */ }
-    setFavourites({ profile: roleId, ids });
-  }, [roleId]);
-
-  useEffect(() => {
-    if (favourites.profile !== roleId) return;
-    try {
-      window.localStorage.setItem(`ifranchise:lead-favourites:${roleId}`, JSON.stringify(favourites.ids));
-    } catch { /* Keep favourites available in this session when storage is unavailable. */ }
-  }, [favourites, roleId]);
-
-  function toggleFavourite(id: string) {
-    setFavourites(current => {
-      const ids = new Set(current.profile === roleId ? current.ids : []);
-      if (ids.has(id)) ids.delete(id); else ids.add(id);
-      return { profile: roleId, ids: [...ids] };
-    });
-  }
+  const { favouriteIds, toggleFavourite } = useLeadFavourites(roleId);
 
   useEffect(() => {
     const activeProfile = readActiveCrmRole();

@@ -14,9 +14,10 @@ export type LeadAdvancedFilters = {
   match: "all" | "any";
   rules: LeadFilterRule[];
 };
-export type LeadFilterField = { id: string; name: string; type: "text" | "date" | "select"; options?: string[] };
+export type LeadFilterField = { id: string; name: string; type: "text" | "date" | "select"; options?: string[]; placeholder?: string };
 
 function filterValuePrompt(field: LeadFilterField): string {
+  if (field.placeholder) return field.placeholder;
   const prompts: Record<string, string> = {
     person: field.name === "Enquiry" ? "Enter an enquiry name" : `Enter ${field.name.toLowerCase()}`,
     id: "Enter an enquiry ID",
@@ -40,10 +41,10 @@ function filterValuePrompt(field: LeadFilterField): string {
 
 type SavedFilter = { id: string; name: string; filters: LeadAdvancedFilters };
 
-const emptyFilters: LeadAdvancedFilters = {
+const emptyFiltersFor = (field: string): LeadAdvancedFilters => ({
   match: "all",
-  rules: [{ id: "rule-1", field: "person", operator: "is", value: "" }],
-};
+  rules: [{ id: "rule-1", field, operator: "is", value: "" }],
+});
 
 const storageKey = (scope: string, userId: string) => `ifranchise:advanced-filters:${scope}:${userId}`;
 const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
@@ -83,7 +84,8 @@ export function AdvancedLeadFilters({
   searchPlaceholder?: string;
 }) {
   const scrollFade = useScrollFade();
-  const [draft, setDraft] = useState<LeadAdvancedFilters>(() => cloneFilters(initialFilters ?? emptyFilters));
+  const defaultField = fields[0]?.id ?? "person";
+  const [draft, setDraft] = useState<LeadAdvancedFilters>(() => cloneFilters(initialFilters ?? emptyFiltersFor(defaultField)));
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [fieldSearch, setFieldSearch] = useState("");
   const [saveName, setSaveName] = useState("");
@@ -105,11 +107,11 @@ export function AdvancedLeadFilters({
   }, [scope, userId]);
 
   useEffect(() => {
-    setDraft(cloneFilters(initialFilters ?? emptyFilters));
+    setDraft(cloneFilters(initialFilters ?? emptyFiltersFor(defaultField)));
     setFieldSearch("");
     setSaveName("");
     setIsSaving(false);
-  }, [scope, userId, initialFilters]);
+  }, [scope, userId, initialFilters, defaultField]);
 
   const filteredFields = useMemo(() => fields.filter(field => field.name.toLowerCase().includes(fieldSearch.toLowerCase())), [fields, fieldSearch]);
 
@@ -231,7 +233,7 @@ export function AdvancedLeadFilters({
       <footer className="ld-advanced-filter-footer">
         <span>{countFor(draft)} matching {recordLabel}{activeFilterCount > 0 ? ` · ${activeFilterCount} filters applied` : ""}</span>
         <div>
-          <Button size="small" variant="ghost" onClick={() => { setDraft(cloneFilters(emptyFilters)); onClear(); }}>Clear</Button>
+          <Button size="small" variant="ghost" onClick={() => { setDraft(emptyFiltersFor(defaultField)); onClear(); }}>Clear</Button>
           <Button size="small" onClick={() => apply(draft)}>Apply filters</Button>
         </div>
       </footer>
