@@ -13,6 +13,15 @@ export const stageTransitions: Record<string, string[]> = {
   hot: ["token", "lost"], token: ["won", "lost"], won: [], lost: [],
 };
 
+/** Custom stages extend the closing sequence, without bypassing standard checks. */
+export function pipelineStageTransitions(stageId: string, stages: PipelineStage[]): string[] {
+  const customStages = stages.filter(stage => stage.id.startsWith("custom-"));
+  if (stageId === "token" && customStages.length) return [customStages[0].id, "lost"];
+  const customIndex = customStages.findIndex(stage => stage.id === stageId);
+  if (customIndex !== -1) return [customStages[customIndex + 1]?.id ?? "won", "lost"];
+  return (stageTransitions[stageId] ?? []).filter(id => stages.some(stage => stage.id === id));
+}
+
 const nextActions: Record<string, string> = {
   new: "Make initial contact", rnr: "Retry call (RNR 1)", cold: "Share brand deck",
   "manager-meeting": "Conduct manager meeting", warm: "Follow up for brand meeting",
@@ -24,7 +33,7 @@ const nextActions: Record<string, string> = {
 export function prepareOpportunityMove(item: Opportunity, targetId: string, stages: PipelineStage[], at: string, day: string):
   { error: string } | { requiresLostReason: true } | { opportunity: Opportunity } {
   const target = stages.find(stage => stage.id === targetId);
-  if (!target || !(stageTransitions[item.stageId] ?? []).includes(targetId)) {
+  if (!target || !pipelineStageTransitions(item.stageId, stages).includes(targetId)) {
     return { error: "Choose an available next stage. Required stages cannot be skipped." };
   }
   if (targetId === "lost") return { requiresLostReason: true };

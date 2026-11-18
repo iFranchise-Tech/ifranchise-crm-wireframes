@@ -14,7 +14,6 @@
 .sp-page-heading p { margin: 5px 0 0; color: var(--color-text-secondary); font-size: 13px; }
 .sp-eyebrow { margin: 0 0 5px !important; color: var(--color-text-tertiary) !important; font-size: 10px !important; font-weight: 650; letter-spacing: .11em; }
 .sp-header-actions { display: flex; max-width: 100%; flex-wrap: wrap; align-items: center; gap: 8px; flex: none; }
-.sp-active-pipeline { width: 16rem; max-width: 100%; min-width: 0; }
 .sp-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .sp-metric { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--color-border-button-default); border-radius: 16px; background: var(--color-background-primary-default); }
 .sp-metric > span { display: grid; width: 38px; height: 38px; flex: none; place-items: center; border-radius: 12px; background: var(--color-background-secondary-default); color: var(--color-chart-1); }
@@ -108,26 +107,8 @@
 .sp-verify-check > span:last-child { display: flex; flex-direction: column; gap: 3px; }
 .sp-verify-check strong { color: var(--color-text-primary); font-size: 12px; }
 .sp-verify-check small { color: var(--color-text-secondary); font-size: 10px; }
-.sp-config-fields { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); align-items: start; gap: 14px; }
-.sp-stage-table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.sp-stage-table-head h3 { margin: 0; color: var(--color-text-primary); font-size: 14px; }
-.sp-stage-table { overflow: auto; border: 1px solid var(--color-separator-border); border-radius: 12px; }
-.sp-stage-row { display: grid; grid-template-columns: 36px minmax(140px, 1fr) 100px 140px 30px; min-height: 42px; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--color-separator-border); color: var(--color-text-primary); font-size: 11px; }
-.sp-stage-row:last-child { border-bottom: 0; }
-.sp-stage-row-head { min-height: 34px; background: var(--color-background-secondary-default); color: var(--color-text-secondary); font-size: 10px; font-weight: 600; }
-.sp-stage-row > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
-.sp-stage-row small { color: var(--color-text-tertiary); font-size: 9px; }
-.sp-pipeline-list { max-height: 250px; overflow: auto; }
-.sp-pipeline-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--color-separator-border); }
-.sp-pipeline-row:last-child { border-bottom: 0; }
-.sp-pipeline-row > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-.sp-pipeline-row strong { color: var(--color-text-primary); font-size: 12px; }
-.sp-pipeline-row small { overflow: hidden; color: var(--color-text-secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.sp-pipeline-row span { color: var(--color-text-tertiary); font-size: 9px; }
 .sp-delete-copy { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
 .sp-delete-copy strong { color: var(--color-text-primary); }
-.sp-config-note { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: var(--color-text-secondary); font-size: 10px; }
-.sp-config-note svg { width: 15px; height: 15px; flex: none; color: var(--color-accent-600); }
 
 @container pipeline (max-width: 1100px) {
   .sp-toolbar-action-label { display: none; }
@@ -140,29 +121,19 @@
   .sp-page-heading { align-items: flex-start; flex-direction: column; }
   .sp-page-heading > div:first-child { flex-basis: auto; }
   .sp-header-actions { width: 100%; flex-wrap: wrap; }
-  .sp-active-pipeline { flex-basis: 100%; }
-  .sp-active-pipeline { flex: 1; width: auto; }
   .sp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .sp-metric { gap: 8px; padding: 10px; }
   .sp-metric > span { width: 32px; height: 32px; }
   .sp-metric strong { font-size: 16px; }
 }
-@container pipeline (max-width: 28rem) {
-  .sp-header-actions { flex-wrap: wrap; }
-  .sp-active-pipeline { flex-basis: 100%; }
-
-}
 @media (max-width: 700px) {
-  .sp-form-grid, .sp-config-fields { grid-template-columns: minmax(0, 1fr); }
+  .sp-form-grid { grid-template-columns: minmax(0, 1fr); }
   .sp-form-wide { grid-column: auto; }
   .sp-stage-flow { grid-template-columns: 1fr; }
   .sp-stage-flow > svg { transform: rotate(90deg); }
   .sp-payment-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sp-stage-row { grid-template-columns: 25px minmax(130px, 1fr) 70px 30px; }
-  .sp-stage-row > span:nth-child(4) { display: none; }
 }
 
-.sp-header-tools { display: flex; flex: none; align-items: center; gap: 8px; }
 .sp-card-title::after { position: absolute; inset: 0; border-radius: inherit; content: ""; cursor: pointer; }
 .sp-card-title:focus-visible { outline: none; }
 .sp-card-title:focus-visible::after { outline: 2px solid var(--color-border-focus-ring); outline-offset: 2px; }
@@ -197,10 +168,22 @@
   .sp-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sp-search, .sp-toolbar-actions { grid-column: 1 / -1; }
   .sp-toolbar-action-label { display: inline; }
-  .sp-toolbar-actions > button { min-width: 0; flex: 1; }
+  .sp-toolbar-actions > button { min-width: 0; flex: none; }
+  .sp-toolbar-actions > button:last-child { margin-inline-start: auto; }
   .sp-record-layout.has-advanced-filters { display: flex; }
   .sp-advanced-panel.ld-advanced-filter-panel { position: absolute; z-index: 10; inset-block: 0; inset-inline-end: 0; width: min(100%, 384px); box-shadow: var(--shadow-lg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sp-lane { transition: none; }
+}
+
+.sp-management-details { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.sp-new-stage { grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); }
+.sp-management-table { width: 100%; }
+.sp-management-table thead { background: var(--color-background-secondary-default); color: var(--color-text-secondary); }
+.sp-management-table th { color: var(--color-text-secondary); }
+.sp-management-table td { vertical-align: middle; }
+.sp-management-table td:first-child { min-width: 0; }
+@container pipeline (max-width: 760px) {
+  .sp-management-details, .sp-new-stage { grid-template-columns: minmax(0, 1fr); }
 }

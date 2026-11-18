@@ -5,7 +5,7 @@ import {
   RiAddLine, RiArrowRightLine, RiBarChartBoxLine, RiCalendarLine,
   RiCheckLine, RiCloseLine, RiCoinsLine, RiDeleteBinLine,
   RiEditLine, RiFileList3Line, RiFireLine, RiFilter3Line, RiLayoutColumnLine,
-  RiMore2Fill, RiPhoneLine, RiSearchLine, RiStackLine, RiTrophyLine, RiDraggable, RiArrowGoBackLine,
+  RiPhoneLine, RiSearchLine, RiStackLine, RiTrophyLine, RiDraggable, RiArrowGoBackLine,
 } from "@remixicon/react";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { Button } from "@/components/base/buttons/button";
@@ -24,14 +24,15 @@ import type { Opportunity, PipelineConfig, PipelineStage } from "../types";
 import { ColumnManagerModal } from "@/modules/screen-library/components/column-manager-modal";
 import { readActiveCrmRole, readTableColumns, savePersonalTableColumns } from "@/modules/screen-library/lib/table-columns";
 import { AdvancedLeadFilters, type LeadAdvancedFilters, type LeadFilterField } from "@/modules/leads/components/advanced-lead-filters";
+import { PipelineManagement } from "./pipeline-management";
 import { PipelineLeadDetail } from "./pipeline-lead-detail";
 import { OpportunityActions, type OpportunityAction } from "./opportunity-actions";
-import { matchesOpportunityFilters, pipelineSummary, prepareOpportunityMove, stageTransitions as TRANSITIONS, validateOpportunity, type OpportunityDraft } from "../records";
+import { matchesOpportunityFilters, pipelineSummary, prepareOpportunityMove, pipelineStageTransitions, validateOpportunity, type OpportunityDraft } from "../records";
 import { originalSources } from "@/modules/leads/types";
 import { cx } from "@/utils/cx";
 import "@/modules/leads/components/leads.css";
 
-type ModalKind = "create" | "edit" | "stage" | "activity" | "payment" | "lost" | "reopen" | "delete" | "pipelines" | "stage-config" | "create-pipeline" | null;
+type ModalKind = "create" | "edit" | "stage" | "activity" | "payment" | "lost" | "reopen" | "delete" | null;
 type ViewMode = "kanban" | "list";
 const opportunityColumns = [
   { id: "person", name: "Opportunity" }, { id: "brand", name: "Brand" },
@@ -60,6 +61,7 @@ export function SalesPipelineWorkspace() {
   const [dropStage, setDropStage] = useState<string | null>(null);
   const [showOverview, setShowOverview] = useState(false);
   const [undoMove, setUndoMove] = useState<{ before: Opportunity; after: Opportunity } | null>(null);
+  const [managingPipeline, setManagingPipeline] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
@@ -68,9 +70,9 @@ export function SalesPipelineWorkspace() {
   const [profile, setProfile] = useState({ id: "assignment-coordinator", name: "Anitha K" });
   useEffect(() => { setProfile(readActiveCrmRole()); }, []);
   useEffect(() => {
-    workspaceRef.current?.scrollTo({ top: detailId ? 0 : previousScroll.current });
+    workspaceRef.current?.scrollTo({ top: detailId || managingPipeline ? 0 : previousScroll.current });
     workspaceFade.reset();
-  }, [detailId]);
+  }, [detailId, managingPipeline]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
   const [stages, setStages] = useState<PipelineStage[]>(initialStages);
   const [pipelineConfigs, setPipelineConfigs] = useState<PipelineConfig[]>(initialPipelines);
@@ -93,8 +95,6 @@ export function SalesPipelineWorkspace() {
   const [lostReason, setLostReason] = useState(lostReasons[0]);
   const [otherReason, setOtherReason] = useState("");
   const [reopenReason, setReopenReason] = useState("");
-  const [newStage, setNewStage] = useState({ name: "", probability: "10", color: "blue" });
-  const [newPipeline, setNewPipeline] = useState({ name: "", description: "" });
   const [notice, setNotice] = useState("");
 
   // Keep distant columns and long lanes reachable while holding a card at an edge.
@@ -149,18 +149,19 @@ export function SalesPipelineWorkspace() {
     if (isHydrated) window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ opportunities, stages, pipelineName, pipelineDescription, pipelines: pipelineConfigs, activePipelineId }));
   }, [isHydrated, opportunities, stages, pipelineName, pipelineDescription, pipelineConfigs, activePipelineId]);
 
-  function updateStages(next: PipelineStage[] | ((current: PipelineStage[]) => PipelineStage[])) {
-    const updated = typeof next === "function" ? next(stages) : next;
-    setStages(updated);
-    setPipelineConfigs(configs => configs.map(config => config.id === activePipelineId ? { ...config, stages: updated } : config));
-  }
-  function updatePipelineName(value: string) {
-    setPipelineName(value);
-    setPipelineConfigs(configs => configs.map(config => config.id === activePipelineId ? { ...config, name: value } : config));
-  }
-  function updatePipelineDescription(value: string) {
-    setPipelineDescription(value);
-    setPipelineConfigs(configs => configs.map(config => config.id === activePipelineId ? { ...config, description: value } : config));
+  function savePipeline(pipeline: PipelineConfig) {
+    setUndoMove(null);
+    setPipelineConfigs(configs => configs.some(item => item.id === pipeline.id)
+      ? configs.map(item => item.id === pipeline.id ? pipeline : item)
+      : [...configs, pipeline]);
+    if (pipeline.id === activePipelineId) {
+      setStages(pipeline.stages);
+      setPipelineName(pipeline.name);
+      setPipelineDescription(pipeline.description);
+      if (!pipeline.stages.some(stage => stage.id === stageFilter)) setStageFilter("All stages");
+      setAdvancedFilters(null);
+    }
+    setNotice(`${pipeline.name} saved.`);
   }
   function selectPipeline(id: string) {
     const pipeline = pipelineConfigs.find(item => item.id === id);
@@ -214,13 +215,13 @@ export function SalesPipelineWorkspace() {
     begin(detailOpportunity.stageId === "lost" ? "reopen" : "stage", detailOpportunity.id);
     if (!name || detailOpportunity.stageId === "lost") return;
     const target = stages.find(stage => stage.name === name);
-    if (target && (TRANSITIONS[detailOpportunity.stageId] ?? []).includes(target.id)) setTargetStage(target.id);
+    if (target && pipelineStageTransitions(detailOpportunity.stageId, stages).includes(target.id)) setTargetStage(target.id);
     else setNotice("This stage is not available directly. Choose an available next stage below.");
   }
 
   const summary = pipelineSummary(filtered);
   const dragged = opportunities.find(item => item.id === draggedId);
-  const availableDropStages = dragged ? TRANSITIONS[dragged.stageId] ?? [] : [];
+  const availableDropStages = dragged ? pipelineStageTransitions(dragged.stageId, stages) : [];
 
   function closeModal() { setModal(null); setTargetStage(""); setRnrTarget(""); setNotice(""); }
   function patchOpportunity(id: string, patch: Partial<Opportunity>) { setUndoMove(null); setOpportunities(current => current.map(item => item.id === id ? { ...item, ...patch } : item)); }
@@ -230,7 +231,7 @@ export function SalesPipelineWorkspace() {
     setNotice("");
     if (kind === "create") setForm({ pipelineId: activePipelineId, name: "", email: "", phone: "", brand: brands[0] ?? "", owner: owners[0] ?? "", source: "Website", value: "7500000", stageId: "new", nextAction: "Make initial contact" });
     if (kind === "edit" && id) { const opportunity = opportunities.find(item => item.id === id); if (opportunity) setForm({ pipelineId: opportunity.pipelineId, name: opportunity.name, email: opportunity.email, phone: opportunity.phone, brand: opportunity.brand, owner: opportunity.owner, source: opportunity.source, value: String(opportunity.value), stageId: opportunity.stageId, nextAction: opportunity.nextAction }); }
-    if (kind === "stage" && id) { const opportunity = opportunities.find(item => item.id === id); if (opportunity) setTargetStage(TRANSITIONS[opportunity.stageId]?.[0] ?? ""); }
+    if (kind === "stage" && id) { const opportunity = opportunities.find(item => item.id === id); if (opportunity) setTargetStage(pipelineStageTransitions(opportunity.stageId, stages)[0] ?? ""); }
     if (kind === "lost") { setLostReason(lostReasons[0]); setOtherReason(""); }
     if (kind === "reopen") setReopenReason("");
     if (kind === "activity") setActivity({ outcome: "Completed", note: "", minutes: "" });
@@ -282,7 +283,7 @@ export function SalesPipelineWorkspace() {
 
   function startDrag(event: DragEvent<HTMLElement>, item: Opportunity) {
     const control = (event.target as HTMLElement).closest("button");
-    if (!TRANSITIONS[item.stageId]?.length || control && !control.matches(".sp-card-title, .sp-drag-handle")) {
+    if (!pipelineStageTransitions(item.stageId, stages).length || control && !control.matches(".sp-card-title, .sp-drag-handle")) {
       event.preventDefault();
       return;
     }
@@ -357,31 +358,11 @@ export function SalesPipelineWorkspace() {
     setNotice(`${source.name} was cloned.`);
   }
 
-  function createStage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!newStage.name.trim()) return;
-    const stage: PipelineStage = { id: `custom-${Date.now()}`, name: newStage.name.trim(), probability: Number(newStage.probability), category: "Open", color: newStage.color, children: [] };
-    updateStages(current => [...current.slice(0, -2), stage, ...current.slice(-2)]);
-    setNewStage({ name: "", probability: "10", color: "blue" }); setModal("pipelines");
-  }
+  const title = modal === "create" ? "Add opportunity" : modal === "edit" ? "Edit opportunity" : modal === "stage" ? `Move ${selected?.name ?? "opportunity"}` : modal === "activity" ? "Log activity" : modal === "payment" ? "Record payment" : modal === "lost" ? "Mark opportunity as Lost" : modal === "reopen" ? "Reopen opportunity" : modal === "delete" ? "Delete opportunity?" : "Opportunity";
 
-  function createPipeline(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const name = newPipeline.name.trim();
-    if (!name) { setNotice("Enter a pipeline name."); return; }
-    if (pipelineConfigs.some(config => config.name.toLowerCase() === name.toLowerCase())) { setNotice("A pipeline with this name already exists."); return; }
-    const pipeline: PipelineConfig = { id: `pipeline-${Date.now()}`, name, description: newPipeline.description.trim() || "A separate opportunity workflow.", stages: initialStages, isDefault: false };
-    setPipelineConfigs(current => [...current, pipeline]);
-    setNewPipeline({ name: "", description: "" });
-    setActivePipelineId(pipeline.id); setStages(pipeline.stages); setPipelineName(pipeline.name); setPipelineDescription(pipeline.description); setModal("pipelines");
-  }
-
-  const title = modal === "create" ? "Add opportunity" : modal === "edit" ? "Edit opportunity" : modal === "stage" ? `Move ${selected?.name ?? "opportunity"}` : modal === "activity" ? "Log activity" : modal === "payment" ? "Record payment" : modal === "lost" ? "Mark opportunity as Lost" : modal === "reopen" ? "Reopen opportunity" : modal === "delete" ? "Delete opportunity?" : modal === "pipelines" ? "Pipeline management" : modal === "create-pipeline" ? "Create a pipeline" : "Add a pipeline stage";
-
-  const managingPipeline = ["pipelines", "stage-config", "create-pipeline"].includes(modal ?? "");
   const navigation = <nav className="review-navigation sp-side-nav" aria-label="Sales Pipeline navigation">
-    <Button variant={!managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiStackLine} aria-current={!managingPipeline ? "page" : undefined} onClick={event => { setDetailId(null); closeModal(); event.currentTarget.closest("dialog")?.close(); }}>Sales pipeline</Button>
-    <Button variant={managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiEditLine} aria-current={managingPipeline ? "page" : undefined} onClick={event => { event.currentTarget.closest("dialog")?.close(); begin("pipelines"); }}>Pipeline management</Button>
+    <Button variant={!managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiStackLine} aria-current={!managingPipeline ? "page" : undefined} onClick={event => { setDetailId(null); setManagingPipeline(false); closeModal(); event.currentTarget.closest("dialog")?.close(); }}>Sales pipeline</Button>
+    <Button variant={managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiEditLine} aria-current={managingPipeline ? "page" : undefined} onClick={event => { event.currentTarget.closest("dialog")?.close(); setDetailId(null); setManagingPipeline(true); closeModal(); }}>Pipeline management</Button>
   </nav>;
 
   return <DirectionProvider locale="en-US"><ReviewShell className="sp-shell" moduleName="Sales Pipeline" icon="layers" subtitle="Opportunities, stages & closure" overviewHref="/library/modules/pipeline" title={detailOpportunity ? detailOpportunity.enquiryId : managingPipeline ? "Pipeline management" : view === "list" ? "Pipeline list" : "Pipeline board"} navigation={navigation}>
@@ -391,7 +372,7 @@ export function SalesPipelineWorkspace() {
       setNotice(`Move undone. ${undoMove.before.name} is back in ${stageName(stages, undoMove.before.stageId)}.`);
       setUndoMove(null);
     }}>Undo move</Button>}<IconButton icon={RiCloseLine} aria-label="Dismiss notification" onClick={() => { setNotice(""); setUndoMove(null); }} /></div> : null}
-    {detailOpportunity ? <PipelineLeadDetail
+    {managingPipeline ? <PipelineManagement pipelines={pipelineConfigs} opportunities={opportunities} onSave={savePipeline} onStartEditing={() => { setNotice(""); workspaceRef.current?.scrollTo({ top: 0 }); workspaceFade.reset(); }} onOpenBoard={id => { selectPipeline(id); setView("kanban"); setManagingPipeline(false); setNotice(""); }} /> : detailOpportunity ? <PipelineLeadDetail
       key={detailOpportunity.id} opportunity={detailOpportunity} stages={stages} owners={owners}
       contacts={opportunities.map(item => ({ name: item.name, email: item.email }))}
       actor={profile.name} onBack={() => setDetailId(null)}
@@ -399,15 +380,8 @@ export function SalesPipelineWorkspace() {
       onStageChange={requestDetailStage} onDelete={() => begin("delete", detailOpportunity.id)}
     /> : <>
     <div className="sp-page-heading">
-      <div><p className="sp-eyebrow">OPPORTUNITY MANAGEMENT</p><h2>Sales Pipeline</h2><p>Track and manage franchise opportunities from first enquiry to closure.</p></div>
+      <div><p className="sp-eyebrow">OPPORTUNITY MANAGEMENT</p><h2>Sales Pipeline</h2><p>{pipelineName} · {filtered.length} {filtered.length === 1 ? "opportunity" : "opportunities"}</p></div>
       <div className="sp-header-actions">
-        <div className="sp-header-tools">
-          <div className="flex gap-1" role="group" aria-label="Pipeline view">
-            <Button iconOnly variant={view === "kanban" ? "primary" : "secondary"} className="size-10" leadingIcon={RiStackLine} aria-label="Board view" title="Board view" aria-pressed={view === "kanban"} onClick={() => setView("kanban")} />
-            <Button iconOnly variant={view === "list" ? "primary" : "secondary"} className="size-10" leadingIcon={RiFileList3Line} aria-label="List view" title="List view" aria-pressed={view === "list"} onClick={() => setView("list")} />
-          </div>
-        </div>
-        <Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} className="sp-active-pipeline" triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
         <Button className="h-10" variant={showOverview ? "primary" : "secondary"} leadingIcon={RiBarChartBoxLine} aria-expanded={showOverview} aria-controls="pipeline-overview" onClick={() => setShowOverview(value => !value)}>Quick overview</Button>
         <Button className="h-10" leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
     </div>
@@ -430,7 +404,11 @@ export function SalesPipelineWorkspace() {
         <Select className="sp-filter" aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => setOwnerFilter(String(key))} triggerClassName="h-10"><SelectItem id="All owners">All owners</SelectItem>{owners.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
         <Select className="sp-filter" aria-label="Filter by stage" selectedKey={stageFilter} onSelectionChange={key => setStageFilter(String(key))} triggerClassName="h-10"><SelectItem id="All stages">All stages</SelectItem>{stages.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
         <div className="sp-toolbar-actions">
-          <Button className="h-10" leadingIcon={RiFilter3Line} variant={advancedFiltersOpen || activeFilterCount ? "primary" : "secondary"} aria-label="Advanced filters" title="Advanced filters" aria-expanded={advancedFiltersOpen} aria-controls="pipeline-advanced-filters" onClick={() => setAdvancedFiltersOpen(open => !open)}><span className="sp-toolbar-action-label">Advanced filters</span>{activeFilterCount > 0 && <span>{activeFilterCount}</span>}</Button>
+          <div className="flex gap-1" role="group" aria-label="Pipeline view">
+            <Button iconOnly variant={view === "kanban" ? "primary" : "secondary"} className="size-10" leadingIcon={RiStackLine} aria-label="Board view" title="Board view" aria-pressed={view === "kanban"} onClick={() => setView("kanban")} />
+            <Button iconOnly variant={view === "list" ? "primary" : "secondary"} className="size-10" leadingIcon={RiFileList3Line} aria-label="List view" title="List view" aria-pressed={view === "list"} onClick={() => setView("list")} />
+          </div>
+          <Button iconOnly className="size-10" leadingIcon={RiFilter3Line} variant={advancedFiltersOpen || activeFilterCount ? "primary" : "secondary"} aria-label="Advanced filters" title={activeFilterCount ? `Advanced filters · ${activeFilterCount} active` : "Advanced filters"} aria-expanded={advancedFiltersOpen} aria-controls="pipeline-advanced-filters" onClick={() => setAdvancedFiltersOpen(open => !open)} />
           <Button className="h-10" leadingIcon={RiLayoutColumnLine} variant="secondary" aria-label="Customize columns" title="Customize list columns" onClick={() => { setView("list"); setColumnsOpen(true); }}><span className="sp-toolbar-action-label">Customize columns</span></Button>
         </div>
       </div>
@@ -467,6 +445,7 @@ export function SalesPipelineWorkspace() {
       </tr>)}</tbody></table>{filtered.length === 0 ? <div className="sp-no-results">No opportunities match these filters.</div> : null}</OpportunityList>}
       </div>
       {advancedFiltersOpen && <AdvancedLeadFilters id="pipeline-advanced-filters" fields={filterFields} scope={columnScope} userId={profile.id} title="Filter opportunities by" description="Build and save a focused pipeline view." recordLabel="opportunities" className="sp-advanced-panel" searchPlaceholder="Find a field"
+        contextFilters={<div className="flex flex-col gap-2 border-b border-separator-border pb-4"><Select label="Pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select><p className="text-caption-1-regular text-text-secondary">Choose the pipeline to view. Changes apply immediately.</p></div>}
         initialFilters={advancedFilters} resultCount={filtered.length} activeFilterCount={activeFilterCount}
         countFor={filters => quickFiltered.filter(item => matchesOpportunityFilters(item, filters, stages)).length}
         onApply={setAdvancedFilters} onClear={() => setAdvancedFilters(null)} onClose={() => setAdvancedFiltersOpen(false)} />}
@@ -477,8 +456,8 @@ export function SalesPipelineWorkspace() {
     <ColumnManagerModal isOpen={columnsOpen} onOpenChange={setColumnsOpen} availableColumns={opportunityColumns} selectedIds={columnIds} requiredIds={["person"]} scopeLabel="sales pipeline opportunities"
       onSave={ids => { setColumnIds(ids); savePersonalTableColumns(columnScope, profile.id, ids); setColumnsOpen(false); }} />
 
-    <Modal isOpen={modal !== null} onOpenChange={open => { if (!open) closeModal(); }} size={modal === "pipelines" ? "xl" : "lg"}>
-      <ModalHeader title={title} description={modal === "stage" ? "Choose a valid next step. Required meeting notes and verified payments are checked before a move is saved." : modal === "create" ? "Create an opportunity and place it in the correct pipeline stage." : modal === "pipelines" ? "Manage the default franchise pipeline and its stage sequence." : undefined} />
+    <Modal isOpen={modal !== null} onOpenChange={open => { if (!open) closeModal(); }} size="lg">
+      <ModalHeader title={title} description={modal === "stage" ? "Choose a valid next step. Required meeting notes and verified payments are checked before a move is saved." : modal === "create" ? "Create an opportunity and place it in the correct pipeline stage." : undefined} />
       {modal === "create" || modal === "edit" ? <form className="flex min-h-0 flex-col gap-4" onSubmit={saveOpportunity}>
         <ModalBody className="sp-modal-form"><div className="sp-form-grid">
           <Input label="Customer / enquiry name" isRequired fieldClassName={formFieldClass} value={form.name} onChange={name => setForm(current => ({ ...current, name }))} placeholder="Customer or business name" />
@@ -495,7 +474,7 @@ export function SalesPipelineWorkspace() {
         <ModalFooter><Button variant="secondary" onClick={closeModal}>Cancel</Button><Button type="submit" leadingIcon={RiCheckLine}>{modal === "edit" ? "Save opportunity" : "Create opportunity"}</Button></ModalFooter>
       </form> : null}
 
-      {modal === "stage" && selected ? <ModalBody className="sp-modal-form"><div className="sp-move-person"><span>{selected.name.slice(0, 1).toUpperCase()}</span><div><strong>{selected.name}</strong><small>{selected.enquiryId} · {selected.brand}</small></div></div><div className="sp-stage-flow"><div><span>Current stage</span><strong>{stageName(stages, selected.stageId)}{selected.stageId === "rnr" ? ` · RNR ${selected.rnrStep ?? 1}` : ""}</strong></div><RiArrowRightLine /><div><span>New stage</span><Select aria-label="New stage" selectedKey={targetStage || undefined} onSelectionChange={key => setTargetStage(String(key))} triggerClassName="sp-modal-select"><SelectItem id="">Choose a stage</SelectItem>{selected.stageId === "rnr" && (selected.rnrStep ?? 1) < 8 ? <SelectItem id="rnr">RNR response attempt</SelectItem> : null}{(TRANSITIONS[selected.stageId] ?? []).map(id => <SelectItem key={id} id={id}>{stageName(stages, id)}</SelectItem>)}</Select></div></div>{selected.stageId === "rnr" && targetStage === "rnr" ? <div className="sp-rnr-selector"><p>Next response attempt · RNR {(selected.rnrStep ?? 1) + 1} of 8</p><div>{(stages.find(item => item.id === "rnr")?.children ?? []).map((step, index) => <button key={step} type="button" disabled={index + 1 !== (selected.rnrStep ?? 1) + 1} aria-pressed={String(index + 1) === rnrTarget} onClick={() => setRnrTarget(String(index + 1))}>{step}</button>)}</div><p>Limit: two RNR updates per opportunity per day. This prototype records the activity for review; it does not send email.</p></div> : null}{notice ? <p className="sp-notice" role="alert">{notice}</p> : null}<ModalFooter className="sp-inline-footer"><Button variant="secondary" onClick={closeModal}>Keep current stage</Button><Button onClick={() => { if (selected.stageId === "rnr" && targetStage === "rnr") { const isoDay = todayKey(); const todaysRnrUpdates = selected.history.filter(entry => entry.note?.includes(`RNR update ${isoDay}`)).length; if (todaysRnrUpdates >= 2) { setNotice("This opportunity has reached the two RNR updates allowed for today."); return; } const step = Number(rnrTarget); if (!step || step !== (selected.rnrStep ?? 1) + 1) { setNotice("RNR attempts must be completed in order."); return; } const entry = { stage: "RNR", at: stamp(), note: `RNR update ${isoDay} · RNR ${step} · follow-up email queued in prototype; delivery is not connected.` }; patchOpportunity(selected.id, { rnrStep: step, lastActivity: "Just now", history: [entry, ...selected.history] }); closeModal(); } else moveOpportunity(); }} disabled={!targetStage || selected.stageId === "rnr" && targetStage === "rnr" && !rnrTarget}>{selected.stageId === "rnr" && targetStage === "rnr" ? `Record ${rnrTarget || "next RNR"}` : `Move to ${targetStage ? stageName(stages, targetStage) : "stage"}`}</Button></ModalFooter></ModalBody> : null}
+      {modal === "stage" && selected ? <ModalBody className="sp-modal-form"><div className="sp-move-person"><span>{selected.name.slice(0, 1).toUpperCase()}</span><div><strong>{selected.name}</strong><small>{selected.enquiryId} · {selected.brand}</small></div></div><div className="sp-stage-flow"><div><span>Current stage</span><strong>{stageName(stages, selected.stageId)}{selected.stageId === "rnr" ? ` · RNR ${selected.rnrStep ?? 1}` : ""}</strong></div><RiArrowRightLine /><div><span>New stage</span><Select aria-label="New stage" selectedKey={targetStage || undefined} onSelectionChange={key => setTargetStage(String(key))} triggerClassName="sp-modal-select"><SelectItem id="">Choose a stage</SelectItem>{selected.stageId === "rnr" && (selected.rnrStep ?? 1) < 8 ? <SelectItem id="rnr">RNR response attempt</SelectItem> : null}{pipelineStageTransitions(selected.stageId, stages).map(id => <SelectItem key={id} id={id}>{stageName(stages, id)}</SelectItem>)}</Select></div></div>{selected.stageId === "rnr" && targetStage === "rnr" ? <div className="sp-rnr-selector"><p>Next response attempt · RNR {(selected.rnrStep ?? 1) + 1} of 8</p><div>{(stages.find(item => item.id === "rnr")?.children ?? []).map((step, index) => <button key={step} type="button" disabled={index + 1 !== (selected.rnrStep ?? 1) + 1} aria-pressed={String(index + 1) === rnrTarget} onClick={() => setRnrTarget(String(index + 1))}>{step}</button>)}</div><p>Limit: two RNR updates per opportunity per day. This prototype records the activity for review; it does not send email.</p></div> : null}{notice ? <p className="sp-notice" role="alert">{notice}</p> : null}<ModalFooter className="sp-inline-footer"><Button variant="secondary" onClick={closeModal}>Keep current stage</Button><Button onClick={() => { if (selected.stageId === "rnr" && targetStage === "rnr") { const isoDay = todayKey(); const todaysRnrUpdates = selected.history.filter(entry => entry.note?.includes(`RNR update ${isoDay}`)).length; if (todaysRnrUpdates >= 2) { setNotice("This opportunity has reached the two RNR updates allowed for today."); return; } const step = Number(rnrTarget); if (!step || step !== (selected.rnrStep ?? 1) + 1) { setNotice("RNR attempts must be completed in order."); return; } const entry = { stage: "RNR", at: stamp(), note: `RNR update ${isoDay} · RNR ${step} · follow-up email queued in prototype; delivery is not connected.` }; patchOpportunity(selected.id, { rnrStep: step, lastActivity: "Just now", history: [entry, ...selected.history] }); closeModal(); } else moveOpportunity(); }} disabled={!targetStage || selected.stageId === "rnr" && targetStage === "rnr" && !rnrTarget}>{selected.stageId === "rnr" && targetStage === "rnr" ? `Record ${rnrTarget || "next RNR"}` : `Move to ${targetStage ? stageName(stages, targetStage) : "stage"}`}</Button></ModalFooter></ModalBody> : null}
 
       {modal === "lost" && selected ? <ModalBody className="sp-modal-form"><div className="sp-move-person"><span>{selected.name.slice(0, 1).toUpperCase()}</span><div><strong>{selected.name}</strong><small>{selected.enquiryId} · {stageName(stages, selected.stageId)}</small></div></div><Select label="Reason for loss" selectedKey={lostReason} onSelectionChange={key => setLostReason(String(key))}>{lostReasons.map(reason => <SelectItem key={reason} id={reason}>{reason}</SelectItem>)}</Select>{lostReason === "Other" ? <Textarea label="Reason details" isRequired value={otherReason} onChange={setOtherReason} rows={3} placeholder="Explain why this opportunity was lost" /> : null}{notice ? <p className="sp-notice" role="alert">{notice}</p> : null}<ModalFooter className="sp-inline-footer"><Button variant="secondary" onClick={() => setModal("stage")}>Cancel</Button><Button variant="danger" onClick={confirmLost}>Mark as Lost</Button></ModalFooter></ModalBody> : null}
 
@@ -509,11 +488,8 @@ export function SalesPipelineWorkspace() {
 
       {modal === "delete" && selected ? <><ModalBody className="sp-modal-form"><p className="sp-delete-copy">This will remove <strong>{selected.name}</strong> and its local prototype history from this browser. This cannot be undone.</p></ModalBody><ModalFooter><Button variant="secondary" onClick={closeModal}>Cancel</Button><Button variant="danger" leadingIcon={RiDeleteBinLine} onClick={deleteOpportunity}>Delete opportunity</Button></ModalFooter></> : null}
 
-      {modal === "pipelines" ? <ModalBody className="sp-modal-form"><div className="sp-stage-table-head"><h3>Sales pipelines</h3><Button size="small" leadingIcon={RiAddLine} onClick={() => { setNewPipeline({ name: "", description: "" }); setModal("create-pipeline"); }}>Create pipeline</Button></div><div className="sp-stage-table sp-pipeline-list">{pipelineConfigs.map(config => <div className="sp-pipeline-row" key={config.id}><div><strong>{config.name}</strong><small>{config.description}</small><span>{config.stages.length} stages · {opportunities.filter(item => item.pipelineId === config.id).length} records{config.isDefault ? " · Default" : ""}</span></div><Button size="small" variant={config.id === activePipelineId ? "secondary" : "ghost"} onClick={() => selectPipeline(config.id)}>{config.id === activePipelineId ? "Active" : "Open"}</Button></div>)}</div><div className="sp-config-fields"><Input label="Pipeline name" value={pipelineName} onChange={updatePipelineName} /><Textarea label="Description" value={pipelineDescription} onChange={updatePipelineDescription} rows={2} /></div><div className="sp-stage-table-head"><h3>Stages · {pipelineName}</h3><Button size="small" leadingIcon={RiAddLine} onClick={() => setModal("stage-config")}>Add stage</Button></div><div className="sp-stage-table"><div className="sp-stage-row sp-stage-row-head"><span>#</span><span>Stage name</span><span>Probability</span><span>Category</span><span /></div>{stages.map((stage, index) => <div className="sp-stage-row" key={stage.id}><span>{index + 1}</span><span>{stage.name}{stage.id === "rnr" ? <small>{stage.children?.join(" · ")}</small> : null}</span><span>{stage.probability}%</span><span><Chip variant="caption" color={stage.category === "Open" ? "blue" : stage.category === "Closed - Won" ? "lime" : "rose"}>{stage.category}</Chip></span><span>{stage.id.startsWith("custom-") ? <button className="sp-icon-action sp-danger" aria-label={`Remove ${stage.name}`} onClick={() => { if (activeOpportunities.some(item => item.stageId === stage.id)) { setNotice("Move opportunities out of this stage before removing it."); return; } updateStages(current => current.filter(item => item.id !== stage.id)); }}><RiDeleteBinLine /></button> : <RiMore2Fill />}</span></div>)}</div><p className="sp-config-note"><RiCheckLine /> RNR 1–8 remain sub-stages under RNR. Meeting and payment prerequisites are checked when a stage change is saved.</p>{notice ? <p className="sp-notice" role="alert">{notice}</p> : null}<ModalFooter><Button variant="secondary" onClick={closeModal}>Close</Button><Button onClick={closeModal}>Save pipeline</Button></ModalFooter></ModalBody> : null}
 
-      {modal === "create-pipeline" ? <form className="flex min-h-0 flex-col gap-4" onSubmit={createPipeline}><ModalBody className="sp-modal-form"><Input label="Pipeline name" isRequired value={newPipeline.name} onChange={name => setNewPipeline(current => ({ ...current, name }))} placeholder="e.g. Regional expansion pipeline" /><Textarea label="Description" value={newPipeline.description} onChange={description => setNewPipeline(current => ({ ...current, description }))} rows={3} placeholder="What business process does this pipeline support?" /><p className="sp-config-note"><RiCheckLine /> The new pipeline starts with the standard ten stage sequence and has no opportunities until you add them.</p>{notice ? <p className="sp-notice" role="alert">{notice}</p> : null}</ModalBody><ModalFooter><Button variant="secondary" onClick={() => setModal("pipelines")}>Cancel</Button><Button type="submit" leadingIcon={RiAddLine}>Create pipeline</Button></ModalFooter></form> : null}
 
-      {modal === "stage-config" ? <form className="flex min-h-0 flex-col gap-4" onSubmit={createStage}><ModalBody className="sp-modal-form"><Input label="Stage name" isRequired value={newStage.name} onChange={name => setNewStage(current => ({ ...current, name }))} placeholder="e.g. Site visit" /><div className="sp-form-grid"><Input label="Probability (%)" type="number" value={newStage.probability} onChange={probability => setNewStage(current => ({ ...current, probability }))} /><Select label="Stage color" selectedKey={newStage.color} onSelectionChange={key => setNewStage(current => ({ ...current, color: String(key) }))}>{["blue", "purple", "slate", "amber", "orange", "violet", "rose", "green"].map(color => <SelectItem key={color} id={color}>{color}</SelectItem>)}</Select></div><ModalFooter><Button variant="secondary" onClick={() => setModal("pipelines")}>Cancel</Button><Button type="submit" leadingIcon={RiAddLine}>Add stage</Button></ModalFooter></ModalBody></form> : null}
     </Modal>
     </div><ScrollFade progress={workspaceFade.progress} surfaceClassName="from-background-full" /></div>
   </ReviewShell></DirectionProvider>;
@@ -537,7 +513,7 @@ function OpportunityCard({ opportunity, stageLabel, isDragging, onDragStart, onD
   opportunity: Opportunity; stageLabel: string; isDragging: boolean; onDragStart: (event: DragEvent<HTMLElement>) => void;
   onDragEnd: () => void; onDetails: () => void; onAction: (action: OpportunityAction) => void;
 }) {
-  const canMove = Boolean(TRANSITIONS[opportunity.stageId]?.length);
+  const canMove = !["won", "lost"].includes(opportunity.stageId);
   const enteredAt = new Date(opportunity.history.find(entry => entry.stage === stageLabel)?.at ?? opportunity.createdAt);
   const daysInStage = Math.max(0, Math.floor((Date.now() - enteredAt.getTime()) / 86400000));
   return <article className={cx("sp-opportunity-card", isDragging && "sp-card-dragging")} aria-label={`${opportunity.name} opportunity`} draggable={canMove} onDragStart={onDragStart} onDragEnd={onDragEnd}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiFilter3Line, RiSaveLine } from "@remixicon/react";
 import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { cx } from "@/utils/cx";
@@ -65,6 +65,7 @@ export function AdvancedLeadFilters({
   recordLabel = "leads",
   className,
   searchPlaceholder = "Find a field",
+  contextFilters,
 }: {
   id?: string;
   fields: LeadFilterField[];
@@ -82,6 +83,7 @@ export function AdvancedLeadFilters({
   recordLabel?: string;
   className?: string;
   searchPlaceholder?: string;
+  contextFilters?: ReactNode;
 }) {
   const scrollFade = useScrollFade();
   const defaultField = fields[0]?.id ?? "person";
@@ -172,6 +174,7 @@ export function AdvancedLeadFilters({
       </header>
 
       <div className="ld-filter-body-wrap"><div className="ld-filter-body" onScroll={scrollFade.onScroll}>
+      {contextFilters}
       <SearchField aria-label="Search filter fields" placeholder={searchPlaceholder} value={fieldSearch} onChange={setFieldSearch} className="ld-advanced-filter-search" fieldClassName="bg-background-primary-default" />
       {fieldSearch && <div className="ld-filter-field-suggestions" aria-label="Matching filter fields">
         {filteredFields.slice(0, 5).map(field => <button type="button" key={field.id} onClick={() => { setDraft(current => ({ ...current, rules: [...current.rules, { id: `rule-${Date.now()}`, field: field.id, operator: operators(field)[0], value: "" }] })); setFieldSearch(""); }}>{field.name}<RiAddLine aria-hidden="true" /></button>)}

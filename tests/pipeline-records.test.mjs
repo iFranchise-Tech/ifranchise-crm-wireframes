@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchesOpportunityFilters, opportunityLead, pipelineSummary, prepareOpportunityMove, validateOpportunity } from "../modules/pipeline/records.ts";
+import { matchesOpportunityFilters, opportunityLead, pipelineSummary, pipelineStageTransitions, prepareOpportunityMove, validateOpportunity } from "../modules/pipeline/records.ts";
 
 const stages = [{ id: "new", name: "New Opportunity" }, { id: "cold", name: "Cold" }];
 const pipelines = [{ id: "franchise", stages }];
@@ -104,4 +104,25 @@ test("quick overview reflects its input records and counts wins by closure month
     { ...opportunity, stageId: "lost" }];
   assert.deepEqual(pipelineSummary(items, new Date("2026-11-18T10:00:00")), { active: 3, value: 22500000, hot: 1, token: 1, won: 1 });
   assert.deepEqual(pipelineSummary([], new Date("2026-11-18T10:00:00")), { active: 0, value: 0, hot: 0, token: 0, won: 0 });
+});
+
+
+test("custom closing stages are reachable in order and cannot bypass verified payment", () => {
+  const configuredStages = [
+    { id: "token", name: "Token Collected" },
+    { id: "custom-review", name: "Final review" },
+    { id: "custom-signature", name: "Signature" },
+    { id: "won", name: "Won" },
+    { id: "lost", name: "Lost" },
+  ];
+  assert.deepEqual(pipelineStageTransitions("token", configuredStages), ["custom-review", "lost"]);
+  assert.deepEqual(pipelineStageTransitions("custom-review", configuredStages), ["custom-signature", "lost"]);
+  assert.deepEqual(pipelineStageTransitions("custom-signature", configuredStages), ["won", "lost"]);
+  assert.deepEqual(pipelineStageTransitions("won", configuredStages), []);
+  const move = (stageId, target, verifiedAmount = 0) => prepareOpportunityMove({ ...opportunity, stageId, verifiedAmount }, target, configuredStages, "2026-11-18", "2026-11-18");
+  assert.ok(move("token", "won").error);
+  assert.equal(move("token", "custom-review").opportunity.stageId, "custom-review");
+  assert.ok(move("custom-signature", "won").error);
+  assert.equal(move("custom-signature", "won", opportunity.value).opportunity.stageId, "won");
+  assert.deepEqual(move("custom-review", "lost"), { requiresLostReason: true });
 });
