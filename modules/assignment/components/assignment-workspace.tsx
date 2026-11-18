@@ -202,6 +202,10 @@ function teamFor(owner: string) {
   const user = initialUsers.find(item => item.name === owner);
   return { department: user?.department || "—", team: user?.team || "—" };
 }
+
+function teamPathLabel(team: { department: string; team: string }) {
+  return [team.department, team.team].filter(value => value && value !== "—").join(" · ") || "Unassigned";
+}
 function dateTime(now: Date) {
   return {
     date: new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(now),
@@ -594,7 +598,7 @@ export function AssignmentWorkspace() {
             <span><small>Previous owner</small><span className="assignment-audit-owner"><Avatar size="sm" src={portraitFor(previousStaff ?? coordinator)} initials={personInitials(previousStaff ?? coordinator)} alt="" /><span className="assignment-audit-person"><small>{selectedAssignment?.stage === "Central Allocation" ? "Central Allocation" : selectedAssignment?.stage === "BDA Assignment" ? "BDA" : "Reporting Manager"}</small><strong>{previousStaff ?? coordinator}</strong></span></span></span>
             <span><small>New owner</small><span className="assignment-audit-owner"><Avatar size="sm" src={portraitFor(targetRole === "Central Allocation" ? coordinator : assignee)} initials={personInitials(targetRole === "Central Allocation" ? coordinator : assignee)} alt="" /><span className="assignment-audit-person"><small>{targetRole}</small><strong>{targetRole === "Central Allocation" ? coordinator : assignee}</strong></span></span></span>
             <span><small>Assigned by</small><span className="assignment-audit-owner"><Avatar size="sm" color="blue" src={portraitFor(coordinator)} initials={personInitials(coordinator)} alt="" /><strong>{coordinator}</strong></span></span>
-            <span><small>Team</small><strong>{previousTeam.department} / {previousTeam.team} → {newTeam.department} / {newTeam.team}</strong></span><span><small>Urgency</small><strong>{urgency}</strong></span><span><small>Recorded</small><strong>{previewDateTime.date}, {previewDateTime.time}</strong></span>
+            <span><small>Team path · department / team</small><strong>{teamPathLabel(previousTeam)} → {teamPathLabel(newTeam)}</strong></span><span><small>Urgency</small><strong>{urgency}</strong></span><span><small>Recorded</small><strong>{previewDateTime.date}, {previewDateTime.time}</strong></span>
           </div>
         </ModalBody>
         <ModalFooter className="assignment-modal-footer"><Button variant="secondary" onClick={() => { setSelectedId(null); setChecked([]); }}>Cancel</Button><Button leadingIcon={RiArrowRightLine} onClick={saveAssignments} disabled={!reason.trim() || (targetRole !== "Central Allocation" && !assignee)}>{targetRole === "Central Allocation" ? "Return to Central Allocation" : `Assign to ${targetRole === "Reporting Manager" ? "Manager" : "BDA"}`}</Button></ModalFooter>

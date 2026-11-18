@@ -386,14 +386,15 @@ html:has(.assignment-shell), body:has(.assignment-shell) { height: 100%; overflo
 .assignment-drawer-panel .assignment-confirm-body { min-height: 0; gap: 9px; overflow: hidden !important; }
 .assignment-drawer-panel .assignment-lead-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(0, .78fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1.55fr) repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0;
   border-color: var(--color-accent-700);
   background: linear-gradient(118deg, var(--color-accent-900), var(--color-accent-800) 48%, var(--color-accent-700));
   padding: 11px 12px;
   color: var(--color-text-white);
 }
-.assignment-drawer-panel .summary-contact { min-width: 0; gap: 3px; }
+.assignment-drawer-panel .summary-contact { min-width: 0; align-content: center; gap: 4px; padding-inline-end: 12px; }
 .assignment-drawer-panel .summary-code-row { display: flex; align-items: center; gap: 7px; }
 .assignment-drawer-panel .summary-contact small,
 .assignment-drawer-panel .summary-data small { color: var(--color-text-white); font-size: 11px; }
@@ -401,13 +402,14 @@ html:has(.assignment-shell), body:has(.assignment-shell) { height: 100%; overflo
 .assignment-drawer-panel .summary-contact .summary-email { display: flex; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 5px; overflow: hidden; color: var(--color-text-white); font-size: 11px; white-space: nowrap; }
 .assignment-drawer-panel .summary-email svg { width: 13px; height: 13px; flex: none; }
 .assignment-drawer-panel .summary-email bdi { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.assignment-drawer-panel .summary-data { min-width: 0; gap: 5px; border-inline-start-color: color-mix(in srgb, var(--color-text-white) 26%, transparent); padding-inline-start: 10px; }
+.assignment-drawer-panel .summary-data { min-width: 0; align-content: center; gap: 6px; border-inline-start: 1px solid color-mix(in srgb, var(--color-text-white) 26%, transparent); padding-inline: 12px; }
 .assignment-drawer-panel .summary-data strong { display: flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; color: var(--color-text-white); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .assignment-drawer-panel .summary-data strong svg { width: 13px; height: 13px; flex: none; }
 .assignment-drawer-panel .hierarchy-stage.is-current { justify-content: center; text-align: center; }
 .assignment-drawer-panel .hierarchy-stage.is-current > span { justify-items: center; text-align: center; }
 .assignment-drawer-panel .assignment-audit-preview { gap: 7px 10px; padding: 10px 12px; }
 .assignment-drawer-panel .assignment-audit-preview > span { gap: 4px; }
+.assignment-drawer-panel .assignment-audit-preview > span:nth-child(4) strong { white-space: nowrap; }
 .assignment-drawer-panel .assignment-audit-owner { align-items: center; gap: 7px; }
 .assignment-drawer-panel .assignment-audit-person { display: grid; min-width: 0; gap: 2px; }
 .assignment-drawer-panel .assignment-audit-person small { color: var(--color-text-secondary); font-size: 10px; }
@@ -416,8 +418,9 @@ html:has(.assignment-shell), body:has(.assignment-shell) { height: 100%; overflo
 .assignment-drawer-panel .assignment-reason-field textarea { min-height: 60px; }
 @media (max-width: 680px) {
   .assignment-drawer-panel .assignment-confirm-body { gap: 7px; }
-  .assignment-drawer-panel .assignment-lead-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+  .assignment-drawer-panel .assignment-lead-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; }
   .assignment-drawer-panel .summary-contact { grid-column: 1 / -1; }
+  .assignment-drawer-panel .summary-data { border-inline-start: 0; padding-inline: 0; }
   .assignment-drawer-panel .summary-contact strong { font-size: 13px; }
   .assignment-drawer-panel .summary-contact small,
   .assignment-drawer-panel .summary-data small { font-size: 9px; }

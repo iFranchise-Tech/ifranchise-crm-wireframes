@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { CalendarDate } from "@internationalized/date";
 import {
   RiAddLine,
@@ -9,6 +9,7 @@ import {
   RiArrowLeftRightLine,
   RiAttachment2,
   RiCalendarLine,
+  RiCheckLine,
   RiCheckboxCircleLine,
   RiCloseLine,
   RiFileTextLine,
@@ -53,7 +54,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { DateCalendar, DateRangeCalendar } from "@/components/base/date-picker/date-calendar";
 import { Dropdown, DropdownDivider, DropdownItem, DropdownPopover, DropdownTrigger } from "@/components/base/dropdown/dropdown";
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
+import { AlertDialog, Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
 import { Input } from "@/components/base/input/input";
 import { Select, SelectItem } from "@/components/base/select/select";
 import { Textarea } from "@/components/base/textarea/textarea";
@@ -63,6 +64,7 @@ import { brands, enquiryStatuses, originalSources, timelines } from "../types";
 import { cityOptions, formatLeadDate, LeadSelect, stateForCity, stateOptions, SuggestField } from "./lead-fields";
 
 const statusColor: Record<EnquiryStatus, ChipColor> = { New: "purple", "In Progress": "yellow", Qualified: "lime", Converted: "blue" };
+const leadStages = ["Discovery", "Qualification", "Proposal", "Negotiation", "Won"] as const;
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const slotTimes = Array.from({ length: 25 }, (_, index) => {
   const minutes = 9 * 60 + index * 30;
@@ -201,6 +203,25 @@ function firstName(name: string) {
   return name.split(" ").filter(Boolean)[0] ?? name;
 }
 
+function LeadStageTracker({ stage, onChange }: { stage: string; onChange: (stage: string) => void }) {
+  const activeIndex = Math.max(0, leadStages.indexOf(stage as (typeof leadStages)[number]));
+  const progress = `${(activeIndex / (leadStages.length - 1)) * 80}%`;
+  return <section className="ld-stage-tracker ld-card" aria-label="Lead sales pipeline">
+    <div className="ld-stage-tracker-heading"><div><h3>Sales Pipeline</h3><p>Click any stage to move this lead forward or back.</p></div><span>{stage}</span></div>
+    <ol className="ld-stage-steps" style={{ "--stage-progress": progress } as CSSProperties}>
+      {leadStages.map((item, index) => {
+        const state = index < activeIndex ? "complete" : index === activeIndex ? "current" : "upcoming";
+        return <li key={item} data-state={state}>
+          <button type="button" aria-current={index === activeIndex ? "step" : undefined} aria-label={`Move lead to ${item}${index === activeIndex ? ", current stage" : ""}`} onClick={() => { if (item !== stage) onChange(item); }}>
+            <span className="ld-stage-node">{index < activeIndex ? <RiCheckLine aria-hidden="true" /> : index + 1}</span>
+            <span className="ld-stage-label">{item}</span>
+          </button>
+        </li>;
+      })}
+    </ol>
+  </section>;
+}
+
 type EnquiryDoc = { id: string; name: string; type: string; size: string; by: string; when: string; previewUrl?: string };
 
 const sampleDocs: EnquiryDoc[] = [
@@ -257,6 +278,7 @@ export function EnquiryDetail({
   const [actionsView, setActionsView] = useState<"main" | "status" | "stage">("main");
   const [emailMenuOpen, setEmailMenuOpen] = useState(false);
   const [leadActionDialog, setLeadActionDialog] = useState<LeadActionDialog | null>(null);
+  const [pendingStage, setPendingStage] = useState<string | null>(null);
   const [emailPrefill, setEmailPrefill] = useState({ subject: "", message: "" });
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -371,6 +393,8 @@ export function EnquiryDetail({
           </Dropdown>
         </div>
       </div>
+
+      {enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} onChange={setPendingStage} /> : null}
 
       <div className={`ld-detail-layout${tab === "Lead Details" ? " is-lead-details" : ""}`}>
         <aside className="ld-profile-column">
@@ -506,7 +530,7 @@ export function EnquiryDetail({
         onSubmit={(kind, values) => {
           if (kind === "assign" || kind === "transfer") onSave({ owner: values.owner ?? enquiry.owner });
           if (kind === "change-status" && values.status) onStatus(values.status as EnquiryStatus);
-          if (kind === "change-stage" && values.stage) onSave({ stage: values.stage });
+          if (kind === "change-stage" && values.stage) setPendingStage(values.stage);
           if (kind === "increase-score") onSave({ score: (enquiry.score ?? 54) + Number(values.increaseBy ?? 10) });
           if (kind === "inactive") onSave({ active: false });
           if (kind === "disqualify") onSave({ disqualified: true });
@@ -521,6 +545,28 @@ export function EnquiryDetail({
           setEmailPrefill({ subject, message });
         }}
       />}
+      {pendingStage && <AlertDialog
+        isOpen
+        onOpenChange={open => { if (!open) setPendingStage(null); }}
+        className="ld-dialog ld-stage-confirm-dialog"
+        title="Confirm stage change"
+        icon={false}
+        variant="default"
+        confirmLabel={`Move to ${pendingStage}`}
+        cancelLabel="Keep current stage"
+        onCancel={() => setPendingStage(null)}
+        onConfirm={() => { onSave({ stage: pendingStage }); }}
+      >
+        <div className="ld-stage-confirm-identity">
+          <Avatar size="md" initials={initials(enquiry.name)} alt="" className="ld-initials" />
+          <strong>{enquiry.name}</strong>
+          <small>{enquiry.id}</small>
+        </div>
+        <div className="ld-stage-confirm-flow" aria-label={`Stage change from ${enquiry.stage || leadStages[0]} to ${pendingStage}`}>
+          <span><small>Current stage</small><strong>{enquiry.stage || leadStages[0]}</strong></span>
+          <span><small>New stage</small><strong>{pendingStage}</strong></span>
+        </div>
+      </AlertDialog>}
     </div>
   );
 }

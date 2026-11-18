@@ -3,15 +3,14 @@
 @import "./auth-scene.css";
 
 /* BoardUI's theme is imported first. Restate the sans family here so the
-   later Tailwind entry does not replace Inter with the default stack.
-   Auth body text stays Satoshi through the unlayered body rule below. */
+   later Tailwind entry does not replace Inter with the default stack. */
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 * { box-sizing: border-box; }
 html { min-width: 0; background: var(--paper); }
-body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Satoshi", Arial, sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-size: 15px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
