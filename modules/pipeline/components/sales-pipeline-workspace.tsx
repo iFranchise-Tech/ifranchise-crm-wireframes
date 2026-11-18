@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   RiAddLine, RiArrowRightLine, RiArrowRightSLine, RiBarChartBoxLine, RiCalendarLine,
-  RiCheckLine, RiCloseLine, RiCoinsLine, RiDeleteBinLine, RiDownloadLine,
-  RiEditLine, RiExternalLinkLine, RiFileList3Line, RiFilter3Line, RiFireLine,
+  RiCheckLine, RiCloseLine, RiCoinsLine, RiDeleteBinLine,
+  RiEditLine, RiExternalLinkLine, RiFileList3Line, RiFireLine,
   RiMore2Fill, RiPhoneLine, RiSearchLine, RiStackLine, RiTrophyLine,
 } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
@@ -15,6 +15,9 @@ import { Select, SelectItem } from "@/components/base/select/select";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { Icon } from "@/modules/auth/components/icon";
+import { ReviewShell } from "@/modules/screen-library/components/review-shell";
+import { DirectionProvider } from "@/components/foundations/direction/direction";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { brands, initialOpportunities, initialPipelines, initialStages, lostReasons, owners } from "../data";
 import type { Opportunity, PipelineConfig, PipelineStage } from "../types";
 
@@ -32,6 +35,7 @@ const stamp = () => new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", time
 const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
 export function SalesPipelineWorkspace() {
+  const workspaceFade = useScrollFade();
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
   const [stages, setStages] = useState<PipelineStage[]>(initialStages);
   const [pipelineConfigs, setPipelineConfigs] = useState<PipelineConfig[]>(initialPipelines);
@@ -242,11 +246,19 @@ export function SalesPipelineWorkspace() {
 
   const title = modal === "create" ? "Add opportunity" : modal === "edit" ? "Edit opportunity" : modal === "stage" ? `Move ${selected?.name ?? "opportunity"}` : modal === "activity" ? "Log activity" : modal === "payment" ? "Record payment" : modal === "lost" ? "Mark opportunity as Lost" : modal === "reopen" ? "Reopen opportunity" : modal === "details" ? "Opportunity details" : modal === "delete" ? "Delete opportunity?" : modal === "pipelines" ? "Pipeline management" : modal === "create-pipeline" ? "Create a pipeline" : "Add a pipeline stage";
 
-  return <div className="review-information sp-workspace">
+  const managingPipeline = ["pipelines", "stage-config", "create-pipeline"].includes(modal ?? "");
+  const navigation = <nav className="review-navigation sp-side-nav" aria-label="Sales Pipeline navigation">
+    <Button variant={view === "kanban" && !managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiStackLine} aria-current={view === "kanban" && !managingPipeline ? "page" : undefined} onClick={event => { setView("kanban"); closeModal(); event.currentTarget.closest("dialog")?.close(); }}>Sales pipeline</Button>
+    <Button variant={view === "list" && !managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiFileList3Line} aria-current={view === "list" && !managingPipeline ? "page" : undefined} onClick={event => { setView("list"); closeModal(); event.currentTarget.closest("dialog")?.close(); }}>Opportunities</Button>
+    <Button variant={managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiEditLine} aria-current={managingPipeline ? "page" : undefined} onClick={event => { event.currentTarget.closest("dialog")?.close(); begin("pipelines"); }}>Pipeline management</Button>
+  </nav>;
+
+  return <DirectionProvider locale="en-US"><ReviewShell className="sp-shell" moduleName="Sales Pipeline" icon="layers" subtitle="Opportunities, stages & closure" overviewHref="/library/modules/pipeline" title={managingPipeline ? "Pipeline management" : view === "list" ? "Opportunities" : "Pipeline board"} navigation={navigation}>
+    <div className="relative min-h-0"><div className="review-information sp-workspace" onScroll={workspaceFade.onScroll}>
     {modal === null && notice ? <div className="sp-toast" role="status"><RiCheckLine />{notice}<button aria-label="Dismiss notification" onClick={() => setNotice("")}><RiCloseLine /></button></div> : null}
     <div className="sp-page-heading">
       <div><p className="sp-eyebrow">OPPORTUNITY MANAGEMENT</p><h2>Sales Pipeline</h2><p>Track and manage franchise opportunities from first enquiry to closure.</p></div>
-      <div className="sp-header-actions"><Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} triggerClassName="sp-active-pipeline">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select><Button variant="secondary" leadingIcon={RiStackLine} onClick={() => begin("pipelines")}>Manage</Button><Button leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
+      <div className="sp-header-actions"><Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} className="sp-active-pipeline" triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select><Button className="h-10" leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
     </div>
 
     <section className="sp-kpis" aria-label="Pipeline summary">
@@ -259,12 +271,12 @@ export function SalesPipelineWorkspace() {
 
     <section className="sp-board-panel">
       <div className="sp-toolbar">
-        <label className="sp-search"><RiSearchLine /><input aria-label="Search opportunities" placeholder="Search opportunities, customers…" value={query} onChange={event => setQuery(event.target.value)} /></label>
-        <div className="sp-filter"><Icon name="building"/><Select aria-label="Filter by brand" selectedKey={brandFilter} onSelectionChange={key => setBrandFilter(String(key))} triggerClassName="sp-select"><SelectItem id="All brands">All brands</SelectItem>{brands.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select></div>
-        <div className="sp-filter"><Icon name="user"/><Select aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => setOwnerFilter(String(key))} triggerClassName="sp-select"><SelectItem id="All owners">All owners</SelectItem>{owners.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select></div>
-        <div className="sp-filter"><RiCalendarLine /><Select aria-label="Filter by date" selectedKey={dateFilter} onSelectionChange={key => setDateFilter(String(key))} triggerClassName="sp-select"><SelectItem id="This month">This month</SelectItem><SelectItem id="All time">All time</SelectItem></Select></div>
-        <div className="sp-filter"><RiFilter3Line /><Select aria-label="Filter by stage" selectedKey={stageFilter} onSelectionChange={key => setStageFilter(String(key))} triggerClassName="sp-select"><SelectItem id="All stages">All stages</SelectItem>{stages.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select></div>
-        <div className="sp-view-toggle" role="group" aria-label="Pipeline view"><button type="button" aria-pressed={view === "kanban"} onClick={() => setView("kanban")}><RiStackLine />Board</button><button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}><RiFileList3Line />List</button></div>
+        <Input className="sp-search" label="Search" aria-label="Search opportunities" leadingIcon={RiSearchLine} fieldClassName="h-10 border border-border-button-default bg-background-primary-default" placeholder="Search opportunities, customers…" value={query} onChange={setQuery} />
+        <Select className="sp-filter" label="Brand" aria-label="Filter by brand" selectedKey={brandFilter} onSelectionChange={key => setBrandFilter(String(key))} triggerClassName="h-10"><SelectItem id="All brands">All brands</SelectItem>{brands.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
+        <Select className="sp-filter" label="Owner" aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => setOwnerFilter(String(key))} triggerClassName="h-10"><SelectItem id="All owners">All owners</SelectItem>{owners.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
+        <Select className="sp-filter" label="Date" aria-label="Filter by date" selectedKey={dateFilter} onSelectionChange={key => setDateFilter(String(key))} triggerClassName="h-10"><SelectItem id="This month">This month</SelectItem><SelectItem id="All time">All time</SelectItem></Select>
+        <Select className="sp-filter" label="Stage" aria-label="Filter by stage" selectedKey={stageFilter} onSelectionChange={key => setStageFilter(String(key))} triggerClassName="h-10"><SelectItem id="All stages">All stages</SelectItem>{stages.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
+        <div className="sp-view-toggle text-body-2-medium" role="group" aria-label="Pipeline view"><button type="button" aria-pressed={view === "kanban"} onClick={() => setView("kanban")}><RiStackLine />Board</button><button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}><RiFileList3Line />List</button></div>
       </div>
       {view === "kanban" ? <div className="sp-board-scroller"><div className="sp-board" aria-label="Sales pipeline stages">
         {stages.map(stage => {
@@ -322,7 +334,8 @@ export function SalesPipelineWorkspace() {
 
       {modal === "stage-config" ? <form onSubmit={createStage}><ModalBody className="sp-modal-form"><Input label="Stage name" isRequired value={newStage.name} onChange={name => setNewStage(current => ({ ...current, name }))} placeholder="e.g. Site visit" /><div className="sp-form-grid"><Input label="Probability (%)" type="number" value={newStage.probability} onChange={probability => setNewStage(current => ({ ...current, probability }))} /><Select label="Stage color" selectedKey={newStage.color} onSelectionChange={key => setNewStage(current => ({ ...current, color: String(key) }))}>{["blue", "purple", "slate", "amber", "orange", "violet", "rose", "green"].map(color => <SelectItem key={color} id={color}>{color}</SelectItem>)}</Select></div><ModalFooter><Button variant="secondary" onClick={() => setModal("pipelines")}>Cancel</Button><Button type="submit" leadingIcon={RiAddLine}>Add stage</Button></ModalFooter></ModalBody></form> : null}
     </Modal>
-  </div>;
+    </div><ScrollFade progress={workspaceFade.progress} surfaceClassName="from-background-full" /></div>
+  </ReviewShell></DirectionProvider>;
 }
 
 function Metric({ icon: IconComponent, label, value, detail, tone }: { icon: typeof RiStackLine; label: string; value: string; detail: string; tone: string }) {
