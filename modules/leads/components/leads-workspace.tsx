@@ -39,7 +39,7 @@ import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { ColumnManagerModal } from "@/modules/screen-library/components/column-manager-modal";
 import { AdvancedLeadFilters } from "./advanced-lead-filters";
 import type { LeadAdvancedFilters, LeadFilterField } from "./advanced-lead-filters";
-import { readTableColumns, saveActiveCrmRole, saveOrganizationTableColumns, savePersonalTableColumns } from "@/modules/screen-library/lib/table-columns";
+import { activeCrmProfiles, readActiveCrmRole, readTableColumns, saveActiveCrmRole, saveOrganizationTableColumns, savePersonalTableColumns } from "@/modules/screen-library/lib/table-columns";
 import { portalBrands } from "@/modules/brands/types";
 import { portraitFor } from "@/modules/users-roles/portrait";
 import { initialUsers } from "@/modules/users-roles/data";
@@ -162,15 +162,12 @@ const crmSources = initialSources.map(source => {
     converted: rows.filter(lead => lead.status === "Converted").length,
   };
 });
-const accessRoles = [
-  { id: "ceo", name: "Mohammad Abrar", title: "Superadmin", categories: salesCategories, sections: leadSections, canDelete: true },
-  { id: "sumanth", name: "Gangaram Sumanth Reddy", label: "Sumanth Reddy", title: "Superadmin", categories: salesCategories, sections: leadSections, canDelete: true },
-  { id: "shakshay", name: "Shakshay Gupta", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
-  { id: "shiwali", name: "Shiwali Singh", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
-  { id: "swetha", name: "Swetha Chintada", title: "Admin", categories: salesCategories, sections: leadSections, canDelete: true },
-  { id: "sales", name: "Himani Bhargava Tapadiya", title: "Sales", categories: salesCategories, sections: leadSections, canDelete: false },
-  { id: "hr", name: "Ekta Pattanaik", title: "HR", categories: salesCategories, sections: leadSections, canDelete: false },
-];
+const accessRoles = activeCrmProfiles.map(profile => ({
+  ...profile,
+  categories: salesCategories,
+  sections: leadSections,
+  canDelete: profile.title === "Superadmin" || profile.title === "Admin",
+}));
 type AccessRole = (typeof accessRoles)[number];
 
 function activityMark(activity: Activity) {
@@ -538,6 +535,11 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    const activeProfile = readActiveCrmRole();
+    if (accessRoles.some(item => item.id === activeProfile.id)) setRoleId(activeProfile.id);
+  }, []);
+
+  useEffect(() => {
     setQuery("");
     setStatus("All statuses");
     setBrand("All brands");
@@ -556,8 +558,6 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   useEffect(() => {
     setRoleOpen(false);
   }, [roleId]);
-
-  useEffect(() => { saveActiveCrmRole({ id: role.id, name: role.name, title: role.title }); }, [role.id, role.name, role.title]);
 
   useEffect(() => {
     if (section === "Activity" || section === "Sources") {
@@ -823,7 +823,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
           </DropdownTrigger>
           <DropdownPopover aria-label="Switch role" placement="bottom end" className="w-[280px]">
             {accessRoles.map(item => (
-              <DropdownItem key={item.id} selected={item.id === role.id} onSelect={() => { setRoleOpen(false); setRoleId(item.id); }}>
+              <DropdownItem key={item.id} selected={item.id === role.id} onSelect={() => { setRoleOpen(false); setRoleId(item.id); saveActiveCrmRole({ id: item.id, name: item.name, title: item.title }); }}>
                 <Avatar size="sm" src={portraitFor(item.name)} initials={initials(item.name)} alt="" />
                 <span className="min-w-0"><span className="block truncate">{"label" in item && item.label ? item.label : shortName(item.name)}</span><span className="block text-caption-1-regular text-text-tertiary">{item.title}</span></span>
               </DropdownItem>

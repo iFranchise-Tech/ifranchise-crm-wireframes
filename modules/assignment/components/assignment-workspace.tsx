@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Fragment } from "react";
 import type { Selection } from "react-aria-components";
-import { RiAdvertisementLine, RiArrowDownSLine, RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiFacebookLine, RiFilter3Line, RiGlobalLine, RiGoogleLine, RiGroupLine, RiInformationLine, RiInstagramLine, RiLayoutColumnLine, RiLogoutBoxRLine, RiMailLine, RiMoreLine, RiPhoneLine, RiQuestionLine, RiSettings3Line, RiStore2Line, RiUserLine } from "@remixicon/react";
+import { RiAdvertisementLine, RiArrowDownSLine, RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiFacebookLine, RiFilter3Line, RiGlobalLine, RiGoogleLine, RiGroupLine, RiInformationLine, RiInstagramLine, RiLayoutColumnLine, RiLogoutBoxRLine, RiMailLine, RiPhoneLine, RiQuestionLine, RiSettings3Line, RiStore2Line, RiUserLine } from "@remixicon/react";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
@@ -15,7 +15,7 @@ import { Select, SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { ColumnManagerModal } from "@/modules/screen-library/components/column-manager-modal";
-import { readActiveCrmRole, readTableColumns, saveOrganizationTableColumns, savePersonalTableColumns } from "@/modules/screen-library/lib/table-columns";
+import { activeCrmProfiles, readActiveCrmRole, readTableColumns, saveActiveCrmRole, saveOrganizationTableColumns, savePersonalTableColumns, type ActiveCrmProfile } from "@/modules/screen-library/lib/table-columns";
 import { sourceLeads } from "@/modules/leads/data";
 import { AdvancedLeadFilters, type LeadAdvancedFilters, type LeadFilterField } from "@/modules/leads/components/advanced-lead-filters";
 import { initialUsers } from "@/modules/users-roles/data";
@@ -269,7 +269,7 @@ export function AssignmentWorkspace() {
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [stageFilter, setStageFilter] = useState("All stages");
   const [historyTypeFilter, setHistoryTypeFilter] = useState("All types");
-  const [activeProfile, setActiveProfile] = useState({ id: "assignment-coordinator", name: coordinator, title: "Lead Coordinator" });
+  const [activeProfile, setActiveProfile] = useState<ActiveCrmProfile>({ id: "assignment-coordinator", name: coordinator, title: "Lead Coordinator" });
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [columnIds, setColumnIds] = useState<string[]>([]);
   const [historyColumnIds, setHistoryColumnIds] = useState<string[]>([]);
@@ -482,12 +482,15 @@ export function AssignmentWorkspace() {
   const tabItems = ["Assign Leads", "Assignment History"] as const;
   const assignmentNavigation = <nav className="review-navigation assignment-nav" aria-label="Lead assignment navigation"><button type="button" className="review-overview-link is-active" onClick={() => { setTab("Assign Leads"); setPage(1); }}><RiLayoutColumnLine aria-hidden="true" />Lead Assignment</button></nav>;
 
-  return <ReviewShell className="assignment-shell" moduleName="Lead Assignment" icon="user" subtitle="Assignments & history" overviewHref="/library/modules/assignment" title={tab} navigation={assignmentNavigation} sidebarFooter={<div className="assignment-account"><span>AK</span><div><strong>Anitha K</strong><small>Lead Coordinator</small></div><RiMoreLine /></div>} controls={<div className="assignment-header-meta"><Dropdown>
-    <DropdownTrigger className="assignment-profile-trigger" aria-label={`Profile menu for ${activeProfile.name}`}>
+  return <ReviewShell className="assignment-shell" moduleName="Lead Assignment" icon="user" subtitle="Assignments & history" overviewHref="/library/modules/assignment" title={tab} navigation={assignmentNavigation} sidebarFooter={<div className="assignment-sidebar-spacer" aria-hidden="true" />} controls={<div className="assignment-header-meta"><Dropdown>
+    <DropdownTrigger className="assignment-profile-trigger" aria-label={`Switch profile, current profile ${activeProfile.name}`}>
       <span className="assignment-user-avatar">{personInitials(activeProfile.name)}</span><span className="assignment-profile-name">{activeProfile.name}</span><RiArrowDownSLine aria-hidden="true" />
     </DropdownTrigger>
-    <DropdownPopover aria-label="Profile options" placement="bottom end" className="assignment-profile-popover w-[280px]">
-      <div className="assignment-profile-menu-heading"><span className="assignment-user-avatar">{personInitials(activeProfile.name)}</span><span><strong>{activeProfile.name}</strong><small>{activeProfile.title}</small><small className="assignment-profile-email"><RiMailLine />{initialUsers.find(user => user.name === activeProfile.name)?.email ?? (activeProfile.name === "Anitha K" ? "anitha@emori.example" : "")}</small></span></div>
+    <DropdownPopover aria-label="Switch profile" placement="bottom end" className="assignment-profile-popover w-[280px]">
+      {activeCrmProfiles.map(profile => <DropdownItem key={profile.id} selected={profile.id === activeProfile.id} onSelect={() => { setActiveProfile(profile); saveActiveCrmRole(profile); setSelectedId(null); setChecked([]); }}>
+        <Avatar size="sm" src={portraitFor(profile.name)} initials={personInitials(profile.name)} alt="" />
+        <span className="min-w-0"><span className="block truncate">{profile.label ?? profile.name}</span><span className="block text-caption-1-regular text-text-tertiary">{profile.title}</span></span>
+      </DropdownItem>)}
       <DropdownDivider />
       <DropdownItem onSelect={() => { window.location.href = "/library"; }}><RiQuestionLine />Help &amp; guides</DropdownItem>
       <DropdownDivider />

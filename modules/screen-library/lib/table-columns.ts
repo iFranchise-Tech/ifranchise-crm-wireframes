@@ -29,7 +29,18 @@ export function saveOrganizationTableColumns(scope: string, ids: string[]) {
   window.localStorage.setItem(organizationKey(scope), JSON.stringify(ids));
 }
 
-export type ActiveCrmProfile = { id: string; name: string; title: string };
+export type ActiveCrmProfile = { id: string; name: string; title: string; label?: string };
+
+export const activeCrmProfiles: ActiveCrmProfile[] = [
+  { id: "ceo", name: "Mohammad Abrar", title: "Superadmin" },
+  { id: "sumanth", name: "Gangaram Sumanth Reddy", label: "Sumanth Reddy", title: "Superadmin" },
+  { id: "shakshay", name: "Shakshay Gupta", title: "Admin" },
+  { id: "shiwali", name: "Shiwali Singh", title: "Admin" },
+  { id: "swetha", name: "Swetha Chintada", title: "Admin" },
+  { id: "sales", name: "Himani Bhargava Tapadiya", title: "Sales" },
+  { id: "hr", name: "Ekta Pattanaik", title: "HR" },
+  { id: "assignment-coordinator", name: "Anitha K", title: "Lead Coordinator" },
+];
 
 export function saveActiveCrmRole(profile: ActiveCrmProfile) {
   window.localStorage.setItem("ifranchise:active-crm-profile", JSON.stringify(profile));
