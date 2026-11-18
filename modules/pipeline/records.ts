@@ -7,6 +7,57 @@ export type OpportunityDraft = {
   source: string; value: string; stageId: string; nextAction: string; pipelineId: string;
 };
 
+export const stageTransitions: Record<string, string[]> = {
+  new: ["rnr", "cold", "lost"], rnr: ["cold", "lost"], cold: ["manager-meeting", "lost"],
+  "manager-meeting": ["warm", "lost"], warm: ["brand-meeting", "lost"], "brand-meeting": ["hot", "lost"],
+  hot: ["token", "lost"], token: ["won", "lost"], won: [], lost: [],
+};
+
+const nextActions: Record<string, string> = {
+  new: "Make initial contact", rnr: "Retry call (RNR 1)", cold: "Share brand deck",
+  "manager-meeting": "Conduct manager meeting", warm: "Follow up for brand meeting",
+  "brand-meeting": "Confirm brand meeting", hot: "Collect token", token: "Review payment",
+  won: "Prepare onboarding", lost: "View lost reason",
+};
+
+/** Dragging and the stage picker share the same transition and prerequisite checks. */
+export function prepareOpportunityMove(item: Opportunity, targetId: string, stages: PipelineStage[], at: string, day: string):
+  { error: string } | { requiresLostReason: true } | { opportunity: Opportunity } {
+  const target = stages.find(stage => stage.id === targetId);
+  if (!target || !(stageTransitions[item.stageId] ?? []).includes(targetId)) {
+    return { error: "Choose an available next stage. Required stages cannot be skipped." };
+  }
+  if (targetId === "lost") return { requiresLostReason: true };
+  if (["manager-meeting", "brand-meeting"].includes(item.stageId) && (!item.meetingComplete || !item.meetingMinutes?.trim())) {
+    return { error: `Complete the ${item.stageId === "manager-meeting" ? "manager" : "brand"} meeting and add meeting minutes before moving to ${target.name}.` };
+  }
+  if (targetId === "won" && (item.verifiedAmount ?? 0) < item.value) {
+    return { error: "Finance must verify the full deal amount before this opportunity can be Won." };
+  }
+  const enteringMeeting = ["manager-meeting", "brand-meeting"].includes(targetId);
+  return { opportunity: {
+    ...item, stageId: targetId, rnrStep: targetId === "rnr" ? 1 : undefined,
+    nextAction: nextActions[targetId] ?? `Follow up for ${target.name}`, lastActivity: "Just now",
+    ...(enteringMeeting ? { meetingComplete: false, meetingMinutes: undefined } : {}),
+    history: [{ stage: target.name, at, note: targetId === "rnr" ? `RNR update ${day} · RNR 1 · follow-up email queued in prototype; delivery is not connected.` : undefined }, ...item.history],
+  } };
+}
+
+export function pipelineSummary(items: Opportunity[], now = new Date()) {
+  const active = items.filter(item => !["won", "lost"].includes(item.stageId));
+  return {
+    active: active.length,
+    value: active.reduce((sum, item) => sum + item.value, 0),
+    hot: items.filter(item => item.stageId === "hot").length,
+    token: items.filter(item => item.stageId === "token").length,
+    won: items.filter(item => {
+      if (item.stageId !== "won") return false;
+      const closed = new Date(item.history.find(entry => entry.stage === "Won")?.at ?? "");
+      return closed.getFullYear() === now.getFullYear() && closed.getMonth() === now.getMonth();
+    }).length,
+  };
+}
+
 export function validateOpportunity(draft: OpportunityDraft, pipelines: PipelineConfig[], editing = false): string | null {
   if (!draft.name.trim()) return "Enter the customer or enquiry name.";
   const digits = draft.phone.replace(/\D/g, "");

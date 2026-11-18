@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import {
   RiAddLine, RiArrowRightLine, RiBarChartBoxLine, RiCalendarLine,
   RiCheckLine, RiCloseLine, RiCoinsLine, RiDeleteBinLine,
   RiEditLine, RiFileList3Line, RiFireLine, RiFilter3Line, RiLayoutColumnLine,
-  RiMore2Fill, RiPhoneLine, RiSearchLine, RiStackLine, RiTrophyLine,
+  RiMore2Fill, RiPhoneLine, RiSearchLine, RiStackLine, RiTrophyLine, RiDraggable, RiArrowGoBackLine,
 } from "@remixicon/react";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { Button } from "@/components/base/buttons/button";
@@ -26,7 +26,7 @@ import { readActiveCrmRole, readTableColumns, savePersonalTableColumns } from "@
 import { AdvancedLeadFilters, type LeadAdvancedFilters, type LeadFilterField } from "@/modules/leads/components/advanced-lead-filters";
 import { PipelineLeadDetail } from "./pipeline-lead-detail";
 import { OpportunityActions, type OpportunityAction } from "./opportunity-actions";
-import { matchesOpportunityFilters, validateOpportunity, type OpportunityDraft } from "../records";
+import { matchesOpportunityFilters, pipelineSummary, prepareOpportunityMove, stageTransitions as TRANSITIONS, validateOpportunity, type OpportunityDraft } from "../records";
 import { originalSources } from "@/modules/leads/types";
 import { cx } from "@/utils/cx";
 import "@/modules/leads/components/leads.css";
@@ -44,11 +44,6 @@ const opportunityColumns = [
 const defaultColumns = opportunityColumns.slice(0, 6).map(column => column.id);
 const formFieldClass = "h-10 border border-border-button-default bg-background-primary-default text-text-primary";
 const STORAGE_KEY = "ifranchise-sales-pipeline-v1";
-const TRANSITIONS: Record<string, string[]> = {
-  new: ["rnr", "cold", "lost"], rnr: ["cold", "lost"], cold: ["manager-meeting", "lost"],
-  "manager-meeting": ["warm", "lost"], warm: ["brand-meeting", "lost"], "brand-meeting": ["hot", "lost"],
-  hot: ["token", "lost"], token: ["won", "lost"], won: [], lost: [],
-};
 const money = (value: number) => `₹${(value / 10000000).toFixed(value >= 10000000 ? 2 : 2)} Cr`;
 const stageName = (stages: PipelineStage[], id: string) => stages.find(stage => stage.id === id)?.name ?? id;
 const stamp = () => new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
@@ -58,6 +53,13 @@ export function SalesPipelineWorkspace() {
   const workspaceFade = useScrollFade();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const previousScroll = useRef(0);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const dragPoint = useRef<{ x: number; y: number } | null>(null);
+  const dragEndedAt = useRef(0);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropStage, setDropStage] = useState<string | null>(null);
+  const [showOverview, setShowOverview] = useState(false);
+  const [undoMove, setUndoMove] = useState<{ before: Opportunity; after: Opportunity } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
@@ -78,7 +80,6 @@ export function SalesPipelineWorkspace() {
   const [brandFilter, setBrandFilter] = useState("All brands");
   const [ownerFilter, setOwnerFilter] = useState("All owners");
   const [stageFilter, setStageFilter] = useState("All stages");
-  const [dateFilter, setDateFilter] = useState("This month");
   const [view, setView] = useState<ViewMode>("kanban");
   const [modal, setModal] = useState<ModalKind>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,6 +96,31 @@ export function SalesPipelineWorkspace() {
   const [newStage, setNewStage] = useState({ name: "", probability: "10", color: "blue" });
   const [newPipeline, setNewPipeline] = useState({ name: "", description: "" });
   const [notice, setNotice] = useState("");
+
+  // Keep distant columns and long lanes reachable while holding a card at an edge.
+  useEffect(() => {
+    if (!draggedId) return;
+    let frame = 0;
+    const scrollAtEdge = () => {
+      const board = boardRef.current;
+      const point = dragPoint.current;
+      if (board && point) {
+        const bounds = board.getBoundingClientRect();
+        if (point.y >= bounds.top && point.y <= bounds.bottom) {
+          const dx = point.x < bounds.left + 56 ? -10 : point.x > bounds.right - 56 ? 10 : 0;
+          board.scrollBy({ left: dx });
+          const lane = document.elementFromPoint(point.x, point.y)?.closest(".sp-lane")?.querySelector(".sp-lane-cards");
+          if (lane) {
+            const area = lane.getBoundingClientRect();
+            lane.scrollBy({ top: point.y < area.top + 40 ? -8 : point.y > area.bottom - 40 ? 8 : 0 });
+          }
+        }
+      }
+      frame = requestAnimationFrame(scrollAtEdge);
+    };
+    frame = requestAnimationFrame(scrollAtEdge);
+    return () => cancelAnimationFrame(frame);
+  }, [draggedId]);
 
   useEffect(() => {
     try {
@@ -168,9 +194,8 @@ export function SalesPipelineWorkspace() {
     `${item.name} ${item.enquiryId} ${item.brand} ${item.owner}`.toLowerCase().includes(query.trim().toLowerCase()) &&
     (brandFilter === "All brands" || item.brand === brandFilter) &&
     (ownerFilter === "All owners" || item.owner === ownerFilter) &&
-    (stageFilter === "All stages" || item.stageId === stageFilter) &&
-    (dateFilter === "All time" || new Date(item.createdAt).getMonth() === new Date().getMonth() && new Date(item.createdAt).getFullYear() === new Date().getFullYear()),
-  ), [activeOpportunities, query, brandFilter, ownerFilter, stageFilter, dateFilter]);
+    (stageFilter === "All stages" || item.stageId === stageFilter),
+  ), [activeOpportunities, query, brandFilter, ownerFilter, stageFilter]);
   const filtered = quickFiltered.filter(item => matchesOpportunityFilters(item, advancedFilters, stages));
   const activeFilterCount = advancedFilters?.rules.length ?? 0;
 
@@ -193,14 +218,14 @@ export function SalesPipelineWorkspace() {
     else setNotice("This stage is not available directly. Choose an available next stage below.");
   }
 
-  const active = activeOpportunities.filter(item => !["won", "lost"].includes(item.stageId));
-  const hot = active.filter(item => item.stageId === "hot" || item.stageId === "token");
-  const tokenCount = activeOpportunities.filter(item => item.stageId === "token" || item.stageId === "won").length;
-  const wonMonth = activeOpportunities.filter(item => item.stageId === "won").length;
+  const summary = pipelineSummary(filtered);
+  const dragged = opportunities.find(item => item.id === draggedId);
+  const availableDropStages = dragged ? TRANSITIONS[dragged.stageId] ?? [] : [];
 
   function closeModal() { setModal(null); setTargetStage(""); setRnrTarget(""); setNotice(""); }
-  function patchOpportunity(id: string, patch: Partial<Opportunity>) { setOpportunities(current => current.map(item => item.id === id ? { ...item, ...patch } : item)); }
+  function patchOpportunity(id: string, patch: Partial<Opportunity>) { setUndoMove(null); setOpportunities(current => current.map(item => item.id === id ? { ...item, ...patch } : item)); }
   function begin(kind: ModalKind, id?: string) {
+    setUndoMove(null);
     setSelectedId(id ?? null);
     setNotice("");
     if (kind === "create") setForm({ pipelineId: activePipelineId, name: "", email: "", phone: "", brand: brands[0] ?? "", owner: owners[0] ?? "", source: "Website", value: "7500000", stageId: "new", nextAction: "Make initial contact" });
@@ -232,16 +257,49 @@ export function SalesPipelineWorkspace() {
     closeModal();
   }
 
-  function moveOpportunity() {
-    if (!selected || !targetStage) return;
-    if (targetStage === "lost") { setModal("lost"); setLostReason(lostReasons[0]); setOtherReason(""); return; }
-    if (selected.stageId === "manager-meeting" && targetStage === "warm" && (!selected.meetingComplete || !selected.meetingMinutes?.trim())) { setNotice("Complete the manager meeting and add meeting minutes before moving to Warm."); return; }
-    if (selected.stageId === "brand-meeting" && targetStage === "hot" && (!selected.meetingComplete || !selected.meetingMinutes?.trim())) { setNotice("Complete the brand meeting and add meeting minutes before moving to Hot."); return; }
-    if (selected.stageId === "token" && targetStage === "won" && (selected.verifiedAmount ?? 0) < selected.value) { setNotice(`Finance must verify the full ${money(selected.value)} deal amount before this opportunity can be Won.`); return; }
-    const nextStageName = stageName(stages, targetStage);
-    const rnrNote = targetStage === "rnr" ? `RNR update ${todayKey()} · RNR 1 · follow-up email queued in prototype; delivery is not connected.` : undefined;
-    patchOpportunity(selected.id, { stageId: targetStage, rnrStep: targetStage === "rnr" ? 1 : undefined, lastActivity: "Just now", history: [{ stage: nextStageName, at: stamp(), note: rnrNote }, ...selected.history] });
+  function moveOpportunity(item = selected, destination = targetStage) {
+    if (!item || !destination) return;
+    const result = prepareOpportunityMove(item, destination, stages, new Date().toISOString(), todayKey());
+    if ("error" in result) {
+      begin("stage", item.id);
+      setTargetStage(destination);
+      setNotice(result.error);
+      return;
+    }
+    if ("requiresLostReason" in result) { begin("lost", item.id); return; }
     closeModal();
+    setOpportunities(current => current.map(record => record.id === item.id ? result.opportunity : record));
+    setUndoMove({ before: item, after: result.opportunity });
+    setNotice(`${item.name} moved to ${stageName(stages, destination)}.`);
+  }
+
+  function finishDrag() {
+    setDraggedId(null);
+    setDropStage(null);
+    dragPoint.current = null;
+    dragEndedAt.current = Date.now();
+  }
+
+  function startDrag(event: DragEvent<HTMLElement>, item: Opportunity) {
+    const control = (event.target as HTMLElement).closest("button");
+    if (!TRANSITIONS[item.stageId]?.length || control && !control.matches(".sp-card-title, .sp-drag-handle")) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", item.id);
+    event.dataTransfer.setDragImage(event.currentTarget, 32, 24);
+    setDraggedId(item.id);
+    setUndoMove(null);
+    setNotice("");
+  }
+
+  function dropOpportunity(event: DragEvent<HTMLElement>, destination: string) {
+    event.preventDefault();
+    if (dragged && event.dataTransfer.getData("text/plain") === dragged.id && availableDropStages.includes(destination)) {
+      moveOpportunity(dragged, destination);
+    }
+    finishDrag();
   }
 
   function confirmLost() {
@@ -328,7 +386,11 @@ export function SalesPipelineWorkspace() {
 
   return <DirectionProvider locale="en-US"><ReviewShell className="sp-shell" moduleName="Sales Pipeline" icon="layers" subtitle="Opportunities, stages & closure" overviewHref="/library/modules/pipeline" title={detailOpportunity ? detailOpportunity.enquiryId : managingPipeline ? "Pipeline management" : view === "list" ? "Pipeline list" : "Pipeline board"} navigation={navigation}>
     <div className="relative min-h-0"><div ref={workspaceRef} className={cx("review-information sp-workspace", detailOpportunity && "sp-detail-workspace")} onScroll={workspaceFade.onScroll}>
-    {modal === null && notice ? <div className="sp-toast" role="status"><RiCheckLine />{notice}<button aria-label="Dismiss notification" onClick={() => setNotice("")}><RiCloseLine /></button></div> : null}
+    {modal === null && notice ? <div className="sp-toast text-body-2-regular" role="status"><RiCheckLine /><span className="min-w-0 flex-1">{notice}</span>{undoMove && <Button size="small" variant="ghost" leadingIcon={RiArrowGoBackLine} onClick={() => {
+      setOpportunities(current => current.map(item => item === undoMove.after ? undoMove.before : item));
+      setNotice(`Move undone. ${undoMove.before.name} is back in ${stageName(stages, undoMove.before.stageId)}.`);
+      setUndoMove(null);
+    }}>Undo move</Button>}<IconButton icon={RiCloseLine} aria-label="Dismiss notification" onClick={() => { setNotice(""); setUndoMove(null); }} /></div> : null}
     {detailOpportunity ? <PipelineLeadDetail
       key={detailOpportunity.id} opportunity={detailOpportunity} stages={stages} owners={owners}
       contacts={opportunities.map(item => ({ name: item.name, email: item.email }))}
@@ -344,41 +406,56 @@ export function SalesPipelineWorkspace() {
             <Button iconOnly variant={view === "kanban" ? "primary" : "secondary"} className="size-10" leadingIcon={RiStackLine} aria-label="Board view" title="Board view" aria-pressed={view === "kanban"} onClick={() => setView("kanban")} />
             <Button iconOnly variant={view === "list" ? "primary" : "secondary"} className="size-10" leadingIcon={RiFileList3Line} aria-label="List view" title="List view" aria-pressed={view === "list"} onClick={() => setView("list")} />
           </div>
-          <IconButton icon={RiFilter3Line} className={cx("size-10", activeFilterCount > 0 && "bg-accent-50 text-accent-700")} aria-label="Advanced filters" title={activeFilterCount ? `Advanced filters (${activeFilterCount} applied)` : "Advanced filters"} aria-pressed={advancedFiltersOpen || activeFilterCount > 0} onClick={() => setAdvancedFiltersOpen(true)} />
-          <IconButton icon={RiLayoutColumnLine} className="size-10" aria-label="Customize columns" title="Customize list columns" onClick={() => { setView("list"); setColumnsOpen(true); }} />
         </div>
-        <Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} className="sp-active-pipeline" triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select><Button className="h-10" leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
+        <Select aria-label="Active pipeline" selectedKey={activePipelineId} onSelectionChange={key => selectPipeline(String(key))} className="sp-active-pipeline" triggerClassName="h-10">{pipelineConfigs.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
+        <Button className="h-10" variant={showOverview ? "primary" : "secondary"} leadingIcon={RiBarChartBoxLine} aria-expanded={showOverview} aria-controls="pipeline-overview" onClick={() => setShowOverview(value => !value)}>Quick overview</Button>
+        <Button className="h-10" leadingIcon={RiAddLine} onClick={() => begin("create")}>Add opportunity</Button></div>
     </div>
 
-    <section className="sp-kpis" aria-label="Pipeline summary">
-      <Metric icon={RiStackLine} label="Active opportunities" value={String(active.length)} detail="Across open stages" tone="blue" />
-      <Metric icon={RiBarChartBoxLine} label="Pipeline value" value={money(active.reduce((sum, item) => sum + item.value, 0))} detail="Open opportunity value" tone="purple" />
-      <Metric icon={RiFireLine} label="Hot opportunities" value={String(hot.length)} detail="Hot and token stages" tone="rose" />
-      <Metric icon={RiCoinsLine} label="Token collected" value={String(tokenCount)} detail="Awaiting final close" tone="green" />
-      <Metric icon={RiTrophyLine} label="Won this month" value={String(wonMonth)} detail="Closed opportunities" tone="amber" />
-    </section>
+    {showOverview && <section id="pipeline-overview" aria-label="Pipeline summary" className="flex flex-col gap-2">
+      <p className="text-caption-1-regular text-text-secondary">Overview of opportunities matching your current filters.</p>
+      <div className="sp-kpis">
+        <Metric icon={RiStackLine} label="Active opportunities" value={String(summary.active)} detail="Across open stages" tone="blue" />
+        <Metric icon={RiBarChartBoxLine} label="Pipeline value" value={money(summary.value)} detail="Open opportunity value" tone="purple" />
+        <Metric icon={RiFireLine} label="Hot opportunities" value={String(summary.hot)} detail="Ready for token collection" tone="rose" />
+        <Metric icon={RiCoinsLine} label="Token collected" value={String(summary.token)} detail="Awaiting final close" tone="green" />
+        <Metric icon={RiTrophyLine} label="Won this month" value={String(summary.won)} detail="Closed in the current month" tone="amber" />
+      </div>
+    </section>}
 
     <section className="sp-board-panel">
       <div className="sp-toolbar">
-        <Input className="sp-search" label="Search" aria-label="Search opportunities" leadingIcon={RiSearchLine} fieldClassName="h-10 border border-border-button-default bg-background-primary-default" placeholder="Search opportunities, customers…" value={query} onChange={setQuery} />
-        <Select className="sp-filter" label="Brand" aria-label="Filter by brand" selectedKey={brandFilter} onSelectionChange={key => setBrandFilter(String(key))} triggerClassName="h-10"><SelectItem id="All brands">All brands</SelectItem>{brands.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
-        <Select className="sp-filter" label="Owner" aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => setOwnerFilter(String(key))} triggerClassName="h-10"><SelectItem id="All owners">All owners</SelectItem>{owners.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
-        <Select className="sp-filter" label="Date" aria-label="Filter by date" selectedKey={dateFilter} onSelectionChange={key => setDateFilter(String(key))} triggerClassName="h-10"><SelectItem id="This month">This month</SelectItem><SelectItem id="All time">All time</SelectItem></Select>
-        <Select className="sp-filter" label="Stage" aria-label="Filter by stage" selectedKey={stageFilter} onSelectionChange={key => setStageFilter(String(key))} triggerClassName="h-10"><SelectItem id="All stages">All stages</SelectItem>{stages.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
-
+        <Input className="sp-search" aria-label="Search opportunities" leadingIcon={RiSearchLine} fieldClassName="h-10 border border-border-button-default bg-background-primary-default" placeholder="Search name or enquiry ID" value={query} onChange={setQuery} />
+        <Select className="sp-filter" aria-label="Filter by brand" selectedKey={brandFilter} onSelectionChange={key => setBrandFilter(String(key))} triggerClassName="h-10"><SelectItem id="All brands">All brands</SelectItem>{brands.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
+        <Select className="sp-filter" aria-label="Filter by owner" selectedKey={ownerFilter} onSelectionChange={key => setOwnerFilter(String(key))} triggerClassName="h-10"><SelectItem id="All owners">All owners</SelectItem>{owners.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</Select>
+        <Select className="sp-filter" aria-label="Filter by stage" selectedKey={stageFilter} onSelectionChange={key => setStageFilter(String(key))} triggerClassName="h-10"><SelectItem id="All stages">All stages</SelectItem>{stages.map(item => <SelectItem key={item.id} id={item.id}>{item.name}</SelectItem>)}</Select>
+        <div className="sp-toolbar-actions">
+          <Button className="h-10" leadingIcon={RiFilter3Line} variant={advancedFiltersOpen || activeFilterCount ? "primary" : "secondary"} aria-label="Advanced filters" title="Advanced filters" aria-expanded={advancedFiltersOpen} aria-controls="pipeline-advanced-filters" onClick={() => setAdvancedFiltersOpen(open => !open)}><span className="sp-toolbar-action-label">Advanced filters</span>{activeFilterCount > 0 && <span>{activeFilterCount}</span>}</Button>
+          <Button className="h-10" leadingIcon={RiLayoutColumnLine} variant="secondary" aria-label="Customize columns" title="Customize list columns" onClick={() => { setView("list"); setColumnsOpen(true); }}><span className="sp-toolbar-action-label">Customize columns</span></Button>
+        </div>
       </div>
-      {view === "kanban" ? <div className="sp-board-scroller"><div className="sp-board" aria-label="Sales pipeline stages">
+      <div className={cx("sp-record-layout", advancedFiltersOpen && "has-advanced-filters")}>
+      <div className="sp-record-main">
+      {view === "kanban" ? <>
+        <div className="sp-board-hint text-caption-1-regular text-text-secondary" aria-live="polite"><RiDraggable className="size-4 shrink-0" aria-hidden="true" />{dragged ? `Moving ${dragged.name} · drop into a highlighted stage` : "Drag a card to the next stage, or use its move handle to choose a stage."}</div>
+        <div ref={boardRef} className="sp-board-scroller" onDragOver={event => { if (dragged) dragPoint.current = { x: event.clientX, y: event.clientY }; }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { dragPoint.current = null; setDropStage(null); } }}><div className="sp-board" aria-label="Sales pipeline stages">
         {stages.map(stage => {
           const items = filtered.filter(opportunity => opportunity.stageId === stage.id);
           const amount = items.reduce((sum, item) => sum + item.value, 0);
-          return <section className="sp-lane" data-tone={stage.color} key={stage.id} aria-label={`${stage.name} stage`}>
+          const acceptsDrop = availableDropStages.includes(stage.id);
+          return <section className={cx("sp-lane", acceptsDrop && "sp-lane-available", acceptsDrop && dropStage === stage.id && "sp-lane-drop-target")} data-tone={stage.color} key={stage.id} aria-label={`${stage.name} stage`}
+            onDragOver={event => { if (!dragged) return; event.dataTransfer.dropEffect = acceptsDrop ? "move" : "none"; if (acceptsDrop) event.preventDefault(); setDropStage(stage.id); }}
+            onDrop={event => dropOpportunity(event, stage.id)}>
             <header className="sp-lane-header"><div><span>{stage.name}</span><small>{money(amount)}</small></div><Chip variant="caption" color={stage.color === "purple" || stage.color === "violet" ? "purple" : stage.color === "green" ? "lime" : stage.color === "rose" || stage.color === "red" ? "rose" : stage.color === "amber" || stage.color === "orange" ? "yellow" : "blue"}>{items.length}</Chip></header>
-            {stage.id === "rnr" && stage.children?.length ? <div className="sp-rnr-note">8 response attempts tracked separately</div> : null}
-            <LaneCards>{items.map(opportunity => <OpportunityCard key={opportunity.id} opportunity={opportunity} onDetails={() => openDetails(opportunity.id)} onAction={action => handleAction(action, opportunity)} />)}</LaneCards>
+            <LaneCards>{items.map(opportunity => <OpportunityCard key={opportunity.id} opportunity={opportunity} stageLabel={stage.name} isDragging={draggedId === opportunity.id}
+              onDragStart={event => startDrag(event, opportunity)} onDragEnd={finishDrag}
+              onDetails={() => { if (Date.now() - dragEndedAt.current > 250) openDetails(opportunity.id); }}
+              onAction={action => { if (Date.now() - dragEndedAt.current > 250) handleAction(action, opportunity); }} />)}</LaneCards>
             {items.length === 0 ? <div className="sp-empty-lane">No opportunities</div> : null}
+            {acceptsDrop && dropStage === stage.id && <div className="sp-drop-hint text-caption-1-semibold" aria-hidden="true">{stage.id === "lost" ? "Drop to add a loss reason" : `Move to ${stage.name}`}</div>}
           </section>;
         })}
-      </div></div> : <div className="sp-list-wrap"><table className="sp-table" aria-label="Opportunities"><thead><tr>{columnIds.map(id => <th key={id}>{opportunityColumns.find(column => column.id === id)?.name}</th>)}<th aria-label="Actions" /></tr></thead><tbody>{filtered.map(item => <tr key={item.id} className="cursor-pointer hover:bg-background-secondary-hover" onClick={event => { if (!(event.target as HTMLElement).closest("button, a, [role=dialog]")) openDetails(item.id); }}>
+      </div></div></> : <OpportunityList><table className="sp-table" aria-label="Opportunities"><thead><tr>{columnIds.map(id => <th key={id}>{opportunityColumns.find(column => column.id === id)?.name}</th>)}<th aria-label="Actions" /></tr></thead><tbody>{filtered.map(item => <tr key={item.id} className="cursor-pointer hover:bg-background-secondary-hover" onClick={event => { if (!(event.target as HTMLElement).closest("button, a, [role=dialog]")) openDetails(item.id); }}>
         {columnIds.map(id => <td key={id}>
           {id === "person" ? <button className="sp-table-link outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" onClick={() => openDetails(item.id)}><strong>{item.name}</strong><small>{item.enquiryId}</small></button>
             : id === "stage" ? <Chip variant="caption" color="blue">{stageName(stages, item.stageId)}{item.stageId === "rnr" ? ` · ${item.rnrStep}/8` : ""}</Chip>
@@ -387,19 +464,16 @@ export function SalesPipelineWorkspace() {
             : item[id as keyof Opportunity] as string}
         </td>)}
         <td className="sp-row-actions"><OpportunityActions name={item.name} isLost={item.stageId === "lost"} onAction={action => handleAction(action, item)} /></td>
-      </tr>)}</tbody></table>{filtered.length === 0 ? <div className="sp-no-results">No opportunities match these filters.</div> : null}</div>}
+      </tr>)}</tbody></table>{filtered.length === 0 ? <div className="sp-no-results">No opportunities match these filters.</div> : null}</OpportunityList>}
+      </div>
+      {advancedFiltersOpen && <AdvancedLeadFilters id="pipeline-advanced-filters" fields={filterFields} scope={columnScope} userId={profile.id} title="Filter opportunities by" description="Build and save a focused pipeline view." recordLabel="opportunities" className="sp-advanced-panel" searchPlaceholder="Find a field"
+        initialFilters={advancedFilters} resultCount={filtered.length} activeFilterCount={activeFilterCount}
+        countFor={filters => quickFiltered.filter(item => matchesOpportunityFilters(item, filters, stages)).length}
+        onApply={setAdvancedFilters} onClear={() => setAdvancedFilters(null)} onClose={() => setAdvancedFiltersOpen(false)} />}
+      </div>
     </section>
     </>}
 
-    <Modal isOpen={advancedFiltersOpen} onOpenChange={setAdvancedFiltersOpen} size="sm" aria-label="Advanced opportunity filters">
-      <ModalBody className="p-0">
-        <AdvancedLeadFilters fields={filterFields} scope={columnScope} userId={profile.id} title="Advanced filters" description="Narrow down your opportunities." recordLabel="opportunities" className="sp-advanced-panel" searchPlaceholder="Search opportunity fields"
-          initialFilters={advancedFilters} resultCount={filtered.length} activeFilterCount={activeFilterCount}
-          countFor={filters => quickFiltered.filter(item => matchesOpportunityFilters(item, filters, stages)).length}
-          onApply={filters => { setAdvancedFilters(filters); setAdvancedFiltersOpen(false); }}
-          onClear={() => setAdvancedFilters(null)} onClose={() => setAdvancedFiltersOpen(false)} />
-      </ModalBody>
-    </Modal>
     <ColumnManagerModal isOpen={columnsOpen} onOpenChange={setColumnsOpen} availableColumns={opportunityColumns} selectedIds={columnIds} requiredIds={["person"]} scopeLabel="sales pipeline opportunities"
       onSave={ids => { setColumnIds(ids); savePersonalTableColumns(columnScope, profile.id, ids); setColumnsOpen(false); }} />
 
@@ -445,6 +519,11 @@ export function SalesPipelineWorkspace() {
   </ReviewShell></DirectionProvider>;
 }
 
+function OpportunityList({ children }: { children: ReactNode }) {
+  const fade = useScrollFade();
+  return <div className="relative flex min-h-0 flex-1 flex-col"><div className="sp-list-wrap" onScroll={fade.onScroll}>{children}</div><ScrollFade progress={fade.progress} className="top-10" surfaceClassName="from-background-primary-default" /></div>;
+}
+
 function LaneCards({ children }: { children: ReactNode }) {
   const fade = useScrollFade();
   return <div className="sp-lane-scroll"><div className="sp-lane-cards" onScroll={fade.onScroll}>{children}</div><ScrollFade progress={fade.progress} surfaceClassName="from-background-secondary-default" /></div>;
@@ -454,17 +533,24 @@ function Metric({ icon: IconComponent, label, value, detail, tone }: { icon: typ
   return <article className="sp-metric" data-tone={tone}><span><IconComponent /></span><div><small>{label}</small><strong>{value}</strong><p>{detail}</p></div></article>;
 }
 
-function OpportunityCard({ opportunity, onDetails, onAction }: { opportunity: Opportunity; onDetails: () => void; onAction: (action: OpportunityAction) => void }) {
-  return <article className="sp-opportunity-card">
+function OpportunityCard({ opportunity, stageLabel, isDragging, onDragStart, onDragEnd, onDetails, onAction }: {
+  opportunity: Opportunity; stageLabel: string; isDragging: boolean; onDragStart: (event: DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void; onDetails: () => void; onAction: (action: OpportunityAction) => void;
+}) {
+  const canMove = Boolean(TRANSITIONS[opportunity.stageId]?.length);
+  const enteredAt = new Date(opportunity.history.find(entry => entry.stage === stageLabel)?.at ?? opportunity.createdAt);
+  const daysInStage = Math.max(0, Math.floor((Date.now() - enteredAt.getTime()) / 86400000));
+  return <article className={cx("sp-opportunity-card", isDragging && "sp-card-dragging")} aria-label={`${opportunity.name} opportunity`} draggable={canMove} onDragStart={onDragStart} onDragEnd={onDragEnd}>
     <div className="sp-card-top">
       <button className="sp-card-title" onClick={onDetails} aria-label={`Open lead details for ${opportunity.name}`}><strong>{opportunity.name}</strong><small>{opportunity.enquiryId}</small></button>
+      {canMove && <Button iconOnly variant="ghost" size="xs" leadingIcon={RiDraggable} className="sp-drag-handle bg-transparent text-foreground-icon-secondary hover:bg-background-secondary-hover" aria-label={`Move ${opportunity.name} to another stage`} title="Drag to move · click to choose a stage" onClick={() => onAction("stage")} />}
       <OpportunityActions name={opportunity.name} isLost={opportunity.stageId === "lost"} onAction={onAction} />
     </div>
     <div className="sp-card-brand"><Icon name="building" />{opportunity.brand}<span>{money(opportunity.value)}</span></div>
     <div className="sp-card-owner"><span>{opportunity.owner.split(" ").map(word => word[0]).slice(0, 2).join("")}</span>{opportunity.owner.split(" ")[0]} {opportunity.owner.split(" ").at(-1)}</div>
-    <div className="sp-card-meta"><span>Last activity</span><strong>{opportunity.lastActivity}</strong><span>Time in stage</span><strong>{opportunity.history[0]?.at ?? opportunity.createdAt}</strong></div>
+    <div className="sp-card-meta"><span>Last activity</span><strong>{opportunity.lastActivity}</strong><span>Time in stage</span><strong>{Number.isNaN(daysInStage) ? "—" : daysInStage === 0 ? "Today" : `${daysInStage} ${daysInStage === 1 ? "day" : "days"}`}</strong></div>
     {opportunity.stageId === "rnr" ? <div className="sp-rnr-badge">RNR {opportunity.rnrStep ?? 1}/8</div> : null}
     {opportunity.stageId === "token" ? <div className="sp-card-payment">Verified {money(opportunity.verifiedAmount ?? 0)} of {money(opportunity.value)}</div> : null}
-    <Button size="small" variant="secondary" className="sp-next-action" leadingIcon={opportunity.stageId === "manager-meeting" || opportunity.stageId === "brand-meeting" ? RiCalendarLine : RiPhoneLine} onClick={() => onAction(opportunity.stageId === "token" ? "payment" : "activity")}>{opportunity.nextAction}</Button>
+    <Button size="small" variant="secondary" className="sp-next-action" leadingIcon={opportunity.stageId === "manager-meeting" || opportunity.stageId === "brand-meeting" ? RiCalendarLine : RiPhoneLine} onClick={() => onAction(opportunity.stageId === "token" ? "payment" : "activity")}><span className="text-caption-1-medium">{opportunity.nextAction}</span></Button>
   </article>;
 }

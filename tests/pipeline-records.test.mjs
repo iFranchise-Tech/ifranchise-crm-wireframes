@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchesOpportunityFilters, opportunityLead, validateOpportunity } from "../modules/pipeline/records.ts";
+import { matchesOpportunityFilters, opportunityLead, pipelineSummary, prepareOpportunityMove, validateOpportunity } from "../modules/pipeline/records.ts";
 
 const stages = [{ id: "new", name: "New Opportunity" }, { id: "cold", name: "Cold" }];
 const pipelines = [{ id: "franchise", stages }];
@@ -52,4 +52,56 @@ test("full lead details use the current opportunity identity and retain edited l
   assert.equal(result.address, "14 Marine Drive");
   assert.equal(result.city, "Kochi");
   assert.equal(opportunityLead(opportunity, stages).salesPipeline, true);
+});
+
+const flowStages = [
+  ...stages, { id: "rnr", name: "RNR" }, { id: "manager-meeting", name: "Manager Meeting" },
+  { id: "warm", name: "Warm" }, { id: "brand-meeting", name: "Brand Meeting" },
+  { id: "hot", name: "Hot" }, { id: "token", name: "Token Collected" },
+  { id: "won", name: "Won" }, { id: "lost", name: "Lost" },
+];
+const move = (item, target) => prepareOpportunityMove(item, target, flowStages, "2026-11-18T08:00:00.000Z", "2026-11-18");
+
+test("card moves update stage, next action and history without mutating the original record", () => {
+  const result = move(opportunity, "rnr");
+  assert.equal(result.opportunity.stageId, "rnr");
+  assert.equal(result.opportunity.rnrStep, 1);
+  assert.equal(result.opportunity.nextAction, "Retry call (RNR 1)");
+  assert.equal(result.opportunity.lastActivity, "Just now");
+  assert.match(result.opportunity.history[0].note, /RNR update 2026-11-18/);
+  assert.equal(opportunity.stageId, "new");
+  assert.equal(opportunity.history.length, 0);
+  assert.equal(move(opportunity, "cold").opportunity.nextAction, "Share brand deck");
+});
+
+test("drag moves reject skipped, unknown, same and closed stages; loss requires its reason dialog", () => {
+  for (const target of ["new", "hot", "won", "missing"]) assert.ok(move(opportunity, target).error);
+  for (const stageId of ["won", "lost"]) assert.ok(move({ ...opportunity, stageId }, "new").error);
+  assert.deepEqual(move(opportunity, "lost"), { requiresLostReason: true });
+});
+
+test("moving cards enforces meeting notes and resets completion for the next meeting", () => {
+  for (const [stageId, target] of [["manager-meeting", "warm"], ["brand-meeting", "hot"]]) {
+    assert.match(move({ ...opportunity, stageId }, target).error, /meeting minutes/);
+    assert.ok(move({ ...opportunity, stageId, meetingComplete: true, meetingMinutes: " " }, target).error);
+    assert.equal(move({ ...opportunity, stageId, meetingComplete: true, meetingMinutes: "Discussed location" }, target).opportunity.stageId, target);
+  }
+  const entered = move({ ...opportunity, stageId: "warm", meetingComplete: true, meetingMinutes: "Old meeting" }, "brand-meeting").opportunity;
+  assert.equal(entered.meetingComplete, false);
+  assert.equal(entered.meetingMinutes, undefined);
+});
+
+test("a card cannot become Won until its entire deal value is verified", () => {
+  const token = { ...opportunity, stageId: "token" };
+  assert.match(move({ ...token, verifiedAmount: 100000 }, "won").error, /verify the full deal amount/);
+  assert.equal(move({ ...token, verifiedAmount: opportunity.value }, "won").opportunity.stageId, "won");
+});
+
+test("quick overview reflects its input records and counts wins by closure month", () => {
+  const items = [opportunity, { ...opportunity, stageId: "hot" }, { ...opportunity, stageId: "token" },
+    { ...opportunity, stageId: "won", history: [{ stage: "Won", at: "2026-11-02T10:00:00" }] },
+    { ...opportunity, stageId: "won", history: [{ stage: "Won", at: "2026-10-31T10:00:00" }] },
+    { ...opportunity, stageId: "lost" }];
+  assert.deepEqual(pipelineSummary(items, new Date("2026-11-18T10:00:00")), { active: 3, value: 22500000, hot: 1, token: 1, won: 1 });
+  assert.deepEqual(pipelineSummary([], new Date("2026-11-18T10:00:00")), { active: 0, value: 0, hot: 0, token: 0, won: 0 });
 });
