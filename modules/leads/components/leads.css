@@ -1813,3 +1813,5 @@ button.ld-source-stat { width: 100%; border: 0; font: inherit; cursor: pointer; 
   .ld-stats { grid-template-columns: repeat(5, minmax(160px, 1fr)); overflow-x: auto; }
   .ld-stats-4 { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
 }
+
+@media (max-width: 900px) { .ld-history-actions { grid-column: 3; align-items: flex-start; } }

@@ -60,6 +60,8 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { Textarea } from "@/components/base/textarea/textarea";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
 import { cx } from "@/utils/cx";
+import { useMeetings } from "@/modules/meetings/store";
+import { meetingProfiles, canViewRecord } from "@/modules/meetings/records";
 import { EnquiryDetail } from "./enquiry-detail";
 import { SourceLeadsPanel } from "./source-leads-panel";
 import { cityOptions, DateField, LeadSelect, leadTimes, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
@@ -481,13 +483,14 @@ function slicePage<T>(items: T[], page: number) {
   return { rows: items.slice(start, start + pageSize), pages, current, start: items.length ? start + 1 : 0, end: Math.min(current * pageSize, items.length) };
 }
 
-export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
+export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: string; enquiryId?: string }) {
   const router = useRouter();
   const section = isSection(view) ? view : "Enquiries";
   const enquiryView = isEnquiryView(section);
   const activeCategory = (categoryViews as readonly string[]).includes(section) ? section as Category : null;
   const [roleId, setRoleId] = useState(accessRoles[0].id);
   const role = accessRoles.find(item => item.id === roleId) ?? accessRoles[0];
+  const { state: meetingRecords, ready: meetingRecordsReady } = useMeetings();
   const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [activities, setActivities] = useState(initialActivities);
   const [sources, setSources] = useState(crmSources);
@@ -567,6 +570,14 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId, favouritesOnly]);
 
   const scopedEnquiries = useMemo(() => enquiries.filter(item => item.category !== "Job" && role.categories.includes(item.category)), [enquiries, role]);
+  useEffect(() => {
+    if (!enquiryId || !meetingRecordsReady) return;
+    const linked = meetingRecords.records.find(item => item.id === enquiryId);
+    const active = meetingProfiles.find(item => item.id === readActiveCrmRole().id);
+    if (linked && (!active || !canViewRecord(active, linked))) return;
+    const enquiry = linked?.snapshot ?? enquiries.find(item => item.id === enquiryId);
+    if (enquiry) setOpen(enquiry);
+  }, [enquiryId, meetingRecordsReady, section]);
   const scopedActivities = useMemo(() => activities.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activities, scopedEnquiries]);
 
   const visibleActivities = useMemo(() => scopedActivities.filter(activity => {

@@ -1,0 +1,28 @@
+.mf-shell .review-workspace { display: flex; flex-direction: column; height: 100dvh; min-width: 0; overflow: hidden; }
+.mf-shell .review-toolbar { flex-shrink: 0; }
+.mf-profile { margin-inline-start: auto; width: min(21rem, 45%); }
+.mf-page { display: flex; height: 100%; overflow-y: auto; flex-direction: column; gap: 1.25rem; padding: 1.5rem; container-type: inline-size; }
+.mf-list { min-width: 0; overflow: clip; flex-shrink: 0; }
+.mf-filters { display: flex; align-items: center; gap: .5rem; padding: .75rem; border-bottom: 1px solid var(--color-separator-border); }
+.mf-filters > [data-rac] { min-width: 0; flex: 0 1 9rem; }
+.mf-filters .mf-search { min-width: 8rem; flex: 1 1 12rem; }
+.mf-filters .mf-columns { flex-shrink: 0; }
+.mf-tool { flex-shrink: 0; }
+.mf-list-content { display: grid; min-width: 0; }
+.mf-with-filters { grid-template-columns: minmax(0, 1fr) 24rem; }
+.mf-with-filters > .ld-advanced-filter-panel { position: static; width: auto; min-width: 0; max-height: 42rem; border-inline-start: 1px solid var(--color-separator-border); border-inline-end: 0; }
+.mf-table thead th { background: var(--color-background-secondary-default); color: var(--color-text-secondary); }
+.mf-table tbody td { vertical-align: middle; }
+.mf-title-button { padding-inline: 0; text-align: start; max-width: 20rem; white-space: normal; }
+@container (max-width: 66rem) { .mf-columns span { display: none; } .mf-columns { padding-inline: .625rem; } }
+@container (max-width: 48rem) { .mf-filters { flex-wrap: wrap; } .mf-filters .mf-search { flex-basis: 100%; } .mf-with-filters { grid-template-columns: minmax(0, 1fr); } .mf-with-filters > .ld-advanced-filter-panel { order: -1; border-inline-start: 0; border-bottom: 1px solid var(--color-separator-border); } }
+@media (max-width: 640px) { .mf-page { padding: 1rem; } }
+
+.mf-shell .review-toolbar { min-height: 4.125rem; }
+.mf-shell .review-sidebar-content > nav { flex: 1; }
+.mf-page { background: var(--color-background-primary-default); }
+.mf-table { min-width: 54rem; }
+.mf-title-button { height: auto; min-height: 2.25rem; justify-content: flex-start; width: 100%; min-width: 11rem; padding: .25rem 0; background: var(--color-background-primary-default); color: var(--color-text-primary); }
+.mf-title-button:hover { background: var(--color-background-secondary-hover); }
+.mf-title-button > span { min-width: 0; flex-shrink: 1; justify-content: flex-start; white-space: normal; padding-inline: 0; }
+.mf-title-button > span > span { min-width: 0; }

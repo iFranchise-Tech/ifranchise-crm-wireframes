@@ -60,7 +60,7 @@ export function PipelineLeadDetail({ opportunity, stages, owners, contacts, acto
   }
 
   return <EnquiryDetail
-    enquiry={enquiry} activities={allActivities} owners={owners} contacts={contacts} canDelete
+    opportunityId={opportunity.id} enquiry={enquiry} activities={allActivities} owners={owners} contacts={contacts} canDelete
     pipelineStages={stages.map(stage => stage.name)} onPipelineStageChange={onStageChange}
     backLabel="Back to sales pipeline" onBack={onBack} onSave={saveLead}
     onStatus={status => saveLead({ status })} onDeleteEnquiry={onDelete}

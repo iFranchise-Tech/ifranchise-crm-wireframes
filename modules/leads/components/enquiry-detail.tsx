@@ -63,6 +63,12 @@ import type { Activity, Enquiry, EnquiryStatus } from "../types";
 import { brands, enquiryStatuses, originalSources, timelines } from "../types";
 import { cityOptions, formatLeadDate, LeadSelect, stateForCity, stateOptions, SuggestField } from "./lead-fields";
 
+import { useMeetings, useMeetingProfile } from "@/modules/meetings/store";
+import { canManageRecord, canViewRecord, displayTime, followUpStatus } from "@/modules/meetings/records";
+import type { ActivitySource, CustomerRecord } from "@/modules/meetings/types";
+import { FollowUpForm, MeetingForm } from "@/modules/meetings/components/meeting-forms";
+import { EntityDetail, StatusBadge } from "@/modules/meetings/components/record-detail";
+
 const statusColor: Record<EnquiryStatus, ChipColor> = { New: "purple", "In Progress": "yellow", Qualified: "lime", Converted: "blue" };
 const leadStages = ["New", "Qualified", "Meeting", "Hot", "Token Collected", "Won", "Lost"] as const;
 type LeadPipelineStage = (typeof leadStages)[number];
@@ -102,7 +108,7 @@ type Draft = {
 
 type FeedKind = "note" | "call" | "email" | "status" | "created" | "meeting" | "follow" | "form";
 type LeadActionDialog = "compose-email" | "templates" | "follow-up-email" | "schedule-email" | "meeting-invite" | "assign" | "transfer" | "change-status" | "change-stage" | "increase-score" | "inactive" | "disqualify";
-type FeedItem = { id: string; kind: FeedKind; title: string; when: string; body: string; person?: string; done?: boolean; from?: string; to?: string; files?: string[]; schedule?: string };
+type FeedItem = { id: string; kind: FeedKind; title: string; when: string; body: string; person?: string; done?: boolean; from?: string; to?: string; files?: string[]; schedule?: string; source?: ActivitySource; entity?: { kind: "meeting" | "follow-up"; id: string } };
 
 function initials(name: string) {
   return (name.trim()[0] ?? "").toUpperCase();
@@ -187,7 +193,7 @@ function feedItems(enquiry: Enquiry, activities: Activity[]): FeedItem[] {
   const rows: FeedItem[] = activities.map(item => {
     const note = item.type === "Other Communication" || /note/i.test(item.title);
     const kind: FeedKind = note ? "note" : item.kind === "email" ? "email" : item.kind === "meeting" ? "meeting" : item.kind === "call" || /call/i.test(item.title) ? "call" : "follow";
-    return { id: item.id, kind, title: item.title || "Note added", when: item.when || item.due, body: note ? plainNoteText(item.summary) : item.summary, person: item.createdBy, done: item.status === "Completed", files: note ? item.attachments : undefined, schedule: note && item.followUp ? item.followUp : undefined };
+    return { source: !note && item.type !== "Pipeline stage" && item.type !== "Task" ? { id: item.id, recordId: enquiry.id, title: item.title, type: item.type, when: item.when || item.due } : undefined, id: item.id, kind, title: item.title || "Note added", when: item.when || item.due, body: note ? plainNoteText(item.summary) : item.summary, person: item.createdBy, done: item.status === "Completed", files: note ? item.attachments : undefined, schedule: note && item.followUp ? item.followUp : undefined };
   });
   if (["Website", "Meta Lead Ads"].includes(enquiry.originalSource)) {
     const submissionDetails = [
@@ -272,6 +278,7 @@ export function EnquiryDetail({
   pipelineStages,
   onPipelineStageChange,
   backLabel = "Back to enquiries",
+  opportunityId,
 }: {
   enquiry: Enquiry;
   activities: Activity[];
@@ -290,7 +297,19 @@ export function EnquiryDetail({
   pipelineStages?: readonly string[];
   onPipelineStageChange?: (stage?: string) => void;
   backLabel?: string;
+  opportunityId?: string;
 }) {
+  const { state: meetingState, now: meetingNow } = useMeetings();
+  const [meetingProfile] = useMeetingProfile();
+  const customer: CustomerRecord = { id: enquiry.id, name: enquiry.name, email: enquiry.email, owner: enquiry.owner, brand: enquiry.brand, category: enquiry.category, opportunityId: opportunityId ?? meetingState.records.find(item => item.id === enquiry.id)?.opportunityId, snapshot: enquiry };
+  const canManageActions = canManageRecord(meetingProfile, customer);
+  const canViewActions = canViewRecord(meetingProfile, customer);
+  const [followUpComposer, setFollowUpComposer] = useState<{ source?: ActivitySource } | null>(null);
+  const [meetingComposer, setMeetingComposer] = useState(false);
+  const [actionDetail, setActionDetail] = useState<{ kind: "meeting" | "follow-up"; id: string } | null>(null);
+  const customerFollowUps = canViewActions ? meetingState.followUps.filter(item => item.recordId === enquiry.id) : [];
+  const customerMeetings = canViewActions ? meetingState.meetings.filter(item => item.recordId === enquiry.id) : [];
+  const actionHistory: FeedItem[] = [...customerFollowUps.flatMap(item => item.history.map(event => ({ id: event.id, kind: "follow" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "follow-up" as const, id: item.id } }))), ...customerMeetings.flatMap(item => item.history.map(event => ({ id: event.id, kind: "meeting" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "meeting" as const, id: item.id } })))];
   const [tab, setTab] = useState("Activity History");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsView, setActionsView] = useState<"main" | "status" | "stage">("main");
@@ -301,8 +320,6 @@ export function EnquiryDetail({
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => snapshot(enquiry));
-  const [scheduling, setScheduling] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState<"meeting" | "email">("meeting");
   const [activityTypeFilter, setActivityTypeFilter] = useState("All selected");
   const [activityTimeFilter, setActivityTimeFilter] = useState("All Time");
   const [docs, setDocs] = useState<EnquiryDoc[]>(sampleDocs);
@@ -380,6 +397,8 @@ export function EnquiryDetail({
           <div><h2>Lead Details</h2></div>
         </div>
         <div className="ld-detail-actions">
+          {canManageActions && <Button variant="secondary" size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}
+          {canManageActions && customer.opportunityId && <Button variant="secondary" size="small" leadingIcon={RiCalendarLine} onClick={() => setMeetingComposer(true)}>Schedule meeting</Button>}
           {editing ? <Button variant="secondary" size="small" onClick={() => setEditing(false)}>Cancel edit</Button> : null}
           <Dropdown isOpen={emailMenuOpen} onOpenChange={setEmailMenuOpen}>
             <DropdownTrigger className="ld-email-trigger"><RiMailLine />Send Email<RiArrowDownSLine /></DropdownTrigger>
@@ -387,7 +406,7 @@ export function EnquiryDetail({
               <DropdownItem onSelect={() => openEmailDialog("compose-email")}><RiMailLine />Compose Email</DropdownItem>
               <DropdownItem onSelect={() => openEmailDialog("templates")}><RiFileTextLine />Use Email Template<RiArrowDownSLine className="ld-menu-trailing" /></DropdownItem>
               <DropdownItem onSelect={() => openEmailDialog("follow-up-email")}><RiSendPlane2Line />Send Follow-up</DropdownItem>
-              <DropdownItem onSelect={() => { setEmailMenuOpen(false); setScheduleMode("meeting"); setScheduling(true); }}><RiCalendarLine />Send Meeting Invite</DropdownItem>
+              {canManageActions && customer.opportunityId && <DropdownItem onSelect={() => { setEmailMenuOpen(false); setMeetingComposer(true); }}><RiCalendarLine />Schedule meeting</DropdownItem>}
               <DropdownItem onSelect={() => openEmailDialog("schedule-email")}><RiTimeLine />Schedule Email</DropdownItem>
             </DropdownPopover>
           </Dropdown>
@@ -456,7 +475,7 @@ export function EnquiryDetail({
 
         <main className="ld-detail-main">
           <div className="ld-tabs" role="tablist" aria-label="Lead details sections">
-            {["Activity History", "Lead Details", "Social", "Tasks", "Notes", "Sales Activity", "Documents"].map(item => (
+            {["Activity History", "Lead Details", "Follow-ups", "Social", "Tasks", "Notes", "Sales Activity", "Documents"].map(item => (
               <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => { setTab(item); if (item === "Notes") setNoteComposerOpen(false); }}>{item}</button>
             ))}
           </div>
@@ -509,12 +528,16 @@ export function EnquiryDetail({
       )}
 
       {tab === "Activity History" && <ActivityHistory
-        items={feedItems(enquiry, activities)}
+        items={[...feedItems(enquiry, activities), ...actionHistory]}
+        onFollowUp={canManageActions ? source => setFollowUpComposer({ source }) : undefined}
+        onOpenRecord={setActionDetail}
         typeFilter={activityTypeFilter}
         timeFilter={activityTimeFilter}
         onTypeFilter={setActivityTypeFilter}
         onTimeFilter={setActivityTimeFilter}
       />}
+
+      {tab === "Follow-ups" && <section className="ld-card flex flex-col gap-4 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3>Customer follow-ups</h3>{canManageActions && <Button size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}</div>{customerFollowUps.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-separator-border p-4"><div className="flex flex-col gap-1"><Button variant="ghost" size="small" className="self-start" onClick={() => setActionDetail({ kind: "follow-up", id: item.id })}>{item.title}</Button><p className="text-body-2-regular text-text-secondary">{item.assignedTo} · {displayTime(item.dueAt)} IST</p></div><StatusBadge status={followUpStatus(item, meetingNow)} /></div>)}{!customerFollowUps.length && <p className="text-body-regular text-text-secondary">No follow-ups in your authorised view.</p>}</section>}
 
       {tab === "Social" && <SocialProfiles enquiry={enquiry} source={view.source} />}
 
@@ -529,15 +552,9 @@ export function EnquiryDetail({
         </main>
       </div>
 
-      {scheduling && (
-        <SchedulePanel
-          enquiry={enquiry}
-          followUp={followUp}
-          mode={scheduleMode}
-          onClose={() => setScheduling(false)}
-          onSave={(due, meetLink) => { onSchedule({ due, meetLink, kind: "meeting", title: `Meeting with ${enquiry.name}`, type: "Meeting", summary: "Meeting invitation scheduled." }); setScheduling(false); }}
-        />
-      )}
+      {followUpComposer && <FollowUpForm state={meetingState} profile={meetingProfile} record={customer} source={followUpComposer.source} onClose={() => setFollowUpComposer(null)} />}
+      {meetingComposer && <MeetingForm state={meetingState} profile={meetingProfile} record={customer} onClose={() => setMeetingComposer(false)} />}
+      {actionDetail && <EntityDetail {...actionDetail} state={meetingState} profile={meetingProfile} now={meetingNow} onClose={() => setActionDetail(null)} />}
       {leadActionDialog && <LeadActionModal
         kind={leadActionDialog}
         enquiry={enquiry}
@@ -893,10 +910,11 @@ function FeedRow({ item }: { item: FeedItem }) {
   );
 }
 
-const activityTypeOptions = ["All selected", "Calls", "Meetings", "Emails", "Notes", "Form submissions", "Status Changes"] as const;
+const activityTypeOptions = ["All selected", "Calls", "Meetings", "Follow-ups", "Emails", "Notes", "Form submissions", "Status Changes"] as const;
 const activityTimeOptions = ["All Time", "Today", "Last 7 days", "Last 30 days"] as const;
 
 function historyTimestamp(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) return Date.parse(value);
   const date = parseLeadDate(value);
   const time = parseLeadTime(value);
   const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -916,7 +934,9 @@ function historyGroupLabel(timestamp: number) {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
-function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter }: {
+function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter, onFollowUp, onOpenRecord }: {
+  onFollowUp?: (source: ActivitySource) => void;
+  onOpenRecord: (entity: { kind: "meeting" | "follow-up"; id: string }) => void;
   items: FeedItem[];
   typeFilter: string;
   timeFilter: string;
@@ -931,6 +951,7 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
       const typeMatch = typeFilter === "All selected" ||
         (typeFilter === "Calls" && item.kind === "call") ||
         (typeFilter === "Meetings" && item.kind === "meeting") ||
+        (typeFilter === "Follow-ups" && item.kind === "follow") ||
         (typeFilter === "Emails" && item.kind === "email") ||
         (typeFilter === "Notes" && item.kind === "note") ||
         (typeFilter === "Form submissions" && item.kind === "form") ||
@@ -959,14 +980,14 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
     <div className="ld-history-list">
       {groups.map(group => <section className="ld-history-group" key={group.label}>
         <h3>{group.label}</h3>
-        <ol>{group.entries.map(({ item, timestamp }) => <ActivityHistoryRow key={item.id} item={item} timestamp={timestamp} />)}</ol>
+        <ol>{group.entries.map(({ item, timestamp }) => <ActivityHistoryRow key={item.id} item={item} timestamp={timestamp} onFollowUp={onFollowUp} onOpenRecord={onOpenRecord} />)}</ol>
       </section>)}
       {!visible.length && <p className="ld-history-empty">No activities match these filters.</p>}
     </div>
   </section>;
 }
 
-function ActivityHistoryRow({ item, timestamp }: { item: FeedItem; timestamp: number }) {
+function ActivityHistoryRow({ item, timestamp, onFollowUp, onOpenRecord }: { item: FeedItem; timestamp: number; onFollowUp?: (source: ActivitySource) => void; onOpenRecord: (entity: { kind: "meeting" | "follow-up"; id: string }) => void }) {
   const Icon = item.kind === "note" ? RiFileTextLine : item.kind === "email" ? RiMailLine : item.kind === "status" ? RiArrowLeftRightLine : item.kind === "created" || item.kind === "form" ? RiAddLine : item.kind === "meeting" ? RiCalendarLine : item.kind === "call" ? RiPhoneLine : RiTimeLine;
   const date = new Date(timestamp);
   return <li className={`ld-history-row ld-history-${item.kind}`}>
@@ -976,7 +997,11 @@ function ActivityHistoryRow({ item, timestamp }: { item: FeedItem; timestamp: nu
       <p><strong>{item.title}</strong>{item.body ? <>: {item.body}</> : null}</p>
       {item.person && <em>Added by {item.person} on {date.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</em>}
     </div>
+    <div className="ld-history-actions flex flex-col items-end gap-2">
+    {item.source && onFollowUp && <Button variant="secondary" size="small" onClick={() => onFollowUp(item.source!)}>Create follow-up</Button>}
+    {item.entity && <Button variant="secondary" size="small" onClick={() => onOpenRecord(item.entity!)}>View {item.entity.kind}</Button>}
     {item.done && <span className="ld-history-status"><RiCheckboxCircleLine />Completed</span>}
+    </div>
   </li>;
 }
 
