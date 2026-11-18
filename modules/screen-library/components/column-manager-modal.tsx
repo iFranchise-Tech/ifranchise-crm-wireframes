@@ -89,7 +89,7 @@ export function ColumnManagerModal({ isOpen, onOpenChange, availableColumns, sel
         </section>
 
         <section className="column-manager-section" aria-label="Available columns">
-          <div className="column-manager-section-heading"><div><h3>Add a column</h3><p>Optional fields for this lead view</p></div><span>{available.length}</span></div>
+          <div className="column-manager-section-heading"><div><h3>Add a column</h3><p>Optional fields for this view</p></div><span>{available.length}</span></div>
           <SearchField aria-label="Search available columns" placeholder="Find a field" value={search} onChange={setSearch} className="column-manager-search" fieldClassName="border border-border-button-default bg-background-primary-default" />
           <ColumnListScroll label="Available columns list"><ul className="column-manager-available">
             {available.map(column => <li key={column.id}><span>{column.name}</span><Button size="small" variant="secondary" leadingIcon={RiAddLine} aria-label={`Add ${column.name}`} onClick={() => setDraft(current => [...current, column.id])}>Add</Button></li>)}

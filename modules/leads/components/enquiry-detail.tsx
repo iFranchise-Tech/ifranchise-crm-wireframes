@@ -214,14 +214,14 @@ function firstName(name: string) {
   return name.split(" ").filter(Boolean)[0] ?? name;
 }
 
-function LeadStageTracker({ stage, onChange }: { stage: string; onChange: (stage: string) => void }) {
-  const currentStage = pipelineStage(stage);
-  const activeIndex = leadStages.indexOf(currentStage);
-  const progress = `${(activeIndex / leadStages.length) * 100}%`;
+function LeadStageTracker({ stage, stageNames = leadStages, onChange }: { stage: string; stageNames?: readonly string[]; onChange: (stage: string) => void }) {
+  const currentStage = stageNames === leadStages ? pipelineStage(stage) : stage;
+  const activeIndex = Math.max(0, stageNames.indexOf(currentStage));
+  const progress = `${(activeIndex / stageNames.length) * 100}%`;
   return <section className="ld-stage-tracker ld-card" aria-label="Lead sales pipeline">
-    <div className="ld-stage-tracker-heading"><div><h3>Sales Pipeline</h3><p>Click any stage to move this lead forward or back.</p></div><span>{currentStage}</span></div>
-    <ol className="ld-stage-steps" style={{ "--stage-progress": progress, "--stage-inset": `${50 / leadStages.length}%` } as CSSProperties}>
-      {leadStages.map((item, index) => {
+    <div className="ld-stage-tracker-heading"><div><h3>Sales Pipeline</h3><p>{stageNames === leadStages ? "Click any stage to move this lead forward or back." : "Select a stage to review the next step and its requirements."}</p></div><span>{currentStage}</span></div>
+    <ol className="ld-stage-steps" style={{ "--stage-progress": progress, "--stage-inset": `${50 / stageNames.length}%`, gridTemplateColumns: `repeat(${stageNames.length}, minmax(0, 1fr))` } as CSSProperties}>
+      {stageNames.map((item, index) => {
         const state = index < activeIndex ? "complete" : index === activeIndex ? "current" : "upcoming";
         return <li key={item} data-state={state}>
           <button type="button" aria-current={index === activeIndex ? "step" : undefined} aria-label={`Move lead to ${item}${index === activeIndex ? ", current stage" : ""}`} onClick={() => { if (item !== currentStage) onChange(item); }}>
@@ -269,6 +269,9 @@ export function EnquiryDetail({
   onCreateNote,
   onDeleteActivity,
   onDeleteEnquiry,
+  pipelineStages,
+  onPipelineStageChange,
+  backLabel = "Back to enquiries",
 }: {
   enquiry: Enquiry;
   activities: Activity[];
@@ -284,6 +287,9 @@ export function EnquiryDetail({
   onCreateNote: (note: { title: string; detail: string; noteType: string; pinned: boolean }) => void;
   onDeleteActivity: (id: string) => void;
   onDeleteEnquiry: () => void;
+  pipelineStages?: readonly string[];
+  onPipelineStageChange?: (stage?: string) => void;
+  backLabel?: string;
 }) {
   const [tab, setTab] = useState("Activity History");
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -362,6 +368,7 @@ export function EnquiryDetail({
   function openLeadAction(dialog: LeadActionDialog) {
     setActionsOpen(false);
     setActionsView("main");
+    if (dialog === "change-stage" && onPipelineStageChange) { onPipelineStageChange(); return; }
     setLeadActionDialog(dialog);
   }
 
@@ -369,7 +376,7 @@ export function EnquiryDetail({
     <div className="ld-detail">
       <div className="ld-detail-top">
         <div className="flex min-w-0 items-center gap-3">
-          <button type="button" className="ld-back" aria-label="Back to enquiries" onClick={onBack}><RiArrowLeftLine /></button>
+          <button type="button" className="ld-back" aria-label={backLabel} onClick={onBack}><RiArrowLeftLine /></button>
           <div><h2>Lead Details</h2></div>
         </div>
         <div className="ld-detail-actions">
@@ -406,7 +413,7 @@ export function EnquiryDetail({
         </div>
       </div>
 
-      {enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} onChange={setPendingStage} /> : null}
+      {enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} stageNames={pipelineStages} onChange={onPipelineStageChange ?? setPendingStage} /> : null}
 
       <div className={`ld-detail-layout${tab === "Lead Details" ? " is-lead-details" : ""}`}>
         <aside className="ld-profile-column">

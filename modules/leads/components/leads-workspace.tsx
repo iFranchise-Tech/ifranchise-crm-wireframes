@@ -367,7 +367,7 @@ function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: 
       default: return left.includes(right);
     }
   });
-  const fieldsMatch = !ruleMatches.length || (filters.match === "all" ? ruleMatches.every(Boolean) : ruleMatches.some(Boolean));
+  const fieldsMatch = !ruleMatches.length || ruleMatches.every(Boolean);
   const related = activities.filter(activity => activity.enquiryId === enquiry.id);
   let activityMatch = true;
   const activityFilterActive = filters.activity !== "any" || filters.activityKind !== "All activities" || filters.activityStatus !== "All statuses";

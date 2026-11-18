@@ -31,7 +31,7 @@ const emptyFilters: LeadAdvancedFilters = {
 };
 
 const storageKey = (scope: string, userId: string) => `ifranchise:advanced-filters:${scope}:${userId}`;
-const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ ...filters, rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
+const cloneFilters = (filters: LeadAdvancedFilters): LeadAdvancedFilters => ({ ...filters, match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })) });
 
 export function AdvancedLeadFilters({
   fields,
@@ -112,7 +112,7 @@ export function AdvancedLeadFilters({
   }
 
   function apply(filters: LeadAdvancedFilters) {
-    const normalized = { ...filters, rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })).filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
+    const normalized: LeadAdvancedFilters = { ...filters, match: "all", rules: filters.rules.map(rule => ({ ...rule, operator: ["contains", "does not contain"].includes(rule.operator) ? "is" : rule.operator })).filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
     setDraft(cloneFilters(filters));
     onApply(normalized);
   }
@@ -120,7 +120,7 @@ export function AdvancedLeadFilters({
   function saveCurrent() {
     const name = saveName.trim();
     if (!name || saved.length >= 10) return;
-    const normalized = { ...draft, rules: draft.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
+    const normalized: LeadAdvancedFilters = { ...draft, match: "all", rules: draft.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)) };
     apply(normalized);
     const next = [...saved, { id: `filter-${Date.now()}`, name, filters: cloneFilters(normalized) }];
     setSaved(next);
@@ -177,9 +177,7 @@ export function AdvancedLeadFilters({
         <div className="ld-filter-section-title"><h4>Filter by fields</h4><span>{draft.rules.length} criteria</span></div>
         <div className="ld-filter-match-row">
           <span>Match</span>
-          <Select aria-label="Match criteria" selectedKey={draft.match} onSelectionChange={key => setDraft(current => ({ ...current, match: String(key) as "all" | "any" }))} size="sm" className="ld-filter-compact-select ld-filter-match-select" triggerClassName="w-full" popoverClassName="w-(--trigger-width) min-w-0 max-w-(--trigger-width)">
-            <SelectItem id="all" key="all">All criteria</SelectItem><SelectItem id="any" key="any">Any criterion</SelectItem>
-          </Select>
+          <span className="text-body-medium text-text-primary">All criteria</span>
         </div>
         <div className="ld-filter-rules">
           {draft.rules.map(rule => {
@@ -202,7 +200,7 @@ export function AdvancedLeadFilters({
         </div>
         <div className="ld-filter-rule-actions">
           <Button size="small" variant="secondary" leadingIcon={RiAddLine} disabled={draft.rules.length >= 25} onClick={() => setDraft(current => ({ ...current, rules: [...current.rules, { id: `rule-${Date.now()}`, field: fields[0]?.id ?? "person", operator: operators(fields[0])[0], value: "" }] }))}>Add criteria</Button>
-          <span>Use AND / OR to combine fields.</span>
+          <span>All criteria must match.</span>
         </div>
       </section>
 
