@@ -64,7 +64,18 @@ import { brands, enquiryStatuses, originalSources, timelines } from "../types";
 import { cityOptions, formatLeadDate, LeadSelect, stateForCity, stateOptions, SuggestField } from "./lead-fields";
 
 const statusColor: Record<EnquiryStatus, ChipColor> = { New: "purple", "In Progress": "yellow", Qualified: "lime", Converted: "blue" };
-const leadStages = ["Discovery", "Qualification", "Proposal", "Negotiation", "Won"] as const;
+const leadStages = ["New", "Qualified", "Meeting", "Hot", "Token Collected", "Won", "Lost"] as const;
+type LeadPipelineStage = (typeof leadStages)[number];
+const legacyLeadStages: Record<string, LeadPipelineStage> = {
+  Discovery: "New",
+  Qualification: "Qualified",
+  Proposal: "Meeting",
+  Negotiation: "Hot",
+};
+function pipelineStage(stage?: string): LeadPipelineStage {
+  if (leadStages.some(item => item === stage)) return stage as LeadPipelineStage;
+  return legacyLeadStages[stage ?? ""] ?? "New";
+}
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const slotTimes = Array.from({ length: 25 }, (_, index) => {
   const minutes = 9 * 60 + index * 30;
@@ -204,15 +215,16 @@ function firstName(name: string) {
 }
 
 function LeadStageTracker({ stage, onChange }: { stage: string; onChange: (stage: string) => void }) {
-  const activeIndex = Math.max(0, leadStages.indexOf(stage as (typeof leadStages)[number]));
-  const progress = `${(activeIndex / (leadStages.length - 1)) * 80}%`;
+  const currentStage = pipelineStage(stage);
+  const activeIndex = leadStages.indexOf(currentStage);
+  const progress = `${(activeIndex / leadStages.length) * 100}%`;
   return <section className="ld-stage-tracker ld-card" aria-label="Lead sales pipeline">
-    <div className="ld-stage-tracker-heading"><div><h3>Sales Pipeline</h3><p>Click any stage to move this lead forward or back.</p></div><span>{stage}</span></div>
-    <ol className="ld-stage-steps" style={{ "--stage-progress": progress } as CSSProperties}>
+    <div className="ld-stage-tracker-heading"><div><h3>Sales Pipeline</h3><p>Click any stage to move this lead forward or back.</p></div><span>{currentStage}</span></div>
+    <ol className="ld-stage-steps" style={{ "--stage-progress": progress, "--stage-inset": `${50 / leadStages.length}%` } as CSSProperties}>
       {leadStages.map((item, index) => {
         const state = index < activeIndex ? "complete" : index === activeIndex ? "current" : "upcoming";
         return <li key={item} data-state={state}>
-          <button type="button" aria-current={index === activeIndex ? "step" : undefined} aria-label={`Move lead to ${item}${index === activeIndex ? ", current stage" : ""}`} onClick={() => { if (item !== stage) onChange(item); }}>
+          <button type="button" aria-current={index === activeIndex ? "step" : undefined} aria-label={`Move lead to ${item}${index === activeIndex ? ", current stage" : ""}`} onClick={() => { if (item !== currentStage) onChange(item); }}>
             <span className="ld-stage-node">{index < activeIndex ? <RiCheckLine aria-hidden="true" /> : index + 1}</span>
             <span className="ld-stage-label">{item}</span>
           </button>
@@ -562,8 +574,8 @@ export function EnquiryDetail({
           <strong>{enquiry.name}</strong>
           <small>{enquiry.id}</small>
         </div>
-        <div className="ld-stage-confirm-flow" aria-label={`Stage change from ${enquiry.stage || leadStages[0]} to ${pendingStage}`}>
-          <span><small>Current stage</small><strong>{enquiry.stage || leadStages[0]}</strong></span>
+        <div className="ld-stage-confirm-flow" aria-label={`Stage change from ${pipelineStage(enquiry.stage)} to ${pendingStage}`}>
+          <span><small>Current stage</small><strong>{pipelineStage(enquiry.stage)}</strong></span>
           <span><small>New stage</small><strong>{pendingStage}</strong></span>
         </div>
       </AlertDialog>}
@@ -753,7 +765,7 @@ function LeadActionModal({
     message: initialMessage,
     owner: enquiry.owner || owners[0] || "",
     status: enquiry.status,
-    stage: enquiry.stage || "Discovery",
+    stage: pipelineStage(enquiry.stage),
     increaseBy: "10",
     reason: "",
     date: "2026-11-20",
@@ -768,7 +780,7 @@ function LeadActionModal({
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
   const attachmentInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    setValues(current => ({ ...current, recipient: enquiry.email, subject: initialSubject, message: initialMessage, owner: enquiry.owner || owners[0] || "", status: enquiry.status, stage: enquiry.stage || "Discovery" }));
+    setValues(current => ({ ...current, recipient: enquiry.email, subject: initialSubject, message: initialMessage, owner: enquiry.owner || owners[0] || "", status: enquiry.status, stage: pipelineStage(enquiry.stage) }));
   }, [kind, initialSubject, initialMessage, enquiry.id, enquiry.email, enquiry.owner, enquiry.status, enquiry.stage, owners]);
   const set = (key: string, value: string) => setValues(current => ({ ...current, [key]: value }));
   const titles: Record<LeadActionDialog, string> = {
@@ -830,8 +842,8 @@ function LeadActionModal({
           <Textarea label="Reason (Optional)" value={values.reason} onChange={value => set("reason", value)} rows={3} fieldClassName="ld-form-white-field" />
         </> : kind === "change-stage" ? <>
           <div className="ld-action-info">Move this lead to a different stage in the pipeline.</div>
-          <div className="ld-action-current"><span>Current Stage</span><Chip variant="caption" color="blue">{enquiry.stage || "Discovery"}</Chip></div>
-          {fieldSelect("New Stage", "stage", ["Discovery", "Qualification", "Proposal", "Negotiation", "Won"])}
+          <div className="ld-action-current"><span>Current Stage</span><Chip variant="caption" color="blue">{pipelineStage(enquiry.stage)}</Chip></div>
+          {fieldSelect("New Stage", "stage", [...leadStages])}
           <Textarea label="Notes (Optional)" value={values.reason} onChange={value => set("reason", value)} rows={3} fieldClassName="ld-form-white-field" />
         </> : kind === "increase-score" ? <>
           <div className="ld-action-info">Manually update the lead score based on recent engagement.</div>
