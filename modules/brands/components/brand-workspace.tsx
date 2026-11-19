@@ -260,7 +260,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
   const open = brandOpps.find(item => item.id === openId) ?? null;
 
   const searched = brandOpps.filter(item => {
-    const haystack = `${item.id} ${item.customer} ${item.contact} ${item.phone} ${item.city} ${item.model}`.toLowerCase();
+    const haystack = `${item.id} ${item.customer} ${item.contact} ${item.city} ${item.model}`.toLowerCase();
     return (oppStage === "All stages" || item.stage === oppStage)
       && (model === "All models" || item.model === model)
       && (oppLocation === "All locations" || item.city === oppLocation)
@@ -276,7 +276,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
       || (!!closure && dealClosure === "This month" && closure.getFullYear() === today.getFullYear() && closure.getMonth() === today.getMonth())
       || (!!closure && dealClosure === "Next 30 days" && closure >= today && closure <= new Date(today.getTime() + 30 * day))
       || (!!closure && dealClosure === "Past 30 days" && closure < today && closure >= new Date(today.getTime() - 30 * day));
-    const haystack = `${item.id} ${item.customer} ${item.contact} ${item.phone} ${item.city} ${item.model}`.toLowerCase();
+    const haystack = `${item.id} ${item.customer} ${item.contact} ${item.city} ${item.model}`.toLowerCase();
     return item.dealValue != null
       && (dealStage === "All" || item.stage === dealStage)
       && (dealPayment === "All payments" || item.payment === dealPayment)
@@ -399,6 +399,13 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
                     <div className="bp-banner-actions"><button onClick={() => go("Opportunities")}>Explore Opportunities<RiArrowRightSLine /></button><button onClick={() => go("Reports")}>View Brand Growth</button></div>
                   </div>
                 </section>
+                <div className="bp-overview-stats" aria-label="Brand performance summary">
+                  <button className="bp-overview-stat" onClick={() => go("Opportunities")}><i className="is-blue"><RiGroupLine /></i><span><strong>{brandOpps.length}</strong><small>Total Opportunities</small></span></button>
+                  <button className="bp-overview-stat" onClick={() => go("Meetings")}><i className="is-violet"><RiCalendarLine /></i><span><strong>{upcoming.length}</strong><small>Upcoming Meetings</small></span></button>
+                  <button className="bp-overview-stat" onClick={() => go("Deals")}><i className="is-green"><RiTrophyLine /></i><span><strong>{brandOpps.filter(item => item.dealValue != null).length}</strong><small>Active Deals</small></span></button>
+                  <button className="bp-overview-stat" onClick={() => go("Invoices")}><i className="is-amber"><RiFileTextLine /></i><span><strong>{brandInvoices.length}</strong><small>Invoices</small></span></button>
+                  <button className="bp-overview-stat" onClick={() => go("Notifications")}><i><RiNotification3Line /></i><span><strong>{unread}</strong><small>Unread Notifications</small></span></button>
+                </div>
                 <div className="bp-overview-grid">
                   <section className="bp-card bp-pipeline-card">
                     <div className="bp-card-head"><h3>Opportunity Pipeline</h3><button className="bp-link bp-pipeline-view-all" onClick={() => go("Opportunities")}>View all <RiArrowRightSLine /></button></div>
@@ -436,7 +443,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
                 </div>
                 <section className="bp-list-card" aria-label="Opportunity list">
                   <div className="bp-opportunity-toolbar">
-                    <label className="bp-search"><RiSearchLine /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by customer, phone or opportunity ID" aria-label="Search opportunities" /></label>
+                    <label className="bp-search"><RiSearchLine /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by customer or opportunity ID" aria-label="Search opportunities" /></label>
                     <BoardSelect aria-label="Stage" selectedKey={oppStage} onSelectionChange={key => setOppStage(String(key))} className="bp-opportunity-select" triggerClassName="bp-filter-trigger" popoverClassName="bp-menu-fit">
                       {["All stages", ...stages].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}
                     </BoardSelect>
@@ -570,7 +577,7 @@ function DataTable({ rows, mode, onOpen }: { rows: Opportunity[]; mode: "opportu
               <td><span className="bp-row-location"><RiMapPin2Line />{row.city}</span></td>
               {mode === "opportunity" ? (
                 <>
-                  <td><span className="bp-row-contact"><strong>{row.contact}</strong><small>{row.phone}</small></span></td>
+                  <td><span className="bp-row-contact"><strong>{row.contact}</strong><small>Phone · •••• ••••</small></span></td>
                   <td><Chip variant="caption" color={stageColor[row.stage]}>{row.stage}</Chip></td>
                   <td>{row.activity}</td>
                   <td>{shortDate(row.created)}</td>
@@ -639,14 +646,6 @@ function emptyMeeting(brandId: Meeting["brandId"], brandName: string, userName: 
   };
 }
 
-function meetingParticipantEmail(person: Meeting["participants"][number]) {
-  if (person.email) return person.email;
-  const brandUser = initialUsers.find(user => user.name === person.name);
-  if (brandUser) return brandUser.email;
-  const localPart = person.name.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "");
-  return `${localPart}@customer.example`;
-}
-
 function MeetingCalendar({ meetings, brandId, brandName, opportunities: rows, userName, focusId, onSave, onUpdate }: { meetings: Meeting[]; brandId: Meeting["brandId"]; brandName: string; opportunities: Opportunity[]; userName: string; focusId?: string; onSave: (meeting: Meeting) => void; onUpdate: (meeting: Meeting) => void }) {
   const [month, setMonth] = useState(() => { const date = dateFromISO(reviewDate); return new Date(date.getFullYear(), date.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(reviewDate);
@@ -702,12 +701,10 @@ function MeetingCalendar({ meetings, brandId, brandName, opportunities: rows, us
     <>
       <section className="bp-calendar-board" aria-label="Meeting calendar">
         <header className="bp-calendar-board-head">
-          <div><span>MEETING SCHEDULE</span><h3>{monthLabel}</h3><p>{meetings.length} meetings for {brandName}</p></div>
           <div className="bp-calendar-controls">
-            <button type="button" className="bp-calendar-today" onClick={() => { const date = dateFromISO(reviewDate); setMonth(new Date(date.getFullYear(), date.getMonth(), 1)); setSelectedDate(reviewDate); }}>Today</button>
             <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)}><RiArrowLeftSLine /></button>
+            <strong>{monthLabel}</strong>
             <button type="button" aria-label="Next month" onClick={() => changeMonth(1)}><RiArrowRightSLine /></button>
-            <button type="button" className="bp-calendar-new" onClick={() => openForm()}><RiAddLine />New Meeting</button>
           </div>
         </header>
         <div className="bp-calendar-overflow">
@@ -731,7 +728,7 @@ function MeetingCalendar({ meetings, brandId, brandName, opportunities: rows, us
         </div>
       </section>
       {detail && <MeetingEventPopover meeting={detail} position={detailPosition} onClose={() => setDetail(null)} onEdit={() => { setDetail(null); openForm(detail); }} />}
-      {form && <MeetingForm key={form.id === "__new__" ? `new-${form.date}` : form.id} meeting={form} opportunities={rows} brandName={brandName} userName={userName} onClose={() => setForm(null)} onSave={saveMeeting} />}
+      {form && <MeetingForm key={form.id === "__new__" ? `new-${form.date}` : form.id} meeting={form} opportunities={rows} brandName={brandName} onClose={() => setForm(null)} onSave={saveMeeting} />}
     </>
   );
 }
@@ -763,27 +760,22 @@ function MeetingEventPopover({ meeting, position, onClose, onEdit }: { meeting: 
         <header className="bp-meeting-popover-heading"><strong>{meeting.title}</strong><span>{dateLabel}</span></header>
         {meeting.kind === "Virtual" ? <div className="bp-event-meet"><span><img src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Google_Meet_icon_%282026%29.svg" alt="" /><span><strong>Google Meet</strong><small>{meetCode || "Meeting link not added"}</small></span></span>{meeting.meetLink && <a href={meeting.meetLink} target="_blank" rel="noreferrer">Join</a>}</div> : <div className="bp-event-location"><RiMapPin2Line /><span><small>Location</small><strong>{meeting.place || "Location not added"}</strong></span></div>}
         <div className="bp-event-time"><RiTimeLine /><strong>{meeting.time}</strong></div>
-        <section className="bp-event-section"><h4><RiGroupLine />Participants</h4><div className="bp-event-people">{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{meetingParticipantEmail(person)}</strong></span>)}</div></section>
+        <section className="bp-event-section"><h4><RiGroupLine />Participants</h4><div className="bp-event-people">{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{person.name}</strong></span>)}</div></section>
         <footer className="bp-meeting-popover-actions"><button type="button" className="bp-event-close" onClick={onClose}>Close</button>{meeting.createdBy === "Brand" && <button type="button" className="bp-event-edit" onClick={onEdit}>Edit meeting</button>}</footer>
       </section>
     </div>
   );
 }
 
-function MeetingForm({ meeting, opportunities: rows, brandName, userName, onClose, onSave }: { meeting: Meeting; opportunities: Opportunity[]; brandName: string; userName: string; onClose: () => void; onSave: (meeting: Meeting) => void }) {
+function MeetingForm({ meeting, opportunities: rows, brandName, onClose, onSave }: { meeting: Meeting; opportunities: Opportunity[]; brandName: string; onClose: () => void; onSave: (meeting: Meeting) => void }) {
   const [draft, setDraft] = useState(meeting);
-  const [participants, setParticipants] = useState(meeting.participants.map(meetingParticipantEmail));
   const [start = "11:00 AM", end = "12:00 PM"] = draft.time.split(/\s+[–-]\s+/);
   const editing = draft.id !== "__new__";
   const validTime = meetingTimes.indexOf(end) > meetingTimes.indexOf(start);
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft.title.trim() || !validTime) return;
-    const people = participants.map((email, index) => {
-      const previous = meeting.participants.find(person => meetingParticipantEmail(person).toLowerCase() === email.toLowerCase()) ?? meeting.participants[index];
-      return { name: previous?.name ?? email.split("@")[0], email, side: previous?.side ?? (index === 0 ? "Customer" : email.toLowerCase().includes(brandName.toLowerCase().replace(/\s+/g, "")) ? brandName : "Brand") };
-    });
-    onSave({ ...draft, title: draft.title.trim(), time: `${start} – ${end}`, participants: people, agenda: draft.agenda.map(item => item.trim()).filter(Boolean) });
+    onSave({ ...draft, title: draft.title.trim(), time: `${start} – ${end}`, participants: meeting.participants, agenda: draft.agenda.map(item => item.trim()).filter(Boolean) });
   }
   return (
     <Modal className="bp-meeting-modal bp-meeting-form-modal" isOpen onOpenChange={isOpen => { if (!isOpen) onClose(); }} size="wide" aria-label={editing ? "Edit meeting" : "Schedule a meeting"}>
@@ -797,7 +789,7 @@ function MeetingForm({ meeting, opportunities: rows, brandName, userName, onClos
             <div className="bp-meeting-time-fields"><label><span>Start time</span><BoardSelect aria-label="Start time" selectedKey={start} onSelectionChange={key => setDraft(current => ({ ...current, time: `${String(key)} – ${end}` }))} className="bp-meeting-form-select" triggerClassName="bp-filter-trigger" popoverClassName="bp-menu-fit">{meetingTimes.slice(0, -1).map(time => <SelectItem key={time} id={time}>{time}</SelectItem>)}</BoardSelect></label><label><span>End time</span><BoardSelect aria-label="End time" selectedKey={end} onSelectionChange={key => setDraft(current => ({ ...current, time: `${start} – ${String(key)}` }))} className="bp-meeting-form-select" triggerClassName="bp-filter-trigger" popoverClassName="bp-menu-fit">{meetingTimes.slice(1).map(time => <SelectItem key={time} id={time}>{time}</SelectItem>)}</BoardSelect></label></div>
             <label><span>Meeting type</span><BoardSelect aria-label="Meeting type" selectedKey={draft.kind} onSelectionChange={key => setDraft(current => ({ ...current, kind: String(key) as Meeting["kind"] }))} className="bp-meeting-form-select" triggerClassName="bp-filter-trigger" popoverClassName="bp-menu-fit"><SelectItem id="Virtual">Virtual</SelectItem><SelectItem id="In-person">In-person</SelectItem></BoardSelect></label>
             {draft.kind === "Virtual" ? <label><span>Google Meet link</span><input type="url" value={draft.meetLink} onChange={event => setDraft(current => ({ ...current, meetLink: event.target.value }))} placeholder="https://meet.google.com/..." /></label> : <label><span>Meeting location</span><input value={draft.place} onChange={event => setDraft(current => ({ ...current, place: event.target.value }))} placeholder="Address or office location" /> </label>}
-            <label><span>Participant emails</span><EmailRecipientsInput emails={participants} onChange={setParticipants} /></label>
+            <label><span>Participants</span><div className="bp-event-people">{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{person.name}</strong></span>)}</div></label>
             <label className="bp-meeting-form-wide"><span>Agenda</span><textarea value={draft.agenda.join("\n")} onChange={event => setDraft(current => ({ ...current, agenda: event.target.value.split("\n") }))} placeholder="One item per line" /></label>
             {!validTime && <p className="bp-meeting-form-error">Choose an end time after the start time.</p>}
           </form>
@@ -805,33 +797,6 @@ function MeetingForm({ meeting, opportunities: rows, brandName, userName, onClos
       </ModalBody>
       <ModalFooter><button type="button" className="bp-event-close" onClick={onClose}>Cancel</button><button type="submit" form="bp-meeting-form" className="bp-event-edit" disabled={!validTime}>{editing ? "Save changes" : "Schedule meeting"}</button></ModalFooter>
     </Modal>
-  );
-}
-
-function EmailRecipientsInput({ emails, onChange }: { emails: string[]; onChange: (emails: string[]) => void }) {
-  const [entry, setEntry] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  function addEntries(value = entry) {
-    const additions = value.split(/[\s,;]+/).map(email => email.trim()).filter(Boolean);
-    if (additions.length) {
-      const seen = new Set(emails.map(email => email.toLowerCase()));
-      onChange([...emails, ...additions.filter(email => {
-        const normalized = email.toLowerCase();
-        if (seen.has(normalized)) return false;
-        seen.add(normalized);
-        return true;
-      })]);
-    }
-    setEntry("");
-  }
-  return (
-    <div className="bp-recipient-input" onClick={() => inputRef.current?.focus()}>
-      {emails.map(email => <span className="bp-recipient-chip" key={email}>{email}<button type="button" aria-label={`Remove ${email}`} onClick={event => { event.stopPropagation(); onChange(emails.filter(item => item !== email)); }}><RiCloseLine /></button></span>)}
-      <input ref={inputRef} type="email" value={entry} onChange={event => setEntry(event.target.value)} onKeyDown={event => {
-        if (event.key === "Enter" || event.key === "," || event.key === ";") { event.preventDefault(); addEntries(); }
-        else if (event.key === "Backspace" && !entry && emails.length) onChange(emails.slice(0, -1));
-      }} onBlur={() => addEntries()} aria-label="Add participant email" placeholder={emails.length ? "Add email…" : "name@example.com"} />
-    </div>
   );
 }
 
@@ -974,14 +939,25 @@ function OpportunityDetail({ opportunity, returnLabel, brandName, coordinator, m
   return (
     <div className="bp-opportunity-detail">
       <button className="bp-back" onClick={onBack}><RiArrowLeftLine /> {returnLabel}</button>
-      <section className="bp-opportunity-hero">
-        <div className="bp-opportunity-person"><span className="bp-opportunity-avatar">{initials(opportunity.customer)}</span><span><small>{opportunity.id} · {opportunity.model}</small><strong>{opportunity.customer}</strong></span></div>
-        <div className="bp-opportunity-meta">{opportunity.stage === "Hot" ? <span className="bp-hot-stage"><RiFireLine />Hot</span> : <Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip>}<span className="bp-opportunity-location"><RiMapPin2Line />{opportunity.city}, {brandName}</span></div>
-      </section>
+      <div className="bp-opportunity-detail-layout">
+        <aside className="bp-opportunity-profile-column">
+          <section className="bp-card bp-opportunity-profile-card">
+            <span className="bp-opportunity-avatar">{initials(opportunity.customer)}</span>
+            <small>{opportunity.id}</small>
+            <h2>{opportunity.customer}</h2>
+            {opportunity.stage === "Hot" ? <span className="bp-hot-stage"><RiFireLine />Hot</span> : <Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip>}
+            <span className="bp-opportunity-profile-contact">{opportunity.contact}</span>
+            <div className="bp-opportunity-profile-facts"><span><RiMapPin2Line />{opportunity.city}, {brandName}</span><span><RiStore2Line />{opportunity.model}</span><span><RiGroupLine />{coordinator}</span></div>
+          </section>
+        </aside>
+        <main className="bp-opportunity-detail-main">
+          <nav className="bp-opportunity-detail-tabs" role="tablist" aria-label="Opportunity details">
+            {["Overview", "Activity", "Meetings", "Invoices & Documents"].map(item => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{item}</button>)}
+          </nav>
       {tab === "Overview" ? <>
         <div className="bp-opportunity-grid bp-opportunity-overview-grid">
           <section className="bp-card bp-opportunity-info-card"><div className="bp-card-head"><h3><RiFileTextLine />Opportunity Details</h3></div><dl className="bp-opportunity-info-grid">
-            <div><RiUserLine /><span><dt>Customer Contact</dt><dd>{opportunity.contact}</dd></span></div><div><RiPhoneLine /><span><dt>Phone</dt><dd>{opportunity.phone}</dd></span></div>
+            <div><RiUserLine /><span><dt>Customer Contact</dt><dd>{opportunity.contact}</dd></span></div><div><RiPhoneLine /><span><dt>Phone</dt><dd>•••• ••••</dd></span></div>
             <div><RiStore2Line /><span><dt>Franchise Model</dt><dd>{opportunity.model}</dd></span></div><div><RiMapPin2Line /><span><dt>City</dt><dd>{opportunity.city}</dd></span></div>
             <div><RiCalendarLine /><span><dt>Created On</dt><dd>{shortDate(opportunity.created)}</dd></span></div><div><RiGroupLine /><span><dt>Brand Coordinator</dt><dd>{coordinator}</dd></span></div>
             <div><RiMoneyDollarCircleLine /><span><dt>Approved Deal Value</dt><dd>{opportunity.dealValue != null ? inr(opportunity.dealValue) : "—"}</dd></span></div><div><RiBankCardLine /><span><dt>Payment Status</dt><dd><span className={`bp-payment-tag is-${(opportunity.payment ?? "none").toLowerCase().replaceAll(" ", "-")}`}>{opportunity.payment ?? "—"}</span></dd></span></div>
@@ -997,6 +973,8 @@ function OpportunityDetail({ opportunity, returnLabel, brandName, coordinator, m
       </> : tab === "Activity" ? showSubpage("Activity & Updates", <ol className="bp-activity-timeline"><li><i /><span><strong>{opportunity.activity}</strong><small>{shortDate(opportunity.created)}</small></span><Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip></li><li><i /><span><strong>Opportunity shared with {brandName}</strong><small>{shortDate(opportunity.created)}</small></span></li><li><i /><span><strong>Opportunity created</strong><small>{shortDate(opportunity.created)}</small></span></li></ol>)
         : tab === "Meetings" ? showSubpage("Meetings", <div className="bp-detail-rows">{meetings.map(item => <div className="bp-detail-meeting" key={item.id}><span className="bp-datebadge"><span>{monthDay(item.date).month}</span><b>{monthDay(item.date).day}</b></span><span><strong>{item.title}</strong><small>{item.time} · {item.kind} · {item.status}</small></span>{item.kind === "Virtual" && item.meetLink && <a className="bp-join" href={item.meetLink} target="_blank" rel="noreferrer">Join Meet</a>}</div>)}{!meetings.length && <p className="bp-empty">No meetings on this opportunity yet.</p>}</div>)
           : showSubpage("Invoices & Documents", <div className="bp-detail-rows">{bills.map(item => <div className="bp-detail-file" key={item.id}><span className="bp-invoice-id"><i><RiFileTextLine /></i><b>{item.id}</b></span><span>{inr(item.amount)}</span><Chip variant="caption" color={paymentColor[item.status]}>{item.status}</Chip><button className="bp-row-action" onClick={() => onDownload(item)} aria-label={`Download ${item.id}`}><RiDownloadLine /></button></div>)}{docs.map(item => <div className="bp-detail-file" key={item.id}><span className="bp-invoice-id"><i><RiFolderLine /></i><b>{item.name}</b></span><span>{item.party}</span><Chip variant="caption" color={item.status === "Approved" ? "lime" : "yellow"}>{item.status}</Chip></div>)}{!bills.length && !docs.length && <p className="bp-empty">No invoices or documents yet.</p>}</div>)}
+        </main>
+      </div>
       {invoicePreview && <Modal className="bp-invoice-preview-modal" isOpen onOpenChange={isOpen => { if (!isOpen) setInvoicePreview(null); }} size="md" aria-label={`Invoice ${invoicePreview.id} preview`}><ModalHeader title="Invoice preview" description={`${brandName} · ${invoicePreview.id}`} /><ModalBody><article className="bp-invoice-preview-sheet"><div className="bp-invoice-preview-brand"><span>iFranchise</span><span>INVOICE</span></div><div className="bp-invoice-preview-number"><strong>{invoicePreview.id}</strong><span>{shortDate(invoicePreview.date)}</span></div><div className="bp-invoice-preview-line"><span>Opportunity reference</span><strong>{invoicePreview.opportunityId}</strong></div><div className="bp-invoice-preview-line"><span>Payment status</span><strong>{invoicePreview.status}</strong></div><div className="bp-invoice-preview-total"><span>Total due</span><strong>{inr(invoicePreview.amount)}</strong></div></article></ModalBody><ModalFooter><button type="button" className="bp-event-close" onClick={() => setInvoicePreview(null)}>Close</button><button type="button" className="bp-event-edit" onClick={() => onDownload(invoicePreview)}><RiDownloadLine />Download</button></ModalFooter></Modal>}
       {documentPreview && <Modal className="bp-invoice-preview-modal" isOpen onOpenChange={isOpen => { if (!isOpen) setDocumentPreview(null); }} size="md" aria-label={`${documentPreview.name} preview`}><ModalHeader title="Document preview" description={`${brandName} · ${documentPreview.id}`} /><ModalBody><article className="bp-invoice-preview-sheet"><div className="bp-invoice-preview-brand"><span>iFranchise</span><span>DOCUMENT</span></div><div className="bp-invoice-preview-number"><strong>{documentPreview.name}</strong><span>{documentPreview.status}</span></div><div className="bp-invoice-preview-line"><span>Opportunity reference</span><strong>{documentPreview.opportunityId}</strong></div><div className="bp-invoice-preview-line"><span>Shared with</span><strong>{documentPreview.party}</strong></div></article></ModalBody><ModalFooter><button type="button" className="bp-event-close" onClick={() => setDocumentPreview(null)}>Close</button><button type="button" className="bp-event-edit" onClick={() => downloadBrandDocument(documentPreview)}><RiDownloadLine />Download</button></ModalFooter></Modal>}
     </div>
@@ -1174,7 +1152,6 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
         const category = noticeCategory(selected);
         const Icon = notificationIcon(category);
         const meeting = selected.targetType === "meeting" ? meetings.find(item => item.id === selected.targetId) : undefined;
-        const meetingDateLabel = meeting ? dateFromISO(meeting.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "";
         const meetCode = meeting?.meetLink.split("/").filter(Boolean).at(-1) ?? "";
         const relatedLabel = selected.targetType === "meeting" ? "Meeting" : selected.targetType === "opportunity" ? (category === "Deals" ? "Deal" : "Opportunity") : selected.targetType === "invoice" ? "Invoice" : selected.targetType === "document" ? "Document" : "Overview";
         const closeMeetingPanel = () => {
@@ -1187,12 +1164,11 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
           <h3>{selected.title}</h3>
           <p className="bp-notice-when">{selected.when}</p>
           <p className="bp-notice-description">{selected.detail}</p>
-          {!(meeting && meetingPanelState !== "closed") && <div className="bp-notice-context"><span><RiCalendarLine />{selected.when}</span><span><RiNotification3Line />{category} update</span></div>}
+          {!(meeting && meetingPanelState !== "closed") && <div className="bp-notice-context"><span><RiNotification3Line />{category} update</span></div>}
           {meetingPanelState !== "closed" && meeting && <section className={`bp-notice-inline-meeting is-${meetingPanelState}`} aria-label="Meeting details">
-            <header className="bp-notice-meeting-title"><strong>{meeting.title}</strong><span>{meetingDateLabel}</span></header>
             {meeting.kind === "Virtual" ? <div className="bp-notice-meeting-service"><span><img src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Google_Meet_icon_%282026%29.svg" alt="" /><span><strong>Google Meet</strong><small>{meetCode || "Meeting link not added"}</small></span></span>{meeting.meetLink && <a href={meeting.meetLink} target="_blank" rel="noreferrer">Join</a>}</div> : <div className="bp-notice-meeting-time"><RiMapPin2Line /><strong>{meeting.place || "Location not added"}</strong></div>}
             <div className="bp-notice-meeting-time"><RiTimeLine /><strong>{meeting.time}</strong></div>
-            <section className="bp-notice-meeting-participants"><h4><RiGroupLine />Participants</h4><div>{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{meetingParticipantEmail(person)}</strong></span>)}</div></section>
+            <section className="bp-notice-meeting-participants"><h4><RiGroupLine />Participants</h4><div>{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{person.name}</strong></span>)}</div></section>
             <footer><button type="button" onClick={closeMeetingPanel}>Close</button></footer>
           </section>}
           {meeting ? meetingPanelState === "closed" ? <div className="bp-notice-detail-actions-bottom"><button className="is-primary" onClick={() => setMeetingPanelState("open")}>View Meeting<RiArrowRightSLine /></button></div> : null : <div className="bp-notice-detail-actions-bottom"><button className="is-primary" onClick={() => onOpenTarget(selected)}>View {relatedLabel}<RiArrowRightSLine /></button></div>}

@@ -204,6 +204,15 @@
   color: var(--color-text-secondary);
 }
 
+.ur-dialog .ur-user-form .ur-user-field {
+  background-color: var(--color-background-primary-default);
+  border: 1px solid var(--color-border-button-default);
+}
+
+.ur-hierarchy-profile img {
+  object-position: center 30%;
+}
+
 .ur-fit-select {
   width: max-content;
   max-width: 100%;
@@ -268,4 +277,84 @@
 .ur-action-danger:hover {
   background-color: #fff6f7;
   color: #b4232c;
+}
+
+.ur-org-viewport {
+  min-width: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.ur-org-chart {
+  position: relative;
+  flex: none;
+  margin-inline: auto;
+}
+
+.ur-org-connectors {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ur-org-connectors path {
+  fill: none;
+  stroke: var(--color-accent-300);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.ur-org-positioned-node {
+  position: absolute;
+  z-index: 1;
+  width: 17rem;
+  height: 5.25rem;
+}
+
+.ur-org-card {
+  width: 17rem;
+  min-width: 17rem;
+  height: 5.25rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.ur-org-card:hover {
+  border-color: var(--color-border-button-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.ur-org-card button {
+  border-radius: 0.75rem;
+}
+
+.ur-org-ceo {
+  border-color: var(--color-accent-200);
+  box-shadow: 0 0 0 3px var(--color-accent-50), var(--shadow-xs);
+}
+
+.ur-org-detail {
+  min-width: 0;
+  max-height: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.ur-org-person-link {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border-button-default);
+  border-radius: 0.875rem;
+  background: var(--color-background-primary-default);
+  padding: 0.75rem;
+  text-align: start;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.ur-org-person-link:hover {
+  border-color: var(--color-border-button-hover);
+  background: var(--color-background-secondary-hover);
 }

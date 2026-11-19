@@ -22,19 +22,30 @@ export function pipelineStageTransitions(stageId: string, stages: PipelineStage[
   return (stageTransitions[stageId] ?? []).filter(id => stages.some(stage => stage.id === id));
 }
 
+/** Drag moves stay adjacent while allowing a simple one-stage correction in either direction. */
+export function pipelineAdjacentStages(stageId: string, stages: PipelineStage[]): string[] {
+  const index = stages.findIndex(stage => stage.id === stageId);
+  if (index < 0 || ["won", "lost"].includes(stageId)) return [];
+  const previous = index > 0 ? stages[index - 1] : undefined;
+  const next = stages[index + 1];
+  return [previous, next]
+    .filter((stage): stage is PipelineStage => Boolean(stage && stage.id !== "lost"))
+    .map(stage => stage.id);
+}
+
 const nextActions: Record<string, string> = {
-  new: "Make initial contact", rnr: "Retry call (RNR 1)", cold: "Share brand deck",
-  "manager-meeting": "Conduct manager meeting", warm: "Follow up for brand meeting",
-  "brand-meeting": "Confirm brand meeting", hot: "Collect token", token: "Review payment",
-  won: "Prepare onboarding", lost: "View lost reason",
+  new: "Log initial contact", rnr: "Log RNR attempt", cold: "Log brand deck follow-up",
+  "manager-meeting": "Log manager meeting", warm: "Log brand meeting follow-up",
+  "brand-meeting": "Log brand meeting", hot: "Log token follow-up", token: "Review payment",
+  won: "Log onboarding handoff", lost: "View lost details",
 };
 
 /** Dragging and the stage picker share the same transition and prerequisite checks. */
 export function prepareOpportunityMove(item: Opportunity, targetId: string, stages: PipelineStage[], at: string, day: string):
   { error: string } | { requiresLostReason: true } | { opportunity: Opportunity } {
   const target = stages.find(stage => stage.id === targetId);
-  if (!target || !pipelineStageTransitions(item.stageId, stages).includes(targetId)) {
-    return { error: "Choose an available next stage. Required stages cannot be skipped." };
+  if (!target || !pipelineAdjacentStages(item.stageId, stages).includes(targetId)) {
+    return { error: "Choose the previous or next available stage. Stages cannot be skipped." };
   }
   if (targetId === "lost") return { requiresLostReason: true };
   if (["manager-meeting", "brand-meeting"].includes(item.stageId) && (!item.meetingComplete || !item.meetingMinutes?.trim())) {
@@ -48,7 +59,7 @@ export function prepareOpportunityMove(item: Opportunity, targetId: string, stag
     ...item, stageId: targetId, rnrStep: targetId === "rnr" ? 1 : undefined,
     nextAction: nextActions[targetId] ?? `Follow up for ${target.name}`, lastActivity: "Just now",
     ...(enteringMeeting ? { meetingComplete: false, meetingMinutes: undefined } : {}),
-    history: [{ stage: target.name, at, note: targetId === "rnr" ? `RNR update ${day} · RNR 1 · follow-up email queued in prototype; delivery is not connected.` : undefined }, ...item.history],
+    history: [{ stage: target.name, at, note: targetId === "rnr" ? `Entered RNR · RNR 1 · ${day}` : undefined }, ...item.history],
   } };
 }
 

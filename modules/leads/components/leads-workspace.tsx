@@ -59,27 +59,25 @@ import { SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { cx } from "@/utils/cx";
 import { useMeetings } from "@/modules/meetings/store";
 import { meetingProfiles, canViewRecord } from "@/modules/meetings/records";
 import { EnquiryDetail } from "./enquiry-detail";
 import { SourceLeadsPanel } from "./source-leads-panel";
-import { cityOptions, DateField, LeadSelect, leadTimes, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
+import { cityOptions, LeadSelect, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
 import { useLeadFavourites } from "@/modules/leads/lib/use-lead-favourites";
 import { initialActivities, initialEnquiries, initialSources, sourceLeads } from "../data";
 import {
   activityStatuses,
-  activityTypes,
   brands,
   budgetRanges,
   enquiryStatuses,
   heardAboutOptions,
   originalSources,
-  outcomes,
   sourceKinds,
   timelines,
   type Activity,
-  type ActivityKind,
   type ActivityStatus,
   type Category,
   type Enquiry,
@@ -90,6 +88,7 @@ import {
 import "./leads.css";
 
 const navItems = ["Enquiries", "Activity", "Sources"] as const;
+const activityStorageKey = "ifranchise-lead-activities:v1";
 const owners = ["Himani Bhargava Tapadiya", "Shakshay Gupta", "Vivek Rawat", "Ekta Pattanaik", "Swetha Chintada"];
 const activeBrandNames = portalBrands.map(item => item.name);
 const categoryViews = ["Franchise", "Brand expansion"] as const;
@@ -133,9 +132,8 @@ const activityColumns: Column[] = [
   { id: "activity", name: "Activity", isRowHeader: true },
   { id: "enquiry", name: "Related Enquiry" },
   { id: "owner", name: "Assigned To" },
-  { id: "due", name: "Due Date" },
+  { id: "due", name: "Activity date" },
   { id: "status", name: "Status" },
-  { id: "actions", name: "Actions" },
 ];
 const sourceColumns: Column[] = [
   { id: "source", name: "Source Name", isRowHeader: true },
@@ -291,13 +289,6 @@ function heardLabel(enquiry: Pick<Enquiry, "heardAbout" | "heardAboutOther">) {
 function conversion(converted: number, leads: number) {
   if (!leads) return "0%";
   return `${((converted / leads) * 100).toFixed(1)}%`;
-}
-
-function kindFor(type: string): ActivityKind {
-  if (type === "Email") return "email";
-  if (type === "In-Person Meeting" || type === "Face-to-Face Discussion") return "meeting";
-  if (type === "Phone Call") return "call";
-  return "follow-up";
 }
 
 function Panel({ children }: { children: ReactNode }) {
@@ -485,6 +476,7 @@ function slicePage<T>(items: T[], page: number) {
 
 export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: string; enquiryId?: string }) {
   const router = useRouter();
+  const activityScrollFade = useScrollFade();
   const section = isSection(view) ? view : "Enquiries";
   const enquiryView = isEnquiryView(section);
   const activeCategory = (categoryViews as readonly string[]).includes(section) ? section as Category : null;
@@ -493,6 +485,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   const { state: meetingRecords, ready: meetingRecordsReady } = useMeetings();
   const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [activities, setActivities] = useState(initialActivities);
+  const [activitiesReady, setActivitiesReady] = useState(false);
   const [sources, setSources] = useState(crmSources);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
@@ -512,7 +505,6 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   const [sourceView, setSourceView] = useState<{ name: string; rows: typeof sourceLeads } | null>(null);
   const [rateText, setRateText] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [logging, setLogging] = useState(false);
   const [addingSource, setAddingSource] = useState(false);
   const [draftCategory, setDraftCategory] = useState<Category>("Franchise");
   const [draftEnquiryType, setDraftEnquiryType] = useState("Specific brand");
@@ -535,6 +527,35 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
     const activeProfile = readActiveCrmRole();
     if (accessRoles.some(item => item.id === activeProfile.id)) setRoleId(activeProfile.id);
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(activityStorageKey);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) setActivities(parsed as Activity[]);
+      }
+    } catch {
+      // Keep the built-in activity examples if saved browser data is unavailable.
+    } finally {
+      setActivitiesReady(true);
+    }
+    const syncSavedActivities = (event: StorageEvent) => {
+      if (event.key !== activityStorageKey || !event.newValue) return;
+      try {
+        const parsed: unknown = JSON.parse(event.newValue);
+        if (Array.isArray(parsed)) setActivities(parsed as Activity[]);
+      } catch {
+        // Ignore malformed updates without replacing the current activity list.
+      }
+    };
+    window.addEventListener("storage", syncSavedActivities);
+    return () => window.removeEventListener("storage", syncSavedActivities);
+  }, []);
+
+  useEffect(() => {
+    if (activitiesReady) window.localStorage.setItem(activityStorageKey, JSON.stringify(activities));
+  }, [activities, activitiesReady]);
 
   useEffect(() => {
     setQuery("");
@@ -578,16 +599,66 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
     const enquiry = linked?.snapshot ?? enquiries.find(item => item.id === enquiryId);
     if (enquiry) setOpen(enquiry);
   }, [enquiryId, meetingRecordsReady, section]);
-  const scopedActivities = useMemo(() => activities.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activities, scopedEnquiries]);
+  const activityFeed = useMemo(() => {
+    const existingIds = new Set(activities.map(activity => activity.id));
+    const formatDate = (value: string) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+    };
+    const followUps: Activity[] = meetingRecords.followUps
+      .filter(item => !existingIds.has(item.id) && (!item.source || !existingIds.has(item.source.id)))
+      .map(item => ({
+        id: item.id,
+        enquiryId: item.recordId,
+        title: item.title,
+        kind: "follow-up",
+        status: item.status === "Cancelled" ? "Completed" : item.status,
+        due: formatDate(item.dueAt),
+        type: "Follow-up",
+        when: formatDate(item.createdAt),
+        direction: "—",
+        summary: item.description || item.outcome || "Follow-up created for this enquiry.",
+        outcome: item.outcome || "Follow-up Required",
+        followUp: item.dueAt,
+        manual: false,
+        createdBy: item.assignedTo,
+        assignedTo: item.assignedTo,
+        createdAt: item.createdAt,
+      }));
+    const meetings: Activity[] = meetingRecords.meetings
+      .filter(item => !existingIds.has(item.id))
+      .map(item => ({
+        id: item.id,
+        enquiryId: item.recordId,
+        title: item.title,
+        kind: "meeting",
+        status: item.status === "MOM submitted" ? "Completed" : item.status === "Awaiting MOM" ? "In Progress" : ["Cancelled", "Postponed", "Customer did not attend", "Internal participant did not attend"].includes(item.status) ? "Pending" : "Scheduled",
+        due: formatDate(item.startAt),
+        type: item.category,
+        when: formatDate(item.startAt),
+        direction: "—",
+        summary: item.remarks || item.agenda || "Meeting scheduled for this enquiry.",
+        outcome: item.outcome || "Meeting Scheduled",
+        followUp: "",
+        manual: false,
+        createdBy: item.assignedTo,
+        assignedTo: item.assignedTo,
+        createdAt: item.createdAt,
+        meetLink: item.meetLink,
+      }));
+    return [...activities, ...followUps, ...meetings].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+  }, [activities, meetingRecords.followUps, meetingRecords.meetings]);
+  const scopedActivities = useMemo(() => activityFeed.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activityFeed, scopedEnquiries]);
 
   const visibleActivities = useMemo(() => scopedActivities.filter(activity => {
     const enquiry = scopedEnquiries.find(item => item.id === activity.enquiryId);
-    const text = `${activity.title} ${activity.summary} ${enquiry?.name ?? ""} ${enquiry?.id ?? ""} ${activity.createdBy}`.toLowerCase();
+    const assigneeName = activity.assignedTo || activity.createdBy;
+    const text = `${activity.title} ${activity.summary} ${enquiry?.name ?? ""} ${enquiry?.id ?? ""} ${assigneeName}`.toLowerCase();
     const kindLabel = activity.type === "Other Communication" ? "Notes" : activity.kind === "call" ? "Calls" : activity.kind === "meeting" ? "Meetings" : activity.kind === "email" ? "Emails" : "Follow-ups";
     return text.includes(query.toLowerCase())
       && (activityKind === "All types" || kindLabel === activityKind)
       && (related === "All enquiries" || enquiry?.name === related)
-      && (assignee === "All people" || activity.createdBy === assignee)
+      && (assignee === "All people" || assigneeName === assignee)
       && (status === "All statuses" || activity.status === status);
   }), [scopedActivities, scopedEnquiries, query, activityKind, related, assignee, status]);
 
@@ -659,7 +730,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   }, [columnScope, role.id]);
   const visibleColumnIds = columnIds.length ? columnIds.filter(id => configurableColumnDefs.some(column => column.id === id)) : defaultColumnIds;
   const tableColumns: Column[] = [selectColumn, favouriteColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
-  const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), ...(section === "Activity" ? [] : [actionsColumn])];
   const showBrandFilter = configurableColumnDefs.some(column => column.id === "brand");
   const favouritesCount = visiblePool.filter(item => favouriteIds.has(item.id)).length;
   const leadTotal = sources.reduce((sum, item) => sum + item.leads, 0);
@@ -754,36 +825,6 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
     setAdding(false);
   }
 
-  function saveActivity(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const value = (name: string) => String(form.get(name) || "").trim();
-    const enquiryId = value("enquiryId");
-    const type = value("type") || activityTypes[0];
-    if (!enquiryId || !value("summary")) return;
-    const stamp = now();
-    const when = [value("whenDate"), value("whenTime")].filter(Boolean).join(", ") || stamp;
-    const next: Activity = {
-      id: `ACT-${1000 + activities.length + 1}`,
-      enquiryId,
-      title: value("title") || type,
-      kind: kindFor(type),
-      status: "Pending",
-      due: value("followUp") || stamp,
-      type,
-      when,
-      direction: (value("direction") || "—") as Activity["direction"],
-      summary: value("summary"),
-      outcome: value("outcome") || "Other",
-      followUp: value("followUp"),
-      manual: true,
-      createdBy: role.name,
-      createdAt: stamp,
-    };
-    setActivities(list => [next, ...list]);
-    setLogging(false);
-  }
-
   function saveSource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -803,7 +844,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
     setAddingSource(false);
   }
 
-  const leadActivities = open ? activities.filter(activity => activity.enquiryId === open.id) : [];
+  const leadActivities = open ? activityFeed.filter(activity => activity.enquiryId === open.id) : [];
   const heading = open ? open.id : section === "Activity" ? "Activities" : section === "Sources" ? "Lead Sources" : enquiryTabs.find(tab => tab.id === section)?.label ?? "Enquiries";
   const description = enquiryView
     ? "Manage all incoming franchise and brand expansion enquiries."
@@ -947,7 +988,6 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="secondary" leadingIcon={RiBarChartBoxLine} aria-expanded={showOverview} aria-controls="lead-quick-overview" onClick={() => setShowOverview(current => !current)}>Quick overview</Button>
             {enquiryView && <Button leadingIcon={RiAddLine} onClick={() => { setDraftCategory(activeCategory && role.categories.includes(activeCategory) ? activeCategory : role.categories[0]); setDraftEnquiryType("Specific brand"); setDraftCity(""); setDraftState(""); setAdding(true); }}>Add Enquiry</Button>}
-            {section === "Activity" && <Button leadingIcon={RiAddLine} onClick={() => setLogging(true)}>Add Activity</Button>}
             {section === "Sources" && <Button leadingIcon={RiAddLine} onClick={() => { setSourceName("Website"); setAddingSource(true); }}>Add Source</Button>}
             </div>
           </div>
@@ -984,7 +1024,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
               <Button size="small" variant={favouritesOnly ? "ghost" : "primary"} aria-pressed={!favouritesOnly} onClick={() => { setFavouritesOnly(false); setSelected(new Set()); }}>All enquiries</Button>
               <Button className="ld-favourites-list-button" size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setSelected(new Set()); }}>Favourites ({favouritesCount})</Button>
             </div>}
-            <div className={cx("ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3", enquiryView && "ld-enquiry-toolbar", enquiryView && !showBrandFilter && "ld-enquiry-toolbar-no-brand")}>
+            <div className={cx("ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3", section === "Activity" && "ld-activity-toolbar", enquiryView && "ld-enquiry-toolbar", enquiryView && !showBrandFilter && "ld-enquiry-toolbar-no-brand")}>
               <SearchField
                 aria-label={`Search ${heading.toLowerCase()}`}
                 placeholder={section === "Activity" ? "Search activity, notes or enquiry ID" : section === "Sources" ? "Search source name..." : "Search enquiries"}
@@ -1000,7 +1040,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
               {section === "Activity" && <>
                 <FilterSelect label="Activity type" value={activityKind} onChange={setActivityKind} options={["All types", "Calls", "Meetings", "Emails", "Follow-ups", "Notes"]} />
                 <FilterSelect label="Related enquiry" value={related} onChange={setRelated} options={["All enquiries", ...new Set(scopedEnquiries.map(item => item.name))]} />
-                <FilterSelect label="Assigned to" value={assignee} onChange={setAssignee} options={[{ id: "All people", label: "All people" }, ...[...new Set(scopedActivities.map(item => item.createdBy))].map(name => ({ id: name, label: firstName(name) }))]} />
+                <FilterSelect label="Assigned to" value={assignee} onChange={setAssignee} options={[{ id: "All people", label: "All people" }, ...[...new Set(scopedActivities.map(item => item.assignedTo || item.createdBy))].map(name => ({ id: name, label: firstName(name) }))]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", ...activityStatuses]} />
               </>}
               {section === "Sources" && <>
@@ -1025,8 +1065,8 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
 
             <div className={cx("ld-record-layout", advancedFiltersOpen && enquiryView && "is-filter-open")}>
 
-            <div className={cx("ld-record-content", section === "Activity" && "ld-scroll-fit")}>
-            <div className="ld-scroll">
+            <div className={cx("ld-record-content relative", section === "Activity" && "ld-scroll-fit")}>
+            <div className={cx("ld-scroll", section === "Activity" && "ld-activity-scroll")} onScroll={section === "Activity" ? activityScrollFade.onScroll : undefined}>
               {enquiryView && (
                 <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
@@ -1094,8 +1134,8 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
               )}
 
               {section === "Activity" && (
-                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Activities" className="ld-activity-table" containerClassName="ld-fit-table" onRowAction={key => {
-                  const activity = activities.find(item => item.id === String(key));
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Activities" className="ld-activity-table" containerClassName="ld-activity-list-table" onRowAction={key => {
+                  const activity = activityFeed.find(item => item.id === String(key));
                   const enquiry = enquiries.find(item => item.id === activity?.enquiryId);
                   if (enquiry) setOpen(enquiry);
                 }}>
@@ -1111,22 +1151,16 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
                               {column.id === "activity" && (
                                 <span className="ld-activity-cell">
                                   <span className={`ld-activity-icon ld-activity-${mark.tone}`}><mark.icon /></span>
-                                  <span className="truncate text-body-2-medium">{activity.title}</span>
+                                  <span className="ld-activity-copy">
+                                    <span className="truncate text-body-2-medium">{activity.title}</span>
+                                    <span className="truncate text-caption-1-regular text-text-secondary">{activity.summary}</span>
+                                  </span>
                                 </span>
                               )}
                               {column.id === "enquiry" && enquiry && <Person name={enquiry.name} meta={`${enquiry.id} · ${enquiry.category}`} />}
-                              {column.id === "owner" && <Assignee name={activity.createdBy} />}
+                              {column.id === "owner" && <Assignee name={activity.assignedTo || activity.createdBy} />}
                               {column.id === "due" && <span className="ld-due">{activity.due ? <><RiCalendarLine />{activity.due}</> : "—"}</span>}
                               {column.id === "status" && <StatusPill status={activity.status} />}
-                              {column.id === "actions" && enquiry && (
-                                <EnquiryActions
-                                  label={activity.title}
-                                  canDelete={role.canDelete}
-                                  onView={() => setOpen(enquiry)}
-                                  onEdit={() => setLogging(true)}
-                                  onDelete={() => setPendingDelete({ name: activity.title, run: () => setActivities(list => list.filter(item => item.id !== activity.id)) })}
-                                />
-                              )}
                             </TableCell>
                           )}
                         </TableRow>
@@ -1181,6 +1215,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
               {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
             </div>
             </div>
+            {section === "Activity" && <ScrollFade progress={activityScrollFade.progress} surfaceClassName="from-background-primary-default" />}
             {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
               id="lead-advanced-filters"
               initialFilters={advancedFilters}
@@ -1267,38 +1302,6 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
             <ModalFooter>
               <Button variant="secondary" onClick={() => setAdding(false)}>Cancel</Button>
               <Button type="submit" form="enquiry-form">Save enquiry</Button>
-            </ModalFooter>
-          </Modal>
-        )}
-
-        {logging && (
-          <Modal className="ld-dialog" isOpen onOpenChange={next => { if (!next) setLogging(false); }} size="lg">
-            <ModalHeader title="Add activity" description="A conversation logged here stays marked as manually recorded." />
-            <ModalBody>
-              <form id="activity-form" className="grid grid-cols-2 gap-3" onSubmit={saveActivity}>
-                <LeadSelect aria-label="Enquiry" label="Enquiry" name="enquiryId" isRequired defaultSelectedKey={open?.id || scopedEnquiries[0]?.id}>
-                  {scopedEnquiries.map(enquiry => <SelectItem key={enquiry.id} id={enquiry.id}>{enquiry.name}</SelectItem>)}
-                </LeadSelect>
-                <Input label="Title" name="title" placeholder="Follow-up call" isRequired />
-                <LeadSelect aria-label="Activity type" label="Activity type" name="type" isRequired defaultSelectedKey={activityTypes[0]}>{activityTypes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                <LeadSelect aria-label="Outcome" label="Outcome" name="outcome" isRequired defaultSelectedKey={outcomes[0]}>{outcomes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                <div className="ld-when">
-                  <span className="ld-field-label">When it happened</span>
-                  <div className="ld-when-row">
-                    <DateField name="whenDate" defaultValue={new Date(2026, 10, 12)} />
-                    <LeadSelect aria-label="Time" name="whenTime" defaultSelectedKey="4:00 PM" className="w-[132px] shrink-0" triggerClassName="h-10 shadow-none">{leadTimes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                  </div>
-                </div>
-                <div className="ld-when">
-                  <span className="ld-field-label">Due date</span>
-                  <DateField name="followUp" defaultValue={new Date(2026, 10, 14)} />
-                </div>
-                <Textarea className="col-span-2" label="Discussion summary" name="summary" isRequired />
-              </form>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setLogging(false)}>Cancel</Button>
-              <Button type="submit" form="activity-form">Save activity</Button>
             </ModalFooter>
           </Modal>
         )}

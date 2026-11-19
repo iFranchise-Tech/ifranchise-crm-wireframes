@@ -27,7 +27,7 @@ export type Meeting = {
 };
 export type ReminderPolicy = { before: number[]; atTime: boolean; overdueAfter: number | null };
 export type ReminderSettings = { followUps: ReminderPolicy; meetings: ReminderPolicy; history: AuditEvent[] };
-export type Reminder = { id: string; entityId: string; kind: "meeting" | "follow-up"; recordId: string; version: number; phase: string; dueAt: string; createdAt: string; title: string; readBy: string[] };
+export type Reminder = { id: string; entityId: string; kind: "meeting" | "follow-up"; recordId: string; version: number; phase: string; dueAt: string; createdAt: string; title: string; readBy: string[]; archivedBy?: string[]; deletedBy?: string[]; starredBy?: string[] };
 export type MeetingsState = { records: CustomerRecord[]; followUps: FollowUp[]; meetings: Meeting[]; settings: ReminderSettings; notifications: Reminder[] };
 export type MeetingProfile = { id: string; name: string; title: string; scope: "organization" | "team" | "own"; members: string[]; readOnly?: boolean; admin?: boolean };
 export type FollowUpDraft = Pick<FollowUp, "recordId" | "linkType" | "title" | "description" | "assignedTo" | "dueAt" | "priority" | "source">;

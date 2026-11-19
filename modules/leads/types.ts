@@ -41,6 +41,7 @@ export type Enquiry = {
   email: string;
   city: string;
   state: string;
+  pincode?: string;
   address: string;
   brand: string;
   investment: string;

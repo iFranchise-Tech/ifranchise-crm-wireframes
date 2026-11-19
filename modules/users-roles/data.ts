@@ -20,7 +20,7 @@ const names = [
     "Abdul Khader Syed",
     "ceo",
     "Leadership",
-    "Founder & Director",
+    "CEO & Founder",
     "",
     "",
     "Active"
@@ -60,7 +60,7 @@ const names = [
     "Mohammad Abrar",
     "ceo",
     "Leadership",
-    "Co - Founder",
+    "Co-Founder",
     "",
     "",
     "Active"
@@ -156,7 +156,23 @@ const names = [
     "Active"
   ]
 ];
-export const initialUsers: User[] = names.map(([id,name,roleId,department,designation,manager,team,status])=>({id,name,email:`${id.toLowerCase()}@example.com`,mobile:'',department,designation,roleId,manager,team,brand:'',status:status as User['status'],created:'02 Nov 2026',lastLogin:'—'}));
+const reportingLines: Record<string, { manager: string; team: string }> = {
+  IF2024001: { manager: "", team: "Leadership" },
+  IF2024002: { manager: "IF2024001", team: "Leadership" },
+  IF2026001: { manager: "IF2024001", team: "People Operations" },
+  IF2026009: { manager: "IF2026001", team: "Engineering" },
+  IF2026002: { manager: "IF2024002", team: "Sales Development" },
+  IF2026023: { manager: "IF2026018", team: "Creative & Content" },
+  IF2026015: { manager: "IF2026018", team: "Creative & Content" },
+  IF2026017: { manager: "IF2026009", team: "Engineering" },
+  IF2026021: { manager: "IF2024002", team: "Sales Development" },
+  IF2026020: { manager: "IF2024002", team: "Sales Development" },
+  IF2026014: { manager: "IF2026018", team: "Creative & Content" },
+  IF2026010: { manager: "IF2024002", team: "Sales Development" },
+  IF2026019: { manager: "IF2026009", team: "Engineering" },
+  IF2026018: { manager: "IF2026001", team: "Creative & Content" },
+};
+export const initialUsers: User[] = names.map(([id,name,roleId,department,designation,manager,team,status])=>({id,name,email:`${id.toLowerCase()}@example.com`,mobile:'',department,designation,roleId,manager:manager || reportingLines[id]?.manager || '',team:team || reportingLines[id]?.team || '',brand:'',status:status as User['status'],created:'02 Nov 2026',lastLogin:'—'}));
 export const initialDevices: Device[] = [
 {id:'AND-1042',userId:'IF2026002',name:'Galaxy A55',model:'Samsung Galaxy A55',os:'Android 15',app:'1.0.0',registered:'04 Nov 2026',synced:'11 Nov 2026, 08:45',status:'Approved'},
 {id:'AND-1043',userId:'IF2026009',name:'Pixel 9',model:'Google Pixel 9',os:'Android 16',app:'1.0.0',registered:'10 Nov 2026',synced:'Not synced',status:'Pending approval'}

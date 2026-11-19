@@ -74,8 +74,11 @@ export function withCustomer(state: MeetingsState, record: CustomerRecord): Meet
 export function useMeetings() {
   const state = useSyncExternalStore(callback => { listeners.add(callback); return () => { listeners.delete(callback); }; }, () => current, () => empty);
   const [error, setError] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  // Keep the server render and the first browser render identical. The live
+  // clock is populated after hydration so time-based labels cannot diverge.
+  const [now, setNow] = useState(0);
   useEffect(() => {
+    setNow(Date.now());
     try { initialize(); const records = directory(current.records); if (JSON.stringify(records) !== JSON.stringify(current.records)) updateMeetings(state => ({ ...state, records })); } catch (failure) { setError(failure instanceof Error ? failure.message : "Unable to load meeting data."); }
     const refresh = () => {
       setNow(Date.now());

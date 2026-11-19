@@ -103,6 +103,7 @@ type Draft = {
   received: string;
   state: string;
   city: string;
+  pincode: string;
   address: string;
 };
 
@@ -185,6 +186,7 @@ function snapshot(enquiry: Enquiry): Draft {
     received: enquiry.received,
     state: enquiry.state,
     city: enquiry.city,
+    pincode: enquiry.pincode || "",
     address: enquiry.address,
   };
 }
@@ -311,6 +313,9 @@ export function EnquiryDetail({
   const customerMeetings = canViewActions ? meetingState.meetings.filter(item => item.recordId === enquiry.id) : [];
   const actionHistory: FeedItem[] = [...customerFollowUps.flatMap(item => item.history.map(event => ({ id: event.id, kind: "follow" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "follow-up" as const, id: item.id } }))), ...customerMeetings.flatMap(item => item.history.map(event => ({ id: event.id, kind: "meeting" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "meeting" as const, id: item.id } })))];
   const [tab, setTab] = useState("Activity History");
+  const profileColumnRef = useRef<HTMLElement | null>(null);
+  const detailMainRef = useRef<HTMLElement | null>(null);
+  const [activityHistoryHeight, setActivityHistoryHeight] = useState<number>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsView, setActionsView] = useState<"main" | "status" | "stage">("main");
   const [emailMenuOpen, setEmailMenuOpen] = useState(false);
@@ -330,6 +335,22 @@ export function EnquiryDetail({
     setActivityTimeFilter("All Time");
     setDocs(sampleDocs);
   }, [enquiry.id]);
+  useEffect(() => {
+    if (tab !== "Activity History") { setActivityHistoryHeight(undefined); return; }
+    const profile = profileColumnRef.current;
+    const tabs = detailMainRef.current?.querySelector<HTMLElement>(".ld-tabs");
+    const measure = () => {
+      if (!profile || !tabs) return;
+      const next = Math.max(0, Math.round(profile.getBoundingClientRect().height - tabs.getBoundingClientRect().height - 14));
+      setActivityHistoryHeight(current => current === next ? current : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (profile) observer.observe(profile);
+    if (tabs) observer.observe(tabs);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, [tab, enquiry.id]);
   const followable = (item: Activity) => item.type !== "Other Communication" && !/note/i.test(item.title);
   const followUp = activities.find(item => followable(item) && (item.status === "Pending" || item.status === "Scheduled")) ?? [...activities].reverse().find(item => followable(item) && item.due);
   const followUps = activities.filter(followable);
@@ -367,6 +388,7 @@ export function EnquiryDetail({
       owner: draft.owner,
       state: draft.state.trim() || enquiry.state,
       city: draft.city.trim() || enquiry.city,
+      pincode: draft.pincode.trim(),
       address: draft.address.trim(),
       received: draft.received,
     });
@@ -397,8 +419,6 @@ export function EnquiryDetail({
           <div><h2>Lead Details</h2></div>
         </div>
         <div className="ld-detail-actions">
-          {canManageActions && <Button variant="secondary" size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}
-          {canManageActions && customer.opportunityId && <Button variant="secondary" size="small" leadingIcon={RiCalendarLine} onClick={() => setMeetingComposer(true)}>Schedule meeting</Button>}
           {editing ? <Button variant="secondary" size="small" onClick={() => setEditing(false)}>Cancel edit</Button> : null}
           <Dropdown isOpen={emailMenuOpen} onOpenChange={setEmailMenuOpen}>
             <DropdownTrigger className="ld-email-trigger"><RiMailLine />Send Email<RiArrowDownSLine /></DropdownTrigger>
@@ -406,6 +426,7 @@ export function EnquiryDetail({
               <DropdownItem onSelect={() => openEmailDialog("compose-email")}><RiMailLine />Compose Email</DropdownItem>
               <DropdownItem onSelect={() => openEmailDialog("templates")}><RiFileTextLine />Use Email Template<RiArrowDownSLine className="ld-menu-trailing" /></DropdownItem>
               <DropdownItem onSelect={() => openEmailDialog("follow-up-email")}><RiSendPlane2Line />Send Follow-up</DropdownItem>
+              {canManageActions && <DropdownItem onSelect={() => { setEmailMenuOpen(false); setFollowUpComposer({}); }}><RiAddLine />Create follow-up</DropdownItem>}
               {canManageActions && customer.opportunityId && <DropdownItem onSelect={() => { setEmailMenuOpen(false); setMeetingComposer(true); }}><RiCalendarLine />Schedule meeting</DropdownItem>}
               <DropdownItem onSelect={() => openEmailDialog("schedule-email")}><RiTimeLine />Schedule Email</DropdownItem>
             </DropdownPopover>
@@ -434,21 +455,20 @@ export function EnquiryDetail({
 
       {enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} stageNames={pipelineStages} onChange={onPipelineStageChange ?? setPendingStage} /> : null}
 
-      <div className={`ld-detail-layout${tab === "Lead Details" ? " is-lead-details" : ""}`}>
-        <aside className="ld-profile-column">
+      <div className={`ld-detail-layout${tab === "Lead Details" ? " is-lead-details" : ""}${tab === "Activity History" ? " is-activity-history" : ""}`}>
+        <aside className="ld-profile-column" ref={profileColumnRef}>
           <section className="ld-hero">
             <div className="ld-profile-heading">
-              <Avatar size="lg" initials={initials(enquiry.name)} alt="" className="ld-initials size-14" />
+              <Avatar size="lg" initials={initials(enquiry.name)} alt="" className="ld-initials size-16" />
               <div className="min-w-0">
                 <small>{enquiry.id}</small>
                 <strong>{enquiry.name}</strong>
               </div>
             </div>
             <div className="ld-profile-contact">
-              <span className="ld-investment-line"><RiStackLine /><b>Investment Capacity</b><bdi>{enquiry.investment || "Not specified"}</bdi></span>
               <span><RiMailLine /><bdi>{view.email}</bdi></span>
               <span><RiPhoneLine /><bdi>{phone(view.mobile)}</bdi></span>
-              <span className="ld-profile-location"><RiMapPin2Line /><bdi>{[view.city, view.state].filter(Boolean).join(", ") || "Location not added"}</bdi><Chip variant="caption" color={enquiry.disqualified ? "gray" : enquiry.active === false ? "neutral" : statusColor[enquiry.status]} className="ld-pill rounded-full px-2">{enquiry.disqualified ? "Disqualified" : enquiry.active === false ? "Inactive" : enquiry.status}</Chip></span>
+              <span><RiStore2Line /><bdi><small>Brand</small>{view.brand || "—"}</bdi></span>
             </div>
             <div className="ld-profile-stats">
               <div><strong>{enquiry.score ?? 54}</strong><small>Lead Score</small></div>
@@ -457,68 +477,60 @@ export function EnquiryDetail({
             </div>
           </section>
 
-          <section className="ld-card ld-properties-card">
-            <h3>Lead Properties</h3>
-            <div className="ld-properties">
-              <Field label="Lead Owner" editing={editing} value={view.owner} display={<span className="ld-with-icon"><Avatar size="sm" src={portraitFor(view.owner)} initials={initials(view.owner)} alt="" />{firstName(view.owner)}</span>} onChange={owner => setDraft(current => ({ ...current, owner }))} options={withCurrent(owners, view.owner)} />
-              <Field label="Lead Type" editing={false} value={enquiry.category} />
-              <Field label="Lead Source" editing={editing} value={view.source} display={<span className="ld-with-icon"><SourceGlyph name={view.source} />{view.source}</span>} onChange={source => setDraft(current => ({ ...current, source }))} options={withCurrent(originalSources, view.source)} />
-              {enquiry.category === "Brand expansion" ? <Field label="Industry" editing={editing} value={view.qualification} onChange={qualification => setDraft(current => ({ ...current, qualification }))} /> : <Field label="Interested Brand" editing={editing} value={view.brand} onChange={brand => setDraft(current => ({ ...current, brand }))} options={withCurrent(brands, view.brand)} />}
-              <Field label="Investment Capacity" editing={false} value={enquiry.investment} />
-              <Field label="Requirement" editing={editing} value={view.requirement} onChange={requirement => setDraft(current => ({ ...current, requirement }))} options={enquiry.category === "Franchise" ? withCurrent(timelines, view.requirement) : undefined} />
-              <Field label="Enquiry Date" editing={editing} value={view.received} onChange={received => setDraft(current => ({ ...current, received }))} date />
-              <Field label="Address" editing={editing} value={view.address} onChange={address => setDraft(current => ({ ...current, address }))} />
-            </div>
-            {editing ? <div className="ld-property-actions"><Button variant="secondary" size="small" onClick={() => setEditing(false)}>Cancel</Button><Button size="small" onClick={save}>Save changes</Button></div> : null}
+          <section className="ld-card ld-lead-owner-card">
+            <span className="ld-lead-owner-label">Lead Owner</span>
+            {editing ? (
+              <LeadSelect aria-label="Lead Owner" selectedKey={view.owner} onSelectionChange={key => setDraft(current => ({ ...current, owner: String(key) }))} className="ld-summary-owner-select" triggerClassName="ld-summary-owner-trigger">
+                {withCurrent(owners, view.owner).map(owner => <SelectItem key={owner} id={owner}>{owner}</SelectItem>)}
+              </LeadSelect>
+            ) : (
+              <span className="ld-lead-owner-value"><Avatar size="md" src={portraitFor(view.owner)} initials={initials(view.owner)} alt="" /><bdi>{view.owner || "Unassigned"}</bdi></span>
+            )}
+          </section>
+
+          <section className="ld-card ld-properties-card ld-owner-social-card">
+            <h3><RiGlobalLine />Social Profiles</h3>
+            <SocialProfileList enquiry={enquiry} />
           </section>
         </aside>
 
-        <main className="ld-detail-main">
+        <main className="ld-detail-main" ref={detailMainRef}>
           <div className="ld-tabs" role="tablist" aria-label="Lead details sections">
-            {["Activity History", "Lead Details", "Follow-ups", "Social", "Tasks", "Notes", "Sales Activity", "Documents"].map(item => (
+            {["Activity History", "Lead Details", "Follow-ups", "Tasks", "Notes", "Sales Activity", "Documents"].map(item => (
               <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => { setTab(item); if (item === "Notes") setNoteComposerOpen(false); }}>{item}</button>
             ))}
           </div>
 
       {tab === "Lead Details" && (
         <div className="ld-detail-grid ld-lead-info-grid">
-          <section className="ld-card ld-lead-basic">
-            <h3><RiUserSharedLine />Basic Information</h3>
-            <div className="ld-facts">
-              <Field label="Full Name" editing={false} value={enquiry.name} />
-              <div className="ld-fact-split">
-                <Field label="Email" editing={editing} value={view.email} onChange={email => setDraft(current => ({ ...current, email }))} />
-                <Field label="Phone" editing={editing} value={editing ? draft.mobile : phone(view.mobile)} onChange={mobile => setDraft(current => ({ ...current, mobile }))} />
-              </div>
-              <div className="ld-fact-split">
-                <Field label="Lead Type" editing={false} value={enquiry.category} />
-                <Field label={enquiry.category === "Job" ? "Position" : "Company / Brand"} editing={false} value={enquiry.category === "Brand expansion" ? enquiry.name : view.brand} />
-              </div>
-              <div className="ld-fact-split">
-                <Field label="City" editing={editing} value={view.city} onChange={city => setDraft(current => ({ ...current, city, state: stateForCity(city) ?? current.state }))} suggest={cityOptions} />
-                <Field label="State" editing={editing} value={view.state} onChange={state => setDraft(current => ({ ...current, state }))} suggest={stateOptions} />
-              </div>
-            </div>
-          </section>
-          <section className="ld-card ld-lead-status">
-            <h3><RiCheckboxCircleLine />Lead Status</h3>
-            <div className="ld-facts">
-              <Field label="Status" editing={false} value={enquiry.status} display={<Chip variant="caption" color={statusColor[enquiry.status]}>{enquiry.status}</Chip>} />
-              <Field label="Lead Owner" editing={false} value={view.owner} display={<span className="ld-with-icon"><Avatar size="sm" src={portraitFor(view.owner)} initials={initials(view.owner)} alt="" />{view.owner}</span>} />
-              <Field label="Lead Age" editing={false} value={leadAge(view.received)} />
-              <Field label="Enquiry Date" editing={editing} value={view.received} onChange={received => setDraft(current => ({ ...current, received }))} date />
-            </div>
-          </section>
           <section className="ld-card ld-lead-additional">
             <h3><RiStackLine />Additional Details</h3>
             <div className="ld-lead-additional-grid">
-              <Field label="Lead Source" editing={editing} value={view.source} display={<span className="ld-with-icon"><SourceGlyph name={view.source} />{view.source}</span>} onChange={source => setDraft(current => ({ ...current, source }))} options={withCurrent(originalSources, view.source)} />
-              {enquiry.category === "Brand expansion" ? <Field label="Industry" editing={editing} value={view.qualification} onChange={qualification => setDraft(current => ({ ...current, qualification }))} /> : <Field label={enquiry.category === "Job" ? "Qualification" : "Interested Brand"} editing={editing} value={enquiry.category === "Job" ? view.qualification : view.brand} onChange={value => setDraft(current => ({ ...current, [enquiry.category === "Job" ? "qualification" : "brand"]: value }))} options={enquiry.category === "Job" ? undefined : withCurrent(brands, view.brand)} />}
-              {enquiry.category !== "Job" && <Field label="Investment Capacity" editing={false} value={enquiry.investment} />}
-              <Field label="Requirement" editing={editing} value={view.requirement} onChange={requirement => setDraft(current => ({ ...current, requirement }))} options={enquiry.category === "Franchise" ? withCurrent(timelines, view.requirement) : undefined} />
-              {enquiry.heardAbout && <Field label="How they heard about us" editing={false} value={enquiry.heardAbout} />}
-              {enquiry.campaign && <Field label="Campaign" editing={false} value={enquiry.campaign} />}
-              {enquiry.address && <Field label="Address" editing={editing} value={view.address} onChange={address => setDraft(current => ({ ...current, address }))} />}
+              <div className="ld-lead-additional-pair">
+                {enquiry.category !== "Job" && <Field label="Investment Capacity" editing={false} value={enquiry.investment} />}
+                <Field label="Interested Brand" editing={editing} value={view.brand} onChange={brand => setDraft(current => ({ ...current, brand }))} options={withCurrent(brands, view.brand)} />
+              </div>
+              <div className="ld-lead-additional-pair is-single">
+                <Field label="Location" editing={false} value={[view.city, view.state].filter(Boolean).join(", ") || "—"} />
+              </div>
+              <div className="ld-lead-additional-pair">
+                <Field label="Enquiry Date" editing={editing} value={view.received} onChange={received => setDraft(current => ({ ...current, received }))} date />
+                <Field label="Lead Type" editing={false} value={enquiry.category} />
+              </div>
+              <div className="ld-lead-additional-pair">
+                <Field label="Requirement" editing={editing} value={view.requirement} onChange={requirement => setDraft(current => ({ ...current, requirement }))} options={enquiry.category === "Franchise" ? withCurrent(timelines, view.requirement) : undefined} />
+                <Field label="Lead Age" editing={false} value={leadAge(view.received)} />
+              </div>
+              <div className="ld-lead-additional-pair">
+                <Field label="Lead Source" editing={editing} value={view.source} display={<span className="ld-with-icon"><SourceGlyph name={view.source} />{view.source}</span>} onChange={source => setDraft(current => ({ ...current, source }))} options={withCurrent(originalSources, view.source)} />
+                <Field label="How they heard about us" editing={false} value={enquiry.heardAbout || "—"} />
+              </div>
+              <div className="ld-lead-additional-pair">
+                <Field label="Campaign" editing={false} value={enquiry.campaign || "—"} />
+                <Field label="Recorded by" editing={false} value={enquiry.heardAboutBy || "—"} />
+              </div>
+              {enquiry.category === "Brand expansion" && <Field label="Industry" editing={editing} value={view.qualification} onChange={qualification => setDraft(current => ({ ...current, qualification }))} />}
+              {enquiry.category === "Job" && <Field label="Qualification" editing={editing} value={view.qualification} onChange={qualification => setDraft(current => ({ ...current, qualification }))} />}
               {enquiry.category === "Job" && <Field label="Resume" editing={editing} value={view.resume} onChange={resume => setDraft(current => ({ ...current, resume }))} />}
               {(enquiry.remarks || enquiry.description) && <Field label="Notes" editing={false} value={enquiry.remarks || enquiry.description || ""} />}
             </div>
@@ -529,6 +541,7 @@ export function EnquiryDetail({
 
       {tab === "Activity History" && <ActivityHistory
         items={[...feedItems(enquiry, activities), ...actionHistory]}
+        panelHeight={activityHistoryHeight}
         onFollowUp={canManageActions ? source => setFollowUpComposer({ source }) : undefined}
         onOpenRecord={setActionDetail}
         typeFilter={activityTypeFilter}
@@ -538,8 +551,6 @@ export function EnquiryDetail({
       />}
 
       {tab === "Follow-ups" && <section className="ld-card flex flex-col gap-4 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3>Customer follow-ups</h3>{canManageActions && <Button size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}</div>{customerFollowUps.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-separator-border p-4"><div className="flex flex-col gap-1"><Button variant="ghost" size="small" className="self-start" onClick={() => setActionDetail({ kind: "follow-up", id: item.id })}>{item.title}</Button><p className="text-body-2-regular text-text-secondary">{item.assignedTo} · {displayTime(item.dueAt)} IST</p></div><StatusBadge status={followUpStatus(item, meetingNow)} /></div>)}{!customerFollowUps.length && <p className="text-body-regular text-text-secondary">No follow-ups in your authorised view.</p>}</section>}
-
-      {tab === "Social" && <SocialProfiles enquiry={enquiry} source={view.source} />}
 
       {tab === "Tasks" && <TasksPage items={followUps} owners={owners} onCreate={onCreateTask} onPatch={onPatchActivity} onDelete={onDeleteActivity} />}
 
@@ -934,7 +945,7 @@ function historyGroupLabel(timestamp: number) {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
-function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter, onFollowUp, onOpenRecord }: {
+function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter, onFollowUp, onOpenRecord, panelHeight }: {
   onFollowUp?: (source: ActivitySource) => void;
   onOpenRecord: (entity: { kind: "meeting" | "follow-up"; id: string }) => void;
   items: FeedItem[];
@@ -942,6 +953,7 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
   timeFilter: string;
   onTypeFilter: (value: string) => void;
   onTimeFilter: (value: string) => void;
+  panelHeight?: number;
 }) {
   const now = Date.now();
   const dayStart = new Date().setHours(0, 0, 0, 0);
@@ -971,7 +983,7 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
     return result;
   }, []);
 
-  return <section className="ld-card ld-history-panel">
+  return <section className="ld-card ld-history-panel" style={panelHeight ? { height: panelHeight, flex: "none" } : undefined}>
     <div className="ld-history-controls">
       <label><span>Notable Activity Type</span><LeadSelect aria-label="Notable activity type" selectedKey={typeFilter} onSelectionChange={key => onTypeFilter(String(key))} className="ld-history-select" triggerClassName="ld-history-select-trigger">{activityTypeOptions.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect></label>
       <label><span>Time</span><LeadSelect aria-label="Activity time range" selectedKey={timeFilter} onSelectionChange={key => onTimeFilter(String(key))} className="ld-history-select" triggerClassName="ld-history-select-trigger">{activityTimeOptions.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect></label>
@@ -1005,36 +1017,25 @@ function ActivityHistoryRow({ item, timestamp, onFollowUp, onOpenRecord }: { ite
   </li>;
 }
 
-function SocialProfiles({ enquiry, source }: { enquiry: Enquiry; source: string }) {
+function socialProfileItems(enquiry: Enquiry) {
   const website = enquiry.website?.trim() || "";
   const websiteUrl = website && /^https?:\/\//i.test(website) ? website : website ? `https://${website}` : "";
-  const profiles = [
-    { label: "LinkedIn", value: "", Icon: RiLinkedinBoxFill },
-    { label: "Twitter (X)", value: "", Icon: RiTwitterXLine },
-    { label: "Facebook", value: "", Icon: RiFacebookFill },
+  return [
     { label: "Instagram", value: "", Icon: RiInstagramLine },
+    { label: "LinkedIn", value: "", Icon: RiLinkedinBoxFill },
+    { label: "Facebook", value: "", Icon: RiFacebookFill },
+    { label: "Twitter (X)", value: "", Icon: RiTwitterXLine },
     { label: "Website", value: websiteUrl, Icon: RiGlobalLine },
   ];
-  return <div className="ld-social-page">
-    <section className="ld-card ld-social-profiles">
-      <div className="ld-section-heading"><div><h3>Social Profiles</h3><p>View the lead’s social presence and professional information.</p></div></div>
-      <div className="ld-social-list">
-        {profiles.map(profile => <div className="ld-social-row" key={profile.label}>
-          <span className="ld-social-platform"><profile.Icon />{profile.label}</span>
-          {profile.value ? <a href={profile.value} target="_blank" rel="noreferrer">{profile.value}<RiExternalLinkLine /></a> : <span className="ld-social-empty">Not provided</span>}
-        </div>)}
-      </div>
-    </section>
-    <section className="ld-card ld-social-attribution">
-      <h3><RiGlobalLine />Source &amp; attribution</h3>
-      <div className="ld-facts">
-        <Field label="Lead source" editing={false} value={source} display={<span className="ld-with-icon"><SourceGlyph name={source} />{source}</span>} />
-        <Field label="Enquiry type" editing={false} value={enquiry.enquiryType || enquiry.category} />
-        <Field label="Campaign" editing={false} value={enquiry.campaign || "No campaign recorded"} />
-        <Field label="Heard about us" editing={false} value={enquiry.heardAbout || "No additional attribution recorded"} />
-        <Field label="Recorded by" editing={false} value={enquiry.heardAboutBy || "—"} />
-      </div>
-    </section>
+}
+
+function SocialProfileList({ enquiry }: { enquiry: Enquiry }) {
+  return <div className="ld-social-list" aria-label="Social profiles">
+    {socialProfileItems(enquiry).map(profile => <div className="ld-social-row" key={profile.label}>
+      {profile.value
+        ? <a className="ld-social-open" href={profile.value} target="_blank" rel="noreferrer" aria-label={`Open ${profile.label}`} title={profile.label}><profile.Icon /></a>
+        : <span className="ld-social-open is-unavailable" aria-label={`${profile.label} not provided`} title={`${profile.label} not provided`}><profile.Icon /></span>}
+    </div>)}
   </div>;
 }
 

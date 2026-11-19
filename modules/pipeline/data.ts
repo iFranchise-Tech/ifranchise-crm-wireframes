@@ -30,7 +30,7 @@ const amounts: Record<string, number> = {
 
 const stages = ["new", "rnr", "cold", "manager-meeting", "warm", "brand-meeting", "hot", "token", "won", "lost"];
 const actionByStage: Record<string, string> = {
-  new: "Make initial contact", rnr: "Retry call (RNR 1)", cold: "Share brand deck", "manager-meeting": "Conduct manager meeting", warm: "Follow up for brand meeting", "brand-meeting": "Confirm brand meeting", hot: "Collect token", token: "Review payment", won: "Prepare onboarding", lost: "View lost reason",
+  new: "Log initial contact", rnr: "Log RNR attempt", cold: "Log brand deck follow-up", "manager-meeting": "Log manager meeting", warm: "Log brand meeting follow-up", "brand-meeting": "Log brand meeting", hot: "Log token follow-up", token: "Review payment", won: "Log onboarding handoff", lost: "View lost details",
 };
 
 export const initialOpportunities: Opportunity[] = initialEnquiries
