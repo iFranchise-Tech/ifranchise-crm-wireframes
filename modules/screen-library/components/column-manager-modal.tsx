@@ -71,12 +71,12 @@ export function ColumnManagerModal({ isOpen, onOpenChange, availableColumns, sel
     setDraggedId(null);
   }
 
-  return <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" aria-label="Manage table columns">
-    <ModalHeader title="Manage columns" description={`Choose and arrange the fields in ${scopeLabel}. Drag selected fields to reorder them.`} />
+  return <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="lg" aria-label="Customize table columns">
+    <ModalHeader title="Customize columns" description={`Choose which columns appear in ${scopeLabel} and arrange their order.`} />
     <ModalBody className="column-manager-body">
       <div className="column-manager-grid">
         <section className="column-manager-section" aria-label="Selected columns">
-          <div className="column-manager-section-heading"><div><h3>Visible columns</h3><p>{selected.length} fields · drag to reorder</p></div><span>{selected.length}</span></div>
+          <div className="column-manager-section-heading"><div><h3>Visible columns</h3><p>{selected.length} columns · drag to reorder</p></div><span>{selected.length}</span></div>
           <ColumnListScroll label="Visible columns list"><ol className="column-manager-list">
             {selected.map((column, index) => <li key={column.id} draggable={!required.has(column.id)} onDragStart={event => { setDraggedId(column.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", column.id); }} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); reorder(column.id); }} onDragEnd={() => setDraggedId(null)} className={cx("column-manager-item", draggedId === column.id && "is-dragged")}>
               <button type="button" className="column-manager-grip" aria-label={`Drag ${column.name}`} disabled={required.has(column.id)}><RiDraggable aria-hidden /></button>
@@ -89,11 +89,11 @@ export function ColumnManagerModal({ isOpen, onOpenChange, availableColumns, sel
         </section>
 
         <section className="column-manager-section" aria-label="Available columns">
-          <div className="column-manager-section-heading"><div><h3>Add a column</h3><p>Optional fields for this lead view</p></div><span>{available.length}</span></div>
-          <SearchField aria-label="Search available columns" placeholder="Find a field" value={search} onChange={setSearch} className="column-manager-search" fieldClassName="border border-border-button-default bg-background-primary-default" />
+          <div className="column-manager-section-heading"><div><h3>Hidden columns</h3><p>Add these columns to your table</p></div><span>{available.length}</span></div>
+          <SearchField aria-label="Search available columns" placeholder="Find a column" value={search} onChange={setSearch} className="column-manager-search" fieldClassName="border border-border-button-default bg-background-primary-default" />
           <ColumnListScroll label="Available columns list"><ul className="column-manager-available">
             {available.map(column => <li key={column.id}><span>{column.name}</span><Button size="small" variant="secondary" leadingIcon={RiAddLine} aria-label={`Add ${column.name}`} onClick={() => setDraft(current => [...current, column.id])}>Add</Button></li>)}
-            {available.length === 0 && <li className="column-manager-no-results">{search ? "No fields match your search." : "All available fields are visible."}</li>}
+            {available.length === 0 && <li className="column-manager-no-results">{search ? "No columns match your search." : "All columns are visible."}</li>}
           </ul></ColumnListScroll>
         </section>
       </div>

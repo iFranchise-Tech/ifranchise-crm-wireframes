@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { RiAddLine, RiCheckboxCircleLine, RiDeleteBinLine, RiFileExcel2Line, RiFilePdf2Line, RiPauseCircleLine, RiPencilLine, RiShieldCheckLine, RiUserForbidLine, type RemixiconComponentType } from "@remixicon/react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { RiAddLine, RiBarChartBoxLine, RiCheckboxCircleLine, RiDeleteBinLine, RiFileExcel2Line, RiFilePdf2Line, RiFocus3Line, RiFullscreenExitLine, RiFullscreenLine, RiGroupLine, RiListCheck2, RiMailLine, RiOrganizationChart, RiPauseCircleLine, RiPencilLine, RiPhoneLine, RiShieldCheckLine, RiTeamLine, RiUserAddLine, RiUserForbidLine, RiUserLine, RiZoomInLine, RiZoomOutLine, type RemixiconComponentType } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
@@ -20,20 +20,22 @@ import { Select, SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { cx } from "@/utils/cx";
 import "./users-roles.css";
 import { initialAudit, initialDepartments, initialDevices, initialRoles, initialUsers } from "../data";
 import { portraitFor } from "../portrait";
 import { actions, modules, statuses, type Action, type Audit, type Device, type Role, type User } from "../types";
 
-const sections = ["Users", "Roles", "Effective access", "Departments", "Teams", "Devices", "Audit history"] as const;
+const sections = ["Users", "Organization hierarchy", "Roles", "Effective access", "Departments", "Teams", "Devices", "Audit history"] as const;
 type Section = (typeof sections)[number];
 type DeviceDraft = Device & { originalId?: string };
-type ConfirmState = { title: string; description: string; apply: (reason: string) => void };
+type ConfirmState = { title: string; description: string; confirmLabel?: string; apply: (reason: string) => void };
 type AvatarColor = "neutral" | "blue" | "lime" | "pink";
 
 const descriptions: Record<Section, string> = {
   Users: "Manage your people and the access they need.",
+  "Organization hierarchy": "See reporting lines, departments and teams at a glance.",
   Roles: "Define responsibilities with clear permission boundaries.",
   "Effective access": "See what a person can access, and why.",
   Departments: "Keep each department and its people together.",
@@ -215,6 +217,86 @@ function Person({ name, meta, detail, src }: { name: string; meta?: string; deta
   );
 }
 
+function HierarchyNode({ user, roleName, selectedId, onSelect }: {
+  user: User;
+  roleName: (id: string) => string;
+  selectedId: string | null;
+  onSelect: (user: User) => void;
+}) {
+  return (
+    <article className={cx("ur-org-card flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border bg-background-primary-default p-2 shadow-xs", selectedId === user.id ? "border-accent-600 ring-2 ring-accent-50" : "border-border-button-default", user.id === "IF2024001" && "ur-org-ceo")}>
+      <button type="button" className="flex w-full min-w-0 flex-col items-center gap-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" onClick={() => onSelect(user)} aria-label={`View details for ${user.name}`}>
+        <span className="flex w-full min-w-0 items-center justify-center gap-2">
+          <Avatar size="lg" src={photoFor(user)} alt="" initials={initials(user.name)} color={avatarColor(user.name)} className="size-9 shrink-0 rounded-full" />
+          <span className="flex min-w-0 flex-col items-start gap-0 whitespace-nowrap">
+            <span className="max-w-full truncate text-body-2-medium text-text-primary">{user.name}</span>
+            <span className="max-w-full truncate text-caption-1-regular text-text-secondary">{user.designation || roleName(user.roleId)}</span>
+          </span>
+        </span>
+        <Chip variant="caption" color="blue" className="max-w-full truncate">{user.department}</Chip>
+      </button>
+    </article>
+  );
+}
+
+const orgCardWidth = 272;
+const orgCardHeight = 84;
+const orgHorizontalGap = 28;
+const orgLevelGap = 64;
+const orgPadding = 36;
+
+type OrgChartNode = { user: User; x: number; y: number; subtreeWidth: number; children: OrgChartNode[] };
+type OrgChartLink = { parentX: number; parentY: number; childXs: number[]; childY: number };
+
+function layoutOrganization(users: User[], roots: User[], viewportWidth: number) {
+  const childrenByManager = new Map<string, User[]>();
+  users.forEach(user => {
+    const children = childrenByManager.get(user.manager) ?? [];
+    children.push(user);
+    childrenByManager.set(user.manager, children);
+  });
+  const makeNode = (user: User, ancestors: Set<string> = new Set()): OrgChartNode => {
+    const nextAncestors = new Set(ancestors);
+    nextAncestors.add(user.id);
+    const children = (childrenByManager.get(user.id) ?? []).filter(child => !nextAncestors.has(child.id)).map(child => makeNode(child, nextAncestors));
+    const childrenWidth = children.reduce((sum, child) => sum + child.subtreeWidth, 0) + Math.max(0, children.length - 1) * orgHorizontalGap;
+    return { user, x: 0, y: 0, subtreeWidth: Math.max(orgCardWidth, childrenWidth), children };
+  };
+  const trees = roots.map(root => makeNode(root));
+  const forestWidth = trees.reduce((sum, node) => sum + node.subtreeWidth, 0) + Math.max(0, trees.length - 1) * orgHorizontalGap * 2;
+  const width = Math.max(viewportWidth, forestWidth + orgPadding * 2);
+  const nodes: OrgChartNode[] = [];
+  const links: OrgChartLink[] = [];
+  let maxDepth = 0;
+  const place = (node: OrgChartNode, left: number, depth: number) => {
+    node.x = left + (node.subtreeWidth - orgCardWidth) / 2;
+    node.y = orgPadding + depth * (orgCardHeight + orgLevelGap);
+    nodes.push(node);
+    maxDepth = Math.max(maxDepth, depth);
+    if (!node.children.length) return;
+    const groupWidth = node.children.reduce((sum, child) => sum + child.subtreeWidth, 0) + (node.children.length - 1) * orgHorizontalGap;
+    let childLeft = left + (node.subtreeWidth - groupWidth) / 2;
+    const childXs: number[] = [];
+    node.children.forEach(child => {
+      place(child, childLeft, depth + 1);
+      childXs.push(child.x + orgCardWidth / 2);
+      childLeft += child.subtreeWidth + orgHorizontalGap;
+    });
+    links.push({ parentX: node.x + orgCardWidth / 2, parentY: node.y + orgCardHeight, childXs, childY: node.y + orgCardHeight + orgLevelGap });
+  };
+  let rootLeft = (width - forestWidth) / 2;
+  trees.forEach(root => {
+    place(root, rootLeft, 0);
+    rootLeft += root.subtreeWidth + orgHorizontalGap * 2;
+  });
+  const height = Math.max(orgCardHeight + orgPadding * 2, orgPadding * 2 + (maxDepth + 1) * orgCardHeight + maxDepth * orgLevelGap);
+  return { width, height, nodes, links };
+}
+
+function HierarchyFact({ icon: Icon, label, value }: { icon: RemixiconComponentType; label: string; value: string }) {
+  return <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border-button-default bg-background-primary-default px-3 py-2.5"><span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-700"><Icon className="size-4" aria-hidden /></span><div className="min-w-0"><p className="text-caption-1-regular text-text-tertiary">{label}</p><p className="truncate text-body-2-medium text-text-primary">{value}</p></div></div>;
+}
+
 function StatusMenu({ label, value, options, onChange }: { label: string; value: string; options: { id: string; text: string; color: ChipColor }[]; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
   const current = options.find(option => option.id === value) ?? options[0];
@@ -339,6 +421,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const [detail, setDetail] = useState<User | null>(null);
   const [roleDetail, setRoleDetail] = useState<Role | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [transferUser, setTransferUser] = useState<User | null>(null);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [deviceForm, setDeviceForm] = useState<DeviceDraft | null>(null);
   const [deviceDetail, setDeviceDetail] = useState<Device | null>(null);
@@ -347,6 +430,15 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState("IF2026002");
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const hierarchyFade = useScrollFade();
+  const hierarchyDetailFade = useScrollFade();
+  const [hierarchyMode, setHierarchyMode] = useState<"Org Chart" | "List View">("Org Chart");
+  const [showHierarchyOverview, setShowHierarchyOverview] = useState(false);
+  const [hierarchyZoom, setHierarchyZoom] = useState(100);
+  const [hierarchyFullscreen, setHierarchyFullscreen] = useState(false);
+  const [selectedHierarchyId, setSelectedHierarchyId] = useState<string | null>(null);
+  const chartViewportRef = useRef<HTMLDivElement>(null);
+  const [chartViewportWidth, setChartViewportWidth] = useState(960);
 
   useEffect(() => {
     setQuery("");
@@ -360,6 +452,19 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     setAuditActor("Anyone");
     setError("");
   }, [section]);
+
+  useEffect(() => {
+    const viewport = chartViewportRef.current;
+    if (!viewport || section !== "Organization hierarchy" || hierarchyMode !== "Org Chart") return;
+    const measure = () => {
+      const width = Math.max(280, viewport.clientWidth - 48);
+      setChartViewportWidth(current => current === width ? current : width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [section, hierarchyMode, hierarchyFullscreen, selectedHierarchyId]);
 
   const roleName = (id: string) => roles.find(role => role.id === id)?.name || "Unassigned";
   const ask = (next: ConfirmState) => { setReason(""); setConfirm(next); };
@@ -438,6 +543,55 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     },
   });
 
+  const deleteHierarchyUser = (user: User) => ask({
+    title: `Delete ${user.name}?`,
+    description: "Their direct reports will move to this person's manager, or become top-level employees if there is no manager. Other people and records stay intact.",
+    confirmLabel: "Delete employee",
+    apply: entryReason => {
+      setUsers(list => list.filter(item => item.id !== user.id).map(item => item.manager === user.id ? { ...item, manager: user.manager || "" } : item));
+      if (selectedHierarchyId === user.id) setSelectedHierarchyId(null);
+      log("User deleted", user.name, `${roleName(user.roleId)} · ${user.department}`, "Deleted; direct reports reassigned", entryReason);
+    },
+  });
+
+  function saveReportingManager(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!transferUser) return;
+    const form = new FormData(event.currentTarget);
+    const managerId = String(form.get("manager") || "");
+    const note = String(form.get("reason") || "").trim();
+    if (managerId === transferUser.id) {
+      setError("An employee cannot report to themselves.");
+      return;
+    }
+    let currentManager = users.find(user => user.id === managerId);
+    const visited = new Set([transferUser.id]);
+    while (currentManager) {
+      if (visited.has(currentManager.id)) {
+        setError("This reporting manager would create a circular reporting relationship.");
+        return;
+      }
+      visited.add(currentManager.id);
+      currentManager = users.find(user => user.id === currentManager?.manager);
+    }
+    setUsers(list => list.map(user => user.id === transferUser.id ? { ...user, manager: managerId } : user));
+    log("Reporting manager transferred", transferUser.name, managerName(transferUser.manager), managerName(managerId) || "No manager", note);
+    setTransferUser(null);
+    setError("");
+  }
+
+  function fitHierarchyToScreen() {
+    setHierarchyZoom(100);
+    window.requestAnimationFrame(() => {
+      const viewport = chartViewportRef.current;
+      if (!viewport) return;
+      const widthRatio = Math.max(1, viewport.clientWidth - 48) / Math.max(1, hierarchyLayout.width);
+      const heightRatio = Math.max(1, viewport.clientHeight - 48) / Math.max(1, hierarchyLayout.height);
+      setHierarchyZoom(Math.max(40, Math.min(130, Math.floor(Math.min(widthRatio, heightRatio) * 100))));
+      viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+    });
+  }
+
   const blankUser: User = { id: "", name: "", email: "", mobile: "", department: "Sales", designation: "", roleId: "bda", manager: "", team: "", brand: "", status: "Pending Activation", created: "", lastLogin: "Never", avatar: "" };
   const matchesPeople = (user: User) => `${user.name} ${user.id} ${user.email} ${user.department} ${user.designation} ${roleName(user.roleId)}`.toLowerCase().includes(query.toLowerCase());
   const peopleBase = users.filter(user => (deptFilter === "All departments" || user.department === deptFilter) && (roleFilter === "All roles" || user.roleId === roleFilter) && matchesPeople(user));
@@ -469,6 +623,29 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
     { id: "none", label: "No reporting manager" },
     ...users.filter(user => users.some(report => report.manager === user.id)).map(user => ({ id: user.id, label: user.name })),
   ];
+  const hierarchyMatches = users.filter(user => {
+    const search = `${user.name} ${user.id} ${user.designation} ${user.department} ${user.team} ${roleName(user.roleId)}`.toLowerCase();
+    return (deptFilter === "All departments" || user.department === deptFilter) && search.includes(query.trim().toLowerCase());
+  });
+  const hierarchyIds = new Set(hierarchyMatches.map(user => user.id));
+  hierarchyMatches.forEach(user => {
+    let manager = users.find(person => person.id === user.manager);
+    while (manager && !hierarchyIds.has(manager.id)) {
+      hierarchyIds.add(manager.id);
+      manager = users.find(person => person.id === manager?.manager);
+    }
+  });
+  const hierarchyUsers = users.filter(user => hierarchyIds.has(user.id));
+  const hierarchyRoots = hierarchyUsers.filter(user => !hierarchyUsers.some(manager => manager.id === user.manager));
+  const hierarchyLayout = layoutOrganization(hierarchyUsers, hierarchyRoots, chartViewportWidth);
+  const selectedHierarchyUser = selectedHierarchyId ? users.find(user => user.id === selectedHierarchyId) : undefined;
+  const hierarchyManager = selectedHierarchyUser ? users.find(user => user.id === selectedHierarchyUser.manager) : undefined;
+  const directManagerCount = users.filter(user => users.some(report => report.manager === user.id)).length;
+  function teamSize(userId: string, visited = new Set<string>()): number {
+    if (visited.has(userId)) return 0;
+    visited.add(userId);
+    return users.filter(user => user.manager === userId).reduce((total, report) => total + 1 + teamSize(report.id, visited), 0);
+  }
   const userHistory = detail ? audit.filter(entry => entry.target.includes(detail.name) || entry.target.includes(detail.id)).slice(0, 3) : [];
   const userDevices = detail ? devices.filter(device => device.userId === detail.id) : [];
 
@@ -489,6 +666,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                 <p className="ur-lead">{descriptions[section]}</p>
               </div>
               {section === "Users" && <Button leadingIcon={RiAddLine} onClick={() => { setError(""); setEditUser(blankUser); }}>Add user</Button>}
+              {section === "Organization hierarchy" && <Button variant="secondary" leadingIcon={RiBarChartBoxLine} aria-expanded={showHierarchyOverview} aria-controls="hierarchy-overview" onClick={() => setShowHierarchyOverview(value => !value)}>Quick overview</Button>}
               {section === "Roles" && <Button leadingIcon={RiAddLine} onClick={() => setEditRole({ id: "", name: "", description: "", system: false, grants: [], restrictions: ["Historical records remain protected."], protectedView: false, protectedEdit: false })}>Create role</Button>}
               {section === "Devices" && <Button leadingIcon={RiAddLine} onClick={() => { setError(""); setDeviceForm(blankDevice(users[0]?.id || "")); }}>Register device</Button>}
               {section === "Departments" && <Button leadingIcon={RiAddLine} onClick={() => { setError(""); setDepartmentForm(""); }}>Add department</Button>}
@@ -535,6 +713,85 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
               {!visibleUsers.length && <EmptyNote title="No users found" detail="Try another name, department, role or account status." onClear={() => { setQuery(""); setFilter("All statuses"); setDeptFilter("All departments"); setRoleFilter("All roles"); }} />}
               </TableScroll>
             </Panel>
+          )}
+
+          {section === "Organization hierarchy" && (
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
+              {showHierarchyOverview && <div id="hierarchy-overview" className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
+                {[
+                  { label: "Total employees", value: users.length, icon: RiGroupLine, tone: "border-accent-100 bg-accent-50 text-accent-700" },
+                  { label: "Departments", value: new Set(users.map(user => user.department)).size, icon: RiOrganizationChart, tone: "bg-status-lime-background text-status-lime-text" },
+                  { label: "Managers", value: directManagerCount, icon: RiTeamLine, tone: "bg-status-blue-background text-status-blue-text" },
+                  { label: "Team members", value: users.length - directManagerCount, icon: RiUserAddLine, tone: "bg-status-yellow-background text-status-yellow-text" },
+                ].map(item => <article key={item.label} className="flex items-center gap-3 rounded-2xl border border-border-button-default bg-background-primary-default p-4"><span className={cx("flex size-11 shrink-0 items-center justify-center rounded-xl border", item.tone)}><item.icon className="size-5" aria-hidden /></span><div><p className="text-title-2-medium text-text-primary">{item.value}</p><p className="text-caption-1-regular text-text-secondary">{item.label}</p></div></article>)}
+              </div>}
+              <section className={cx("relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border-button-default bg-background-secondary-default", hierarchyFullscreen && "fixed inset-4 z-40 bg-background-full shadow-xl")}>
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-separator-border bg-background-primary-default p-3">
+                  <SearchField aria-label="Search employee hierarchy" placeholder="Search employee or designation" value={query} onChange={setQuery} className="min-w-56 flex-1" fieldClassName="ur-field" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border-button-default bg-background-primary-default p-1">
+                      <IconButton aria-label="Org chart view" title="Org chart view" icon={RiOrganizationChart} className={cx(hierarchyMode === "Org Chart" && "border-accent-600 bg-accent-50 text-accent-700")} onClick={() => setHierarchyMode("Org Chart")} />
+                      <IconButton aria-label="List view" title="List view" icon={RiListCheck2} className={cx(hierarchyMode === "List View" && "border-accent-600 bg-accent-50 text-accent-700")} onClick={() => setHierarchyMode("List View")} />
+                    </div>
+                    {hierarchyMode === "Org Chart" && <div className="flex items-center gap-1 rounded-xl border border-border-button-default bg-background-primary-default p-1"><IconButton aria-label="Zoom out" icon={RiZoomOutLine} disabled={hierarchyZoom <= 40} onClick={() => setHierarchyZoom(value => Math.max(40, value - 10))} /><span className="min-w-12 text-center text-caption-1-medium text-text-secondary">{hierarchyZoom}%</span><IconButton aria-label="Zoom in" icon={RiZoomInLine} disabled={hierarchyZoom >= 130} onClick={() => setHierarchyZoom(value => Math.min(130, value + 10))} /></div>}
+                    {hierarchyMode === "Org Chart" && <IconButton aria-label="Fit chart to screen" title="Fit chart to screen" icon={RiFocus3Line} onClick={fitHierarchyToScreen} />}
+                    {hierarchyMode === "Org Chart" && <IconButton aria-label={hierarchyFullscreen ? "Exit expanded chart" : "Expand chart"} icon={hierarchyFullscreen ? RiFullscreenExitLine : RiFullscreenLine} onClick={() => setHierarchyFullscreen(value => !value)} />}
+                    <FilterSelect fit label="Filter by department" value={deptFilter} onChange={setDeptFilter} options={[{ id: "All departments", label: "All departments" }, ...departments.map(department => ({ id: department.name, label: department.name }))]} />
+                  </div>
+                </div>
+                <div className={cx("grid min-h-0 flex-1 grid-cols-1", selectedHierarchyUser && "xl:grid-cols-[minmax(0,1fr)_22rem]")}>
+                  <div className="relative min-h-0 min-w-0">
+                    {hierarchyMode === "Org Chart" ? <div ref={chartViewportRef} className="ur-org-viewport h-full overflow-auto p-6" onScroll={hierarchyFade.onScroll}>
+                      {hierarchyRoots.length ? <div className="ur-org-chart" style={{ width: hierarchyLayout.width, height: hierarchyLayout.height, zoom: hierarchyZoom / 100 }}>
+                        <svg className="ur-org-connectors" width={hierarchyLayout.width} height={hierarchyLayout.height} aria-hidden="true">
+                          {hierarchyLayout.links.map((link, index) => {
+                            const busY = link.parentY + (link.childY - link.parentY) / 2;
+                            const first = Math.min(...link.childXs);
+                            const last = Math.max(...link.childXs);
+                            return <g key={`${link.parentX}-${index}`}><path d={`M ${link.parentX} ${link.parentY} V ${busY} M ${first} ${busY} H ${last} ${link.childXs.map(x => `M ${x} ${busY} V ${link.childY}`).join(" ")}`} /></g>;
+                          })}
+                        </svg>
+                        {hierarchyLayout.nodes.map(node => <div key={node.user.id} className="ur-org-positioned-node" style={{ left: node.x, top: node.y }}><HierarchyNode user={node.user} roleName={roleName} selectedId={selectedHierarchyId} onSelect={person => setSelectedHierarchyId(person.id)} /></div>)}
+                      </div> : <EmptyNote title="No employees found" detail="Try another name or department filter." onClear={() => { setQuery(""); setDeptFilter("All departments"); }} />}
+                    </div> : <div className="h-full overflow-auto" onScroll={hierarchyFade.onScroll}>
+                      <Table className="ur-people" aria-label="Employee hierarchy list" onRowAction={key => setSelectedHierarchyId(String(key))}>
+                        <TableHeader columns={reportColumns}>{(column: BoardColumn) => <TableColumn isRowHeader={column.isRowHeader}>{column.name}</TableColumn>}</TableHeader>
+                        <TableBody items={hierarchyUsers}>{user => <TableRow columns={reportColumns} className={rowClass}>{(column: BoardColumn) => <TableCell>{column.id === "employee" && <Person name={user.name} meta={user.id} detail={user.designation} src={photoFor(user)} />}{column.id === "department" && user.department}{column.id === "team" && (user.team || "—")}{column.id === "manager" && (managerName(user.manager) || "—")}{column.id === "manage" && <LinkButton onClick={event => { event.stopPropagation(); setError(""); setEditUser(user); }}>Edit</LinkButton>}</TableCell>}</TableRow>}</TableBody>
+                      </Table>
+                    </div>}
+                    <ScrollFade progress={hierarchyFade.progress} surfaceClassName="from-background-secondary-default" />
+                  </div>
+                  {selectedHierarchyUser && <aside className="ur-org-detail relative border-t border-separator-border bg-background-primary-default p-5 xl:border-s xl:border-t-0" onScroll={hierarchyDetailFade.onScroll}>
+                    <div className="flex flex-col gap-5">
+                      <header className="relative flex flex-col items-center gap-3 px-8 text-center">
+                        <div className="absolute end-0 top-0">
+                          <CloseButton aria-label="Close employee details" onClick={() => setSelectedHierarchyId(null)} />
+                        </div>
+                        <div className="flex justify-center">
+                          <Avatar size="lg" src={photoFor(selectedHierarchyUser)} alt="" initials={initials(selectedHierarchyUser.name)} color={avatarColor(selectedHierarchyUser.name)} className="ur-hierarchy-profile size-16 shrink-0 rounded-2xl" />
+                        </div>
+                        <div className="flex min-w-0 flex-col items-center gap-1">
+                          <h3 className="text-headline-medium text-text-primary">{selectedHierarchyUser.name}{selectedHierarchyUser.id === "IF2024001" ? " (CEO)" : selectedHierarchyUser.id === "IF2024002" ? " (Co-Founder)" : ""}</h3>
+                          <p className="text-body-2-regular text-text-secondary">{selectedHierarchyUser.designation || roleName(selectedHierarchyUser.roleId)}</p>
+                        </div>
+                      </header>
+                      <div className="grid gap-2 border-t border-separator-border pt-4">
+                        <HierarchyFact icon={RiMailLine} label="Work email" value={selectedHierarchyUser.email} />
+                        <HierarchyFact icon={RiPhoneLine} label="Mobile number" value={selectedHierarchyUser.mobile || "Not provided"} />
+                        {hierarchyManager && <HierarchyFact icon={RiUserLine} label="Reports to" value={hierarchyManager.name} />}
+                        <HierarchyFact icon={RiGroupLine} label="Total teammates" value={String(teamSize(selectedHierarchyUser.id))} />
+                      </div>
+                      <div className="flex items-center justify-center gap-2 border-t border-separator-border pt-4">
+                        <IconButton aria-label={`Edit ${selectedHierarchyUser.name}`} title="Edit employee" icon={RiPencilLine} onClick={() => { setError(""); setEditUser(selectedHierarchyUser); }} />
+                        <IconButton aria-label={`Delete ${selectedHierarchyUser.name}`} title="Delete employee" icon={RiDeleteBinLine} className="text-text-error-primary" onClick={() => deleteHierarchyUser(selectedHierarchyUser)} />
+                        <IconButton aria-label={`Add teammate under ${selectedHierarchyUser.name}`} title="Add teammate" icon={RiUserAddLine} onClick={() => { setError(""); setEditUser({ ...blankUser, manager: selectedHierarchyUser.id, department: selectedHierarchyUser.department, team: selectedHierarchyUser.team }); }} />
+                      </div>
+                    </div>
+                    <ScrollFade progress={hierarchyDetailFade.progress} surfaceClassName="from-background-primary-default" />
+                  </aside>}
+                </div>
+              </section>
+            </div>
           )}
 
           {section === "Roles" && (
@@ -738,7 +995,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
           <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) setEditUser(null); }} size="lg">
             <ModalHeader title={editUser.created ? "Edit user" : "Add user"} description="Assign an approved role and reporting relationship." />
             <ModalBody>
-              <form id="user-form" className="grid grid-cols-2 gap-3" onSubmit={saveUser}>
+              <form id="user-form" className="ur-user-form grid grid-cols-2 gap-3" onSubmit={saveUser}>
                 <div className="col-span-2 flex items-center gap-3">
                   <Avatar size="lg" src={editUser.avatar || (editUser.name ? portraitFor(editUser.name) : undefined)} alt="" initials={initials(editUser.name || "NA")} color={avatarColor(editUser.name || "NA")} className="size-14" />
                   <label className="inline-flex cursor-pointer items-center rounded-full border border-border-button-default bg-background-primary-default px-3 py-1.5 text-body-2-medium text-text-primary">
@@ -752,12 +1009,12 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                     }} />
                   </label>
                 </div>
-                <Input label="Employee ID" name="id" defaultValue={editUser.id} isRequired isReadOnly={!!editUser.created} maxLength={120} />
-                <Input label="Full name" name="name" defaultValue={editUser.name} isRequired maxLength={120} />
-                <Input label="Work email" name="email" type="email" defaultValue={editUser.email} isRequired maxLength={120} inputDir="ltr" />
-                <Input label="Mobile number" name="mobile" defaultValue={editUser.mobile} isRequired maxLength={120} />
-                <Input label="Designation" name="designation" defaultValue={editUser.designation} isRequired maxLength={120} />
-                <Input label="Team" name="team" defaultValue={editUser.team} maxLength={120} />
+                <Input label="Employee ID" name="id" defaultValue={editUser.id} isRequired isReadOnly={!!editUser.created} maxLength={120} fieldClassName="ur-user-field" />
+                <Input label="Full name" name="name" defaultValue={editUser.name} isRequired maxLength={120} fieldClassName="ur-user-field" />
+                <Input label="Work email" name="email" type="email" defaultValue={editUser.email} isRequired maxLength={120} inputDir="ltr" fieldClassName="ur-user-field" />
+                <Input label="Mobile number" name="mobile" defaultValue={editUser.mobile} isRequired maxLength={120} fieldClassName="ur-user-field" />
+                <Input label="Designation" name="designation" defaultValue={editUser.designation} isRequired maxLength={120} fieldClassName="ur-user-field" />
+                <Input label="Team" name="team" defaultValue={editUser.team} maxLength={120} fieldClassName="ur-user-field" />
                 <Select label="Department" name="department" defaultSelectedKey={editUser.department} className="gap-1.5" triggerClassName="w-full" popoverClassName="w-(--trigger-width)">
                   {departments.map(department => <SelectItem key={department.name} id={department.name} textValue={department.name}>{department.name}</SelectItem>)}
                 </Select>
@@ -768,15 +1025,35 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
                   <SelectItem id="none" textValue="No reporting manager">No reporting manager</SelectItem>
                   {users.filter(user => user.id !== editUser.id && user.status === "Active").map(user => <SelectItem key={user.id} id={user.id} textValue={user.name}>{user.name}</SelectItem>)}
                 </Select>
-                <Input label="Assigned brand" name="brand" defaultValue={editUser.brand} maxLength={120} />
+                <Input label="Assigned brand" name="brand" defaultValue={editUser.brand} maxLength={120} fieldClassName="ur-user-field" />
                 <input type="hidden" name="status" value={editUser.status} />
-                <Textarea className="col-span-2" label="Reason for change" name="reason" isRequired placeholder="For example, approved employee onboarding" maxLength={400} rows={2} />
+                <Textarea className="col-span-2" fieldClassName="ur-user-field" label="Reason for change" name="reason" isRequired placeholder="For example, approved employee onboarding" maxLength={400} rows={2} />
                 {error && <p role="alert" className="col-span-2 text-body-regular text-text-error-primary">{error}</p>}
               </form>
             </ModalBody>
             <ModalFooter>
               <Button variant="secondary" onClick={() => setEditUser(null)}>Cancel</Button>
               <Button type="submit" form="user-form">{editUser.created ? "Save changes" : "Create user"}</Button>
+            </ModalFooter>
+          </Modal>
+        )}
+
+        {transferUser && (
+          <Modal className="ur-dialog" isOpen onOpenChange={open => { if (!open) { setTransferUser(null); setError(""); } }} size="md">
+            <ModalHeader title="Transfer reporting manager" description={`Choose who ${transferUser.name} reports to. The organization chart updates after saving.`} />
+            <ModalBody>
+              <form id="manager-transfer-form" className="flex flex-col gap-4" onSubmit={saveReportingManager}>
+                <Select label="New reporting manager" name="manager" defaultSelectedKey={transferUser.manager || "none"} className="gap-1.5" triggerClassName="w-full" popoverClassName="w-(--trigger-width)">
+                  <SelectItem id="none" textValue="No reporting manager">No reporting manager</SelectItem>
+                  {users.filter(user => user.id !== transferUser.id && user.status === "Active").map(user => <SelectItem key={user.id} id={user.id} textValue={user.name}>{user.name} · {user.designation || roleName(user.roleId)}</SelectItem>)}
+                </Select>
+                <Textarea label="Reason for transfer" name="reason" isRequired placeholder="For example, team or department change" maxLength={400} rows={3} />
+                {error && <p role="alert" className="text-body-regular text-text-error-primary">{error}</p>}
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="secondary" onClick={() => { setTransferUser(null); setError(""); }}>Cancel</Button>
+              <Button type="submit" form="manager-transfer-form">Transfer manager</Button>
             </ModalFooter>
           </Modal>
         )}
@@ -955,7 +1232,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
             icon={false}
             title={confirm.title}
             description={confirm.description}
-            confirmLabel="Confirm change"
+            confirmLabel={confirm.confirmLabel ?? "Confirm change"}
             isConfirmDisabled={!reason.trim()}
             onConfirm={() => confirm.apply(reason.trim())}
           >

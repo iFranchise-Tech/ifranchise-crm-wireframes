@@ -44,6 +44,7 @@ export const activeCrmProfiles: ActiveCrmProfile[] = [
 
 export function saveActiveCrmRole(profile: ActiveCrmProfile) {
   window.localStorage.setItem("ifranchise:active-crm-profile", JSON.stringify(profile));
+  window.dispatchEvent(new Event("crm-profile-change"));
 }
 
 export function readActiveCrmRole(): ActiveCrmProfile {

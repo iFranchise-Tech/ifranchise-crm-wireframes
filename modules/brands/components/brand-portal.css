@@ -465,9 +465,8 @@ button.bp-stat:hover { background: #fafafa; }
 .bp-shell .review-sidebar { display: flex; }
 .bp-shell .review-workspace { grid-template-rows: 66px minmax(0, 1fr); }
 .bp-shell .review-sidebar { border-right-color: #ece8f4; background: linear-gradient(180deg,#fbf9ff 0%,#f8f7fc 58%,#f7f7fc 100%); }
-.bp-shell .review-brand { gap: 7px; padding: 22px 22px 15px; border-bottom: 0; }
+.bp-shell .review-brand { min-height: 66px; padding: 0 22px; border-bottom: 0; }
 .bp-shell .review-brand .brand-wordmark img { width: 132px; }
-.bp-shell .review-brand > span:last-child { color: #786b94; font-size: 9px; letter-spacing: .14em; }
 .bp-shell .review-all-modules { padding: 4px 22px 0; color: #827b92; }
 .bp-shell .review-sidebar-heading { margin: 17px 15px 12px; padding: 12px; border: 1px solid rgba(255,255,255,.9); border-radius: 15px; background: linear-gradient(120deg,rgba(255,255,255,.92),rgba(248,245,255,.92)); box-shadow: 0 5px 18px rgba(86,68,133,.06); }
 .bp-shell .review-module-icon { width: 36px; height: 36px; border-radius: 12px; background: #f0eaff; color: #5b32d4; }
@@ -1422,6 +1421,59 @@ button.bp-stat:hover { background: #fafafa; }
 .bp-profile-popover [role="dialog"] > button:hover { background: #f5f1ff; color: #5630bd; }
 .bp-profile-popover .bp-profile-logout { color: #b42338 !important; }
 .bp-profile-popover .bp-profile-logout:hover { background: #fff2f3 !important; }
+
+/* Keep portal summary metrics visible as part of the page content. */
+.bp-shell .bp-overview-stats { flex: none; visibility: visible; }
+.bp-shell .bp-list-stats { position: relative; z-index: 1; flex: none; }
+
+/* Opportunity details use the same profile-and-tabs hierarchy as Lead Management. */
+.bp-opportunity-detail-layout { display: grid; min-width: 0; grid-template-columns: minmax(230px,.32fr) minmax(0,1fr); align-items: start; gap: 14px; }
+.bp-opportunity-profile-column, .bp-opportunity-detail-main { display: grid; min-width: 0; gap: 12px; }
+.bp-opportunity-profile-card { display: grid; justify-items: center; gap: 8px; border-color: #ebe9f1; border-radius: 18px; padding: 22px 18px; text-align: center; }
+.bp-opportunity-profile-card .bp-opportunity-avatar { width: 68px; height: 68px; border-radius: 20px; font-size: 22px; }
+.bp-opportunity-profile-card > small { color: #7c7890; font-size: 11px; }
+.bp-opportunity-profile-card h2 { margin: 0; color: #222033; font-size: 17px; font-weight: 700; }
+.bp-opportunity-profile-contact { color: #656176; font-size: 12px; }
+.bp-opportunity-profile-facts { display: grid; width: 100%; gap: 0; margin-top: 8px; border-top: 1px solid #efedf4; text-align: left; }
+.bp-opportunity-profile-facts > span { display: flex; min-width: 0; align-items: center; gap: 9px; border-bottom: 1px solid #efedf4; color: #514d63; padding: 11px 2px; font-size: 11px; }
+.bp-opportunity-profile-facts svg { width: 16px; height: 16px; flex: none; color: #6a54ca; }
+.bp-opportunity-detail-tabs { display: flex; min-width: 0; gap: 4px; overflow-x: auto; border-bottom: 1px solid #e7e5ed; padding-inline: 4px; }
+.bp-opportunity-detail-tabs button { position: relative; min-height: 44px; flex: none; border: 0; background: transparent; color: #686579; padding: 0 13px; font: inherit; font-size: 12px; cursor: pointer; }
+.bp-opportunity-detail-tabs button[aria-selected="true"] { color: #5631c6; font-weight: 700; }
+.bp-opportunity-detail-tabs button[aria-selected="true"]::after { position: absolute; right: 10px; bottom: -1px; left: 10px; height: 2px; border-radius: 2px; background: #6842d7; content: ""; }
+.bp-opportunity-detail-main > .bp-opportunity-grid, .bp-opportunity-detail-main > .bp-card { min-width: 0; }
+
+/* Compact month switcher matching the calendar reference. */
+.bp-calendar-board-head { justify-content: center; }
+.bp-calendar-controls { display: grid; width: min(100%,640px); min-height: 52px; grid-template-columns: 44px minmax(0,1fr) 44px; align-items: center; gap: 4px; border: 1px solid #e4e6ec; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(30,41,59,.06); padding: 4px 8px; }
+.bp-calendar-controls > strong { color: #1f2430; font-size: 16px; font-weight: 650; text-align: center; }
+.bp-calendar-controls > button { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; }
+.bp-calendar-controls > button:hover { background: #f4f1fb; color: #4e2db4; }
+
+/* Notification list and detail remain full-height in the Brand Portal workspace. */
+.bp-shell .bp-scroll[data-view="Notifications"] { height: 100%; min-height: 0; }
+.bp-notification-layout { min-height: calc(100svh - 190px); grid-template-columns: minmax(280px,.82fr) minmax(0,2fr); gap: 14px; }
+.bp-notification-list-panel, .bp-notification-detail { min-height: 0; height: 100%; }
+.bp-notification-list-panel { display: flex; flex-direction: column; }
+.bp-notification-list { max-height: none; min-height: 0; flex: 1; }
+.bp-notification-detail { overflow: auto; }
+
+@media (max-width: 900px) {
+  .bp-opportunity-detail-layout { grid-template-columns: minmax(0,1fr); }
+  .bp-opportunity-profile-card { grid-template-columns: auto minmax(0,1fr); justify-items: start; text-align: left; }
+  .bp-opportunity-profile-card .bp-opportunity-avatar { grid-row: span 4; }
+  .bp-opportunity-profile-facts { grid-column: 1 / -1; }
+  .bp-notification-layout { grid-template-columns: minmax(0,1fr); }
+  .bp-notification-list-panel { min-height: 340px; }
+  .bp-notification-detail { min-height: 380px; }
+}
+
+@media (max-width: 620px) {
+  .bp-shell .bp-overview-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .bp-overview-stats .bp-overview-stat:last-child { grid-column: 1 / -1; }
+  .bp-opportunity-detail-tabs button { padding-inline: 9px; font-size: 11px; }
+  .bp-calendar-controls { width: 100%; }
+}
 
 /* Match Lead Management: keep the workspace frame fixed and scroll its content. */
 .review-shell.bp-shell .review-workspace { height: 100%; max-height: 100%; min-height: 0; overflow: hidden; }

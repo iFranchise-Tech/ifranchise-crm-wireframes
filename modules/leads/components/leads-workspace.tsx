@@ -26,7 +26,10 @@ import {
   RiPencilLine,
   RiPhoneLine,
   RiPlayCircleLine,
-  RiSettings3Line,
+  RiLayoutColumnLine,
+  RiBarChartBoxLine,
+  RiStarLine,
+  RiStarFill,
   RiStackLine,
   RiStickyNoteLine,
   RiStore2Line,
@@ -45,6 +48,7 @@ import { portraitFor } from "@/modules/users-roles/portrait";
 import { initialUsers } from "@/modules/users-roles/data";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
+import { IconButton } from "@/components/base/buttons/icon-button";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown, DropdownDivider, DropdownItem, DropdownPopover, DropdownTrigger } from "@/components/base/dropdown/dropdown";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -55,24 +59,25 @@ import { SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { cx } from "@/utils/cx";
+import { useMeetings } from "@/modules/meetings/store";
+import { meetingProfiles, canViewRecord } from "@/modules/meetings/records";
 import { EnquiryDetail } from "./enquiry-detail";
 import { SourceLeadsPanel } from "./source-leads-panel";
-import { cityOptions, DateField, LeadSelect, leadTimes, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
+import { cityOptions, LeadSelect, PhoneField, stateForCity, stateOptions, SuggestField } from "./lead-fields";
+import { useLeadFavourites } from "@/modules/leads/lib/use-lead-favourites";
 import { initialActivities, initialEnquiries, initialSources, sourceLeads } from "../data";
 import {
   activityStatuses,
-  activityTypes,
   brands,
   budgetRanges,
   enquiryStatuses,
   heardAboutOptions,
   originalSources,
-  outcomes,
   sourceKinds,
   timelines,
   type Activity,
-  type ActivityKind,
   type ActivityStatus,
   type Category,
   type Enquiry,
@@ -83,6 +88,7 @@ import {
 import "./leads.css";
 
 const navItems = ["Enquiries", "Activity", "Sources"] as const;
+const activityStorageKey = "ifranchise-lead-activities:v1";
 const owners = ["Himani Bhargava Tapadiya", "Shakshay Gupta", "Vivek Rawat", "Ekta Pattanaik", "Swetha Chintada"];
 const activeBrandNames = portalBrands.map(item => item.name);
 const categoryViews = ["Franchise", "Brand expansion"] as const;
@@ -90,6 +96,7 @@ type Section = (typeof navItems)[number] | (typeof categoryViews)[number];
 type Column = { id: string; name: string; isRowHeader?: boolean };
 
 const selectColumn: Column = { id: "select", name: "" };
+const favouriteColumn: Column = { id: "favourite", name: "Favourite" };
 const actionsColumn: Column = { id: "actions", name: "" };
 const franchiseColumns: Column[] = [
   selectColumn,
@@ -125,9 +132,8 @@ const activityColumns: Column[] = [
   { id: "activity", name: "Activity", isRowHeader: true },
   { id: "enquiry", name: "Related Enquiry" },
   { id: "owner", name: "Assigned To" },
-  { id: "due", name: "Due Date" },
+  { id: "due", name: "Activity date" },
   { id: "status", name: "Status" },
-  { id: "actions", name: "Actions" },
 ];
 const sourceColumns: Column[] = [
   { id: "source", name: "Source Name", isRowHeader: true },
@@ -285,13 +291,6 @@ function conversion(converted: number, leads: number) {
   return `${((converted / leads) * 100).toFixed(1)}%`;
 }
 
-function kindFor(type: string): ActivityKind {
-  if (type === "Email") return "email";
-  if (type === "In-Person Meeting" || type === "Face-to-Face Discussion") return "meeting";
-  if (type === "Phone Call") return "call";
-  return "follow-up";
-}
-
 function Panel({ children }: { children: ReactNode }) {
   return <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border-button-default bg-background-primary-default">{children}</section>;
 }
@@ -299,7 +298,7 @@ function Panel({ children }: { children: ReactNode }) {
 function FilterSelect({ label, value, options, onChange, width = "w-[158px]" }: { label: string; value: string; options: Array<string | { id: string; label: string }>; onChange: (value: string) => void; width?: string }) {
   const items = options.map(option => typeof option === "string" ? { id: option, label: option } : option);
   return (
-    <LeadSelect aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={`${width} shrink-0`} triggerClassName="w-full shadow-none">
+    <LeadSelect aria-label={label} selectedKey={value} onSelectionChange={key => onChange(String(key))} className={cx("ld-toolbar-select shrink-0", width)} triggerClassName="w-full shadow-none">
       {items.map(option => <SelectItem key={option.id} id={option.id}>{option.label}</SelectItem>)}
     </LeadSelect>
   );
@@ -341,7 +340,7 @@ function advancedFieldValue(enquiry: Enquiry, field: string): string {
   return values[field] ?? "";
 }
 
-function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: LeadAdvancedFilters, fields: LeadFilterField[]) {
+function matchesLeadCriteria(enquiry: Enquiry, filters: LeadAdvancedFilters, fields: LeadFilterField[]) {
   const fieldRules = filters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator));
   const ruleMatches = fieldRules.map(rule => {
     const actual = advancedFieldValue(enquiry, rule.field);
@@ -367,22 +366,7 @@ function matchesLeadCriteria(enquiry: Enquiry, activities: Activity[], filters: 
       default: return left.includes(right);
     }
   });
-  const fieldsMatch = !ruleMatches.length || (filters.match === "all" ? ruleMatches.every(Boolean) : ruleMatches.some(Boolean));
-  const related = activities.filter(activity => activity.enquiryId === enquiry.id);
-  let activityMatch = true;
-  const activityFilterActive = filters.activity !== "any" || filters.activityKind !== "All activities" || filters.activityStatus !== "All statuses";
-  if (activityFilterActive) {
-    const selectedKind = filters.activityKind === "All activities" ? null : filters.activityKind;
-    const matchingActivities = related.filter(activity => {
-      const kind = activity.type === "Other Communication" ? "Notes" : activity.kind === "call" ? "Calls" : activity.kind === "meeting" ? "Meetings" : activity.kind === "email" ? "Emails" : "Follow-ups";
-      return (!selectedKind || kind === selectedKind) && (filters.activityStatus === "All statuses" || activity.status === filters.activityStatus);
-    });
-    if (filters.activity === "without") activityMatch = related.length === 0;
-    else activityMatch = matchingActivities.length > 0;
-  }
-  const hasAttachment = Boolean(enquiry.resume || enquiry.resumeFile || enquiry.coverLetterFile || enquiry.coverLetter || enquiry.portfolio || related.some(activity => activity.attachments?.length));
-  const attachmentMatch = filters.attachment === "any" || (filters.attachment === "with" ? hasAttachment : !hasAttachment);
-  return fieldsMatch && activityMatch && attachmentMatch;
+  return !ruleMatches.length || ruleMatches.every(Boolean);
 }
 
 function Stat({ icon: Icon, value, label, tone, onClick }: { icon: RemixiconComponentType; value: string | number; label: string; tone: string; onClick?: () => void }) {
@@ -490,15 +474,18 @@ function slicePage<T>(items: T[], page: number) {
   return { rows: items.slice(start, start + pageSize), pages, current, start: items.length ? start + 1 : 0, end: Math.min(current * pageSize, items.length) };
 }
 
-export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
+export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: string; enquiryId?: string }) {
   const router = useRouter();
+  const activityScrollFade = useScrollFade();
   const section = isSection(view) ? view : "Enquiries";
   const enquiryView = isEnquiryView(section);
   const activeCategory = (categoryViews as readonly string[]).includes(section) ? section as Category : null;
   const [roleId, setRoleId] = useState(accessRoles[0].id);
   const role = accessRoles.find(item => item.id === roleId) ?? accessRoles[0];
+  const { state: meetingRecords, ready: meetingRecordsReady } = useMeetings();
   const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [activities, setActivities] = useState(initialActivities);
+  const [activitiesReady, setActivitiesReady] = useState(false);
   const [sources, setSources] = useState(crmSources);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All statuses");
@@ -518,7 +505,6 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [sourceView, setSourceView] = useState<{ name: string; rows: typeof sourceLeads } | null>(null);
   const [rateText, setRateText] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [logging, setLogging] = useState(false);
   const [addingSource, setAddingSource] = useState(false);
   const [draftCategory, setDraftCategory] = useState<Category>("Franchise");
   const [draftEnquiryType, setDraftEnquiryType] = useState("Specific brand");
@@ -533,6 +519,9 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
   const [columnIds, setColumnIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [showOverview, setShowOverview] = useState(false);
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const { favouriteIds, toggleFavourite } = useLeadFavourites(roleId);
 
   useEffect(() => {
     const activeProfile = readActiveCrmRole();
@@ -540,7 +529,38 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   }, []);
 
   useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(activityStorageKey);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) setActivities(parsed as Activity[]);
+      }
+    } catch {
+      // Keep the built-in activity examples if saved browser data is unavailable.
+    } finally {
+      setActivitiesReady(true);
+    }
+    const syncSavedActivities = (event: StorageEvent) => {
+      if (event.key !== activityStorageKey || !event.newValue) return;
+      try {
+        const parsed: unknown = JSON.parse(event.newValue);
+        if (Array.isArray(parsed)) setActivities(parsed as Activity[]);
+      } catch {
+        // Ignore malformed updates without replacing the current activity list.
+      }
+    };
+    window.addEventListener("storage", syncSavedActivities);
+    return () => window.removeEventListener("storage", syncSavedActivities);
+  }, []);
+
+  useEffect(() => {
+    if (activitiesReady) window.localStorage.setItem(activityStorageKey, JSON.stringify(activities));
+  }, [activities, activitiesReady]);
+
+  useEffect(() => {
     setQuery("");
+    setShowOverview(false);
+    setFavouritesOnly(false);
     setStatus("All statuses");
     setBrand("All brands");
     setLocation("All locations");
@@ -568,19 +588,77 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     if (section !== category) router.replace(`/library/modules/leads?view=${encodeURIComponent(category)}`);
   }, [role, section, activeCategory, router]);
 
-  useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId]);
+  useEffect(() => { setPage(1); }, [query, status, brand, location, activityKind, related, assignee, sourceKind, roleId, favouritesOnly]);
 
   const scopedEnquiries = useMemo(() => enquiries.filter(item => item.category !== "Job" && role.categories.includes(item.category)), [enquiries, role]);
-  const scopedActivities = useMemo(() => activities.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activities, scopedEnquiries]);
+  useEffect(() => {
+    if (!enquiryId || !meetingRecordsReady) return;
+    const linked = meetingRecords.records.find(item => item.id === enquiryId);
+    const active = meetingProfiles.find(item => item.id === readActiveCrmRole().id);
+    if (linked && (!active || !canViewRecord(active, linked))) return;
+    const enquiry = linked?.snapshot ?? enquiries.find(item => item.id === enquiryId);
+    if (enquiry) setOpen(enquiry);
+  }, [enquiryId, meetingRecordsReady, section]);
+  const activityFeed = useMemo(() => {
+    const existingIds = new Set(activities.map(activity => activity.id));
+    const formatDate = (value: string) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+    };
+    const followUps: Activity[] = meetingRecords.followUps
+      .filter(item => !existingIds.has(item.id) && (!item.source || !existingIds.has(item.source.id)))
+      .map(item => ({
+        id: item.id,
+        enquiryId: item.recordId,
+        title: item.title,
+        kind: "follow-up",
+        status: item.status === "Cancelled" ? "Completed" : item.status,
+        due: formatDate(item.dueAt),
+        type: "Follow-up",
+        when: formatDate(item.createdAt),
+        direction: "—",
+        summary: item.description || item.outcome || "Follow-up created for this enquiry.",
+        outcome: item.outcome || "Follow-up Required",
+        followUp: item.dueAt,
+        manual: false,
+        createdBy: item.assignedTo,
+        assignedTo: item.assignedTo,
+        createdAt: item.createdAt,
+      }));
+    const meetings: Activity[] = meetingRecords.meetings
+      .filter(item => !existingIds.has(item.id))
+      .map(item => ({
+        id: item.id,
+        enquiryId: item.recordId,
+        title: item.title,
+        kind: "meeting",
+        status: item.status === "MOM submitted" ? "Completed" : item.status === "Awaiting MOM" ? "In Progress" : ["Cancelled", "Postponed", "Customer did not attend", "Internal participant did not attend"].includes(item.status) ? "Pending" : "Scheduled",
+        due: formatDate(item.startAt),
+        type: item.category,
+        when: formatDate(item.startAt),
+        direction: "—",
+        summary: item.remarks || item.agenda || "Meeting scheduled for this enquiry.",
+        outcome: item.outcome || "Meeting Scheduled",
+        followUp: "",
+        manual: false,
+        createdBy: item.assignedTo,
+        assignedTo: item.assignedTo,
+        createdAt: item.createdAt,
+        meetLink: item.meetLink,
+      }));
+    return [...activities, ...followUps, ...meetings].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+  }, [activities, meetingRecords.followUps, meetingRecords.meetings]);
+  const scopedActivities = useMemo(() => activityFeed.filter(item => scopedEnquiries.some(enquiry => enquiry.id === item.enquiryId)), [activityFeed, scopedEnquiries]);
 
   const visibleActivities = useMemo(() => scopedActivities.filter(activity => {
     const enquiry = scopedEnquiries.find(item => item.id === activity.enquiryId);
-    const text = `${activity.title} ${activity.summary} ${enquiry?.name ?? ""} ${enquiry?.id ?? ""} ${activity.createdBy}`.toLowerCase();
+    const assigneeName = activity.assignedTo || activity.createdBy;
+    const text = `${activity.title} ${activity.summary} ${enquiry?.name ?? ""} ${enquiry?.id ?? ""} ${assigneeName}`.toLowerCase();
     const kindLabel = activity.type === "Other Communication" ? "Notes" : activity.kind === "call" ? "Calls" : activity.kind === "meeting" ? "Meetings" : activity.kind === "email" ? "Emails" : "Follow-ups";
     return text.includes(query.toLowerCase())
       && (activityKind === "All types" || kindLabel === activityKind)
       && (related === "All enquiries" || enquiry?.name === related)
-      && (assignee === "All people" || activity.createdBy === assignee)
+      && (assignee === "All people" || assigneeName === assignee)
       && (status === "All statuses" || activity.status === status);
   }), [scopedActivities, scopedEnquiries, query, activityKind, related, assignee, status]);
 
@@ -629,18 +707,19 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
       })),
     ];
   }, [configurableColumnDefs, scopedEnquiries]);
-  const visibleEnquiries = useMemo(() => scopedEnquiries.filter(enquiry => {
+  const matchingEnquiryPool = useMemo(() => scopedEnquiries.filter(enquiry => {
     const text = `${enquiry.name} ${enquiry.brand} ${enquiry.city} ${enquiry.owner} ${enquiry.id} ${enquiry.mobile} ${enquiry.email}`.toLowerCase();
     return text.includes(query.toLowerCase())
       && (!activeCategory || enquiry.category === activeCategory)
+      && (!favouritesOnly || favouriteIds.has(enquiry.id))
       && (status === "All statuses" || enquiry.status === status)
       && (brand === "All brands" || enquiry.brand === brand)
-      && (location === "All locations" || enquiry.city === location)
-      && (!advancedFilters || matchesLeadCriteria(enquiry, scopedActivities, advancedFilters, advancedFilterFields));
-  }), [scopedEnquiries, scopedActivities, query, activeCategory, status, brand, location, advancedFilters, advancedFilterFields]);
+      && (location === "All locations" || enquiry.city === location);
+  }), [scopedEnquiries, query, activeCategory, status, brand, location, favouritesOnly, favouriteIds]);
+  const visibleEnquiries = useMemo(() => matchingEnquiryPool.filter(enquiry => !advancedFilters || matchesLeadCriteria(enquiry, advancedFilters, advancedFilterFields)), [matchingEnquiryPool, advancedFilters, advancedFilterFields]);
   const enquiryPage = slicePage(visibleEnquiries, page);
   const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
-  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length + Number(advancedFilters.activity !== "any" || advancedFilters.activityKind !== "All activities" || advancedFilters.activityStatus !== "All statuses") + Number(advancedFilters.attachment !== "any") : 0;
+  const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length : 0;
   const defaultColumnIds = baseColumns.filter(column => column.id !== "select" && column.id !== "actions").map(column => column.id);
   const requiredColumnId = enquiryView ? "person" : section === "Activity" ? "activity" : "source";
   const columnScope = `leads:${section}`;
@@ -650,9 +729,10 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnScope, role.id]);
   const visibleColumnIds = columnIds.length ? columnIds.filter(id => configurableColumnDefs.some(column => column.id === id)) : defaultColumnIds;
-  const tableColumns: Column[] = [selectColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
-  const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const tableColumns: Column[] = [selectColumn, favouriteColumn, ...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), actionsColumn];
+  const dataColumns: Column[] = [...visibleColumnIds.map(id => configurableColumnDefs.find(column => column.id === id)).filter((column): column is Column => Boolean(column)), ...(section === "Activity" ? [] : [actionsColumn])];
   const showBrandFilter = configurableColumnDefs.some(column => column.id === "brand");
+  const favouritesCount = visiblePool.filter(item => favouriteIds.has(item.id)).length;
   const leadTotal = sources.reduce((sum, item) => sum + item.leads, 0);
   const convertedTotal = sources.reduce((sum, item) => sum + item.converted, 0);
   function saveColumns(ids: string[], organizationDefault: boolean) {
@@ -745,36 +825,6 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     setAdding(false);
   }
 
-  function saveActivity(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const value = (name: string) => String(form.get(name) || "").trim();
-    const enquiryId = value("enquiryId");
-    const type = value("type") || activityTypes[0];
-    if (!enquiryId || !value("summary")) return;
-    const stamp = now();
-    const when = [value("whenDate"), value("whenTime")].filter(Boolean).join(", ") || stamp;
-    const next: Activity = {
-      id: `ACT-${1000 + activities.length + 1}`,
-      enquiryId,
-      title: value("title") || type,
-      kind: kindFor(type),
-      status: "Pending",
-      due: value("followUp") || stamp,
-      type,
-      when,
-      direction: (value("direction") || "—") as Activity["direction"],
-      summary: value("summary"),
-      outcome: value("outcome") || "Other",
-      followUp: value("followUp"),
-      manual: true,
-      createdBy: role.name,
-      createdAt: stamp,
-    };
-    setActivities(list => [next, ...list]);
-    setLogging(false);
-  }
-
   function saveSource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -794,7 +844,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
     setAddingSource(false);
   }
 
-  const leadActivities = open ? activities.filter(activity => activity.enquiryId === open.id) : [];
+  const leadActivities = open ? activityFeed.filter(activity => activity.enquiryId === open.id) : [];
   const heading = open ? open.id : section === "Activity" ? "Activities" : section === "Sources" ? "Lead Sources" : enquiryTabs.find(tab => tab.id === section)?.label ?? "Enquiries";
   const description = enquiryView
     ? "Manage all incoming franchise and brand expansion enquiries."
@@ -922,7 +972,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             />
           ) : (
           <div className="contents">
-          <div className="flex shrink-0 items-center justify-between gap-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-1">
               <h2 className="m-0 flex items-center gap-1 text-title-2-medium text-text-primary">
                 {heading}
@@ -935,31 +985,33 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               </h2>
               <p className="m-0 text-body-regular text-text-secondary">{description}</p>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" leadingIcon={RiBarChartBoxLine} aria-expanded={showOverview} aria-controls="lead-quick-overview" onClick={() => setShowOverview(current => !current)}>Quick overview</Button>
             {enquiryView && <Button leadingIcon={RiAddLine} onClick={() => { setDraftCategory(activeCategory && role.categories.includes(activeCategory) ? activeCategory : role.categories[0]); setDraftEnquiryType("Specific brand"); setDraftCity(""); setDraftState(""); setAdding(true); }}>Add Enquiry</Button>}
-            {section === "Activity" && <Button leadingIcon={RiAddLine} onClick={() => setLogging(true)}>Add Activity</Button>}
             {section === "Sources" && <Button leadingIcon={RiAddLine} onClick={() => { setSourceName("Website"); setAddingSource(true); }}>Add Source</Button>}
+            </div>
           </div>
 
-          {enquiryView && (
-            <div className="ld-stats shrink-0">
-              <Stat icon={RiUser3Line} value={visiblePool.length} label="Total Enquiries" tone="purple" onClick={() => setStatus("All statuses")} />
-              <Stat icon={RiStackLine} value={visiblePool.filter(item => item.status === "New").length} label="New" tone="purple" onClick={() => setStatus(current => current === "New" ? "All statuses" : "New")} />
-              <Stat icon={RiLoopRightLine} value={visiblePool.filter(item => item.status === "In Progress").length} label="In Progress" tone="yellow" onClick={() => setStatus(current => current === "In Progress" ? "All statuses" : "In Progress")} />
-              <Stat icon={RiCheckboxCircleLine} value={visiblePool.filter(item => item.status === "Qualified").length} label="Qualified" tone="green" onClick={() => setStatus(current => current === "Qualified" ? "All statuses" : "Qualified")} />
-              <Stat icon={RiFlag2Line} value={visiblePool.filter(item => item.status === "Converted").length} label="Converted" tone="blue" onClick={() => setStatus(current => current === "Converted" ? "All statuses" : "Converted")} />
+          {showOverview && enquiryView && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats shrink-0">
+              <Stat icon={RiUser3Line} value={visibleEnquiries.length} label="Total Enquiries" tone="purple" onClick={() => setStatus("All statuses")} />
+              <Stat icon={RiStackLine} value={visibleEnquiries.filter(item => item.status === "New").length} label="New" tone="purple" onClick={() => setStatus(current => current === "New" ? "All statuses" : "New")} />
+              <Stat icon={RiLoopRightLine} value={visibleEnquiries.filter(item => item.status === "In Progress").length} label="In Progress" tone="yellow" onClick={() => setStatus(current => current === "In Progress" ? "All statuses" : "In Progress")} />
+              <Stat icon={RiCheckboxCircleLine} value={visibleEnquiries.filter(item => item.status === "Qualified").length} label="Qualified" tone="green" onClick={() => setStatus(current => current === "Qualified" ? "All statuses" : "Qualified")} />
+              <Stat icon={RiFlag2Line} value={visibleEnquiries.filter(item => item.status === "Converted").length} label="Converted" tone="blue" onClick={() => setStatus(current => current === "Converted" ? "All statuses" : "Converted")} />
             </div>
           )}
-          {section === "Activity" && (
-            <div className="ld-stats shrink-0">
-              <Stat icon={RiStackLine} value={scopedActivities.length} label="Total Activities" tone="purple" onClick={() => setActivityKind("All types")} />
-              <Stat icon={RiPhoneLine} value={scopedActivities.filter(item => item.kind === "call").length} label="Calls" tone="purple" onClick={() => setActivityKind(current => current === "Calls" ? "All types" : "Calls")} />
-              <Stat icon={RiCalendarLine} value={scopedActivities.filter(item => item.kind === "meeting").length} label="Meetings" tone="purple" onClick={() => setActivityKind(current => current === "Meetings" ? "All types" : "Meetings")} />
-              <Stat icon={RiMailLine} value={scopedActivities.filter(item => item.kind === "email").length} label="Emails" tone="purple" onClick={() => setActivityKind(current => current === "Emails" ? "All types" : "Emails")} />
-              <Stat icon={RiTimeLine} value={scopedActivities.filter(item => item.kind === "follow-up" && item.type !== "Other Communication").length} label="Follow-ups" tone="purple" onClick={() => setActivityKind(current => current === "Follow-ups" ? "All types" : "Follow-ups")} />
+          {showOverview && section === "Activity" && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats shrink-0">
+              <Stat icon={RiStackLine} value={visibleActivities.length} label="Total Activities" tone="purple" onClick={() => setActivityKind("All types")} />
+              <Stat icon={RiPhoneLine} value={visibleActivities.filter(item => item.kind === "call").length} label="Calls" tone="purple" onClick={() => setActivityKind(current => current === "Calls" ? "All types" : "Calls")} />
+              <Stat icon={RiCalendarLine} value={visibleActivities.filter(item => item.kind === "meeting").length} label="Meetings" tone="purple" onClick={() => setActivityKind(current => current === "Meetings" ? "All types" : "Meetings")} />
+              <Stat icon={RiMailLine} value={visibleActivities.filter(item => item.kind === "email").length} label="Emails" tone="purple" onClick={() => setActivityKind(current => current === "Emails" ? "All types" : "Emails")} />
+              <Stat icon={RiTimeLine} value={visibleActivities.filter(item => item.kind === "follow-up" && item.type !== "Other Communication").length} label="Follow-ups" tone="purple" onClick={() => setActivityKind(current => current === "Follow-ups" ? "All types" : "Follow-ups")} />
             </div>
           )}
-          {section === "Sources" && (
-            <div className="ld-stats ld-stats-4 shrink-0">
+          {showOverview && section === "Sources" && (
+            <div id="lead-quick-overview" role="region" aria-label="Quick overview" className="ld-stats ld-stats-4 shrink-0">
               <Stat icon={RiStackLine} value={sources.length} label="Total Sources" tone="purple" onClick={() => { setStatus("All statuses"); setSourceKind("All types"); }} />
               <Stat icon={RiPlayCircleLine} value={sources.filter(item => item.active).length} label="Active Sources" tone="green" onClick={() => setStatus(current => current === "Active" ? "All statuses" : "Active")} />
               <Stat icon={RiGroupLine} value={leadTotal.toLocaleString("en-IN")} label="Total Leads" tone="purple" onClick={() => setSourceView({ name: "All", rows: sourceLeads })} />
@@ -968,10 +1020,14 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
           )}
 
           <Panel>
-            <div className="ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3">
+            {enquiryView && <div className="flex shrink-0 items-center gap-2 border-b border-separator-border px-3 py-2" role="group" aria-label="Enquiry lists">
+              <Button size="small" variant={favouritesOnly ? "ghost" : "primary"} aria-pressed={!favouritesOnly} onClick={() => { setFavouritesOnly(false); setSelected(new Set()); }}>All enquiries</Button>
+              <Button className="ld-favourites-list-button" size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setSelected(new Set()); }}>Favourites ({favouritesCount})</Button>
+            </div>}
+            <div className={cx("ld-toolbar flex shrink-0 items-center gap-2 border-b border-separator-border p-3", section === "Activity" && "ld-activity-toolbar", enquiryView && "ld-enquiry-toolbar", enquiryView && !showBrandFilter && "ld-enquiry-toolbar-no-brand")}>
               <SearchField
                 aria-label={`Search ${heading.toLowerCase()}`}
-                placeholder={section === "Activity" ? "Search activity, notes or enquiry ID" : section === "Sources" ? "Search source name..." : "Search by name, phone, email or enquiry ID"}
+                placeholder={section === "Activity" ? "Search activity, notes or enquiry ID" : section === "Sources" ? "Search source name..." : "Search enquiries"}
                 value={query}
                 onChange={setQuery}
                 className="min-w-0 flex-1"
@@ -979,20 +1035,22 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {enquiryView && <>
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "New", "In Progress", "Qualified", "Converted"]} />
                 {showBrandFilter && <FilterSelect label="Interested brand" value={brand} onChange={setBrand} options={["All brands", ...brandsInView]} />}
-                <FilterSelect label="Location" value={location} onChange={setLocation} options={["All locations", ...citiesInView]} />
+                <FilterSelect label="Location" width="ld-location-filter" value={location} onChange={setLocation} options={["All locations", ...citiesInView]} />
               </>}
               {section === "Activity" && <>
                 <FilterSelect label="Activity type" value={activityKind} onChange={setActivityKind} options={["All types", "Calls", "Meetings", "Emails", "Follow-ups", "Notes"]} />
                 <FilterSelect label="Related enquiry" value={related} onChange={setRelated} options={["All enquiries", ...new Set(scopedEnquiries.map(item => item.name))]} />
-                <FilterSelect label="Assigned to" value={assignee} onChange={setAssignee} options={[{ id: "All people", label: "All people" }, ...[...new Set(scopedActivities.map(item => item.createdBy))].map(name => ({ id: name, label: firstName(name) }))]} />
+                <FilterSelect label="Assigned to" value={assignee} onChange={setAssignee} options={[{ id: "All people", label: "All people" }, ...[...new Set(scopedActivities.map(item => item.assignedTo || item.createdBy))].map(name => ({ id: name, label: firstName(name) }))]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", ...activityStatuses]} />
               </>}
               {section === "Sources" && <>
                 <FilterSelect label="Source type" value={sourceKind} onChange={setSourceKind} options={["All types", ...sourceKinds]} />
                 <FilterSelect label="Status" value={status} onChange={setStatus} options={["All statuses", "Active", "Inactive"]} />
               </>}
-              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setAdvancedFiltersOpen(current => !current)}>{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</Button>}
-              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiSettings3Line} onClick={() => setColumnManagerOpen(true)}>Columns</Button>
+              <div className="ld-toolbar-actions ms-auto flex max-w-full items-center gap-2">
+              {enquiryView && <Button size="small" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} aria-label={advancedFilterCount ? `Advanced filters (${advancedFilterCount})` : "Advanced filters"} title="Advanced filters" aria-expanded={advancedFiltersOpen} aria-controls="lead-advanced-filters" onClick={() => setAdvancedFiltersOpen(current => !current)}><span className="ld-toolbar-action-label">{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</span></Button>}
+              <Button className="ld-column-button" size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} aria-label="Customize columns" title="Customize columns" onClick={() => setColumnManagerOpen(true)}><span className="ld-toolbar-action-label">Customize columns</span></Button>
+              </div>
             </div>
             {enquiryView && selectedIds.length > 0 && (
               <div className="ld-bulk">
@@ -1006,34 +1064,25 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             )}
 
             <div className={cx("ld-record-layout", advancedFiltersOpen && enquiryView && "is-filter-open")}>
-            {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
-              fields={advancedFilterFields}
-              scope={columnScope}
-              userId={role.id}
-              resultCount={visibleEnquiries.length}
-              countFor={filters => scopedEnquiries.filter(enquiry => matchesLeadCriteria(enquiry, scopedActivities, filters, advancedFilterFields)).length}
-              activeFilterCount={advancedFilterCount}
-              onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
-              onClear={() => { setAdvancedFilters(null); setPage(1); }}
-              onClose={() => setAdvancedFiltersOpen(false)}
-            />}
-            <div className={cx("ld-record-content", section === "Activity" && "ld-scroll-fit")}>
-            <div className="ld-scroll">
+
+            <div className={cx("ld-record-content relative", section === "Activity" && "ld-scroll-fit")}>
+            <div className={cx("ld-scroll", section === "Activity" && "ld-activity-scroll")} onScroll={section === "Activity" ? activityScrollFade.onScroll : undefined}>
               {enquiryView && (
                 <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
                     {(column: Column) => (
-                      <TableColumn isRowHeader={column.isRowHeader} className={column.id === "status" ? "ld-status-heading" : undefined}>
-                        {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.name}
+                      <TableColumn isRowHeader={column.isRowHeader} aria-label={column.id === "favourite" ? "Favourite" : undefined} className={cx(column.id === "status" && "ld-status-heading", column.id === "favourite" && "ld-favourite-cell")}>
+                        {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}
                       </TableColumn>
                     )}
                   </TableHeader>
-                  <TableBody items={enquiryPage.rows}>
+                  <TableBody items={enquiryPage.rows} dependencies={[favouriteIds]}>
                     {enquiry => (
-                      <TableRow columns={tableColumns} className="cursor-pointer outline-none">
+                      <TableRow columns={tableColumns} dependencies={[enquiry, favouriteIds.has(enquiry.id)]} className="cursor-pointer outline-none">
                         {(column: Column) => (
-                          <TableCell className={column.id === "status" ? "ld-status-cell" : undefined}>
+                          <TableCell className={cx(column.id === "status" && "ld-status-cell", column.id === "favourite" && "ld-favourite-cell")}>
                             {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
+                            {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(enquiry.id) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(enquiry.id) ? "Remove" : "Add"} ${enquiry.name} ${favouriteIds.has(enquiry.id) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(enquiry.id)} title={favouriteIds.has(enquiry.id) ? "Remove from favourites" : "Add to favourites"} className="ld-favourite-button border-0 bg-transparent text-foreground-icon-secondary shadow-none" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(enquiry.id); }} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}
                             {column.id === "contactPerson" && (enquiry.contactPerson || enquiry.name)}
@@ -1085,8 +1134,8 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               )}
 
               {section === "Activity" && (
-                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Activities" className="ld-activity-table" containerClassName="ld-fit-table" onRowAction={key => {
-                  const activity = activities.find(item => item.id === String(key));
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Activities" className="ld-activity-table" containerClassName="ld-activity-list-table" onRowAction={key => {
+                  const activity = activityFeed.find(item => item.id === String(key));
                   const enquiry = enquiries.find(item => item.id === activity?.enquiryId);
                   if (enquiry) setOpen(enquiry);
                 }}>
@@ -1102,22 +1151,16 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                               {column.id === "activity" && (
                                 <span className="ld-activity-cell">
                                   <span className={`ld-activity-icon ld-activity-${mark.tone}`}><mark.icon /></span>
-                                  <span className="truncate text-body-2-medium">{activity.title}</span>
+                                  <span className="ld-activity-copy">
+                                    <span className="truncate text-body-2-medium">{activity.title}</span>
+                                    <span className="truncate text-caption-1-regular text-text-secondary">{activity.summary}</span>
+                                  </span>
                                 </span>
                               )}
                               {column.id === "enquiry" && enquiry && <Person name={enquiry.name} meta={`${enquiry.id} · ${enquiry.category}`} />}
-                              {column.id === "owner" && <Assignee name={activity.createdBy} />}
+                              {column.id === "owner" && <Assignee name={activity.assignedTo || activity.createdBy} />}
                               {column.id === "due" && <span className="ld-due">{activity.due ? <><RiCalendarLine />{activity.due}</> : "—"}</span>}
                               {column.id === "status" && <StatusPill status={activity.status} />}
-                              {column.id === "actions" && enquiry && (
-                                <EnquiryActions
-                                  label={activity.title}
-                                  canDelete={role.canDelete}
-                                  onView={() => setOpen(enquiry)}
-                                  onEdit={() => setLogging(true)}
-                                  onDelete={() => setPendingDelete({ name: activity.title, run: () => setActivities(list => list.filter(item => item.id !== activity.id)) })}
-                                />
-                              )}
                             </TableCell>
                           )}
                         </TableRow>
@@ -1164,7 +1207,7 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
                 </Table>
               )}
 
-              {enquiryView && !visibleEnquiries.length && <Empty title="No enquiries found" detail="Try another name, status, brand or city." />}
+              {enquiryView && !visibleEnquiries.length && <Empty title={favouritesOnly ? "No favourite enquiries found" : "No enquiries found"} detail={favouritesOnly ? "Star an enquiry to save it here, or adjust your filters." : "Try another name, status, brand or city."} />}
               {section === "Activity" && !visibleActivities.length && <Empty title="No activity found" detail="Try another enquiry, person or status." />}
               {section === "Sources" && !visibleSources.length && <Empty title="No sources found" detail="Try another name, type or status." />}
               {enquiryView && visibleEnquiries.length > 0 && <Pager page={enquiryPage.current} pages={enquiryPage.pages} onPage={setPage} label={`Showing ${enquiryPage.start}–${enquiryPage.end} of ${visibleEnquiries.length} enquiries`} />}
@@ -1172,6 +1215,24 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
               {section === "Sources" && visibleSources.length > 0 && <Pager page={sourcePage.current} pages={sourcePage.pages} onPage={setPage} label={`Showing ${sourcePage.start}–${sourcePage.end} of ${visibleSources.length} sources`} />}
             </div>
             </div>
+            {section === "Activity" && <ScrollFade progress={activityScrollFade.progress} surfaceClassName="from-background-primary-default" />}
+            {advancedFiltersOpen && enquiryView && <AdvancedLeadFilters
+              id="lead-advanced-filters"
+              initialFilters={advancedFilters}
+              title="Advanced filters"
+              description="Choose the enquiries to show."
+              recordLabel="enquiries"
+              searchPlaceholder="Find a field"
+              fields={advancedFilterFields}
+              scope={columnScope}
+              userId={role.id}
+              resultCount={visibleEnquiries.length}
+              countFor={filters => matchingEnquiryPool.filter(enquiry => matchesLeadCriteria(enquiry, filters, advancedFilterFields)).length}
+              activeFilterCount={advancedFilterCount}
+              onApply={filters => { setAdvancedFilters(filters); setPage(1); }}
+              onClear={() => { setAdvancedFilters(null); setPage(1); }}
+              onClose={() => setAdvancedFiltersOpen(false)}
+            />}
             </div>
           </Panel>
           </div>
@@ -1241,38 +1302,6 @@ export function LeadsWorkspace({ view = "Enquiries" }: { view?: string }) {
             <ModalFooter>
               <Button variant="secondary" onClick={() => setAdding(false)}>Cancel</Button>
               <Button type="submit" form="enquiry-form">Save enquiry</Button>
-            </ModalFooter>
-          </Modal>
-        )}
-
-        {logging && (
-          <Modal className="ld-dialog" isOpen onOpenChange={next => { if (!next) setLogging(false); }} size="lg">
-            <ModalHeader title="Add activity" description="A conversation logged here stays marked as manually recorded." />
-            <ModalBody>
-              <form id="activity-form" className="grid grid-cols-2 gap-3" onSubmit={saveActivity}>
-                <LeadSelect aria-label="Enquiry" label="Enquiry" name="enquiryId" isRequired defaultSelectedKey={open?.id || scopedEnquiries[0]?.id}>
-                  {scopedEnquiries.map(enquiry => <SelectItem key={enquiry.id} id={enquiry.id}>{enquiry.name}</SelectItem>)}
-                </LeadSelect>
-                <Input label="Title" name="title" placeholder="Follow-up call" isRequired />
-                <LeadSelect aria-label="Activity type" label="Activity type" name="type" isRequired defaultSelectedKey={activityTypes[0]}>{activityTypes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                <LeadSelect aria-label="Outcome" label="Outcome" name="outcome" isRequired defaultSelectedKey={outcomes[0]}>{outcomes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                <div className="ld-when">
-                  <span className="ld-field-label">When it happened</span>
-                  <div className="ld-when-row">
-                    <DateField name="whenDate" defaultValue={new Date(2026, 10, 12)} />
-                    <LeadSelect aria-label="Time" name="whenTime" defaultSelectedKey="4:00 PM" className="w-[132px] shrink-0" triggerClassName="h-10 shadow-none">{leadTimes.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect>
-                  </div>
-                </div>
-                <div className="ld-when">
-                  <span className="ld-field-label">Due date</span>
-                  <DateField name="followUp" defaultValue={new Date(2026, 10, 14)} />
-                </div>
-                <Textarea className="col-span-2" label="Discussion summary" name="summary" isRequired />
-              </form>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="secondary" onClick={() => setLogging(false)}>Cancel</Button>
-              <Button type="submit" form="activity-form">Save activity</Button>
             </ModalFooter>
           </Modal>
         )}

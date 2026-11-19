@@ -198,7 +198,10 @@ export function DropdownItem({ selected, onSelect, className, children }: Dropdo
     <button
       type="button"
       aria-pressed={selected}
-      onClick={onSelect}
+      onClick={event => {
+        event.stopPropagation();
+        onSelect?.();
+      }}
       className={cx(
         MENU_ITEM,
         selected ? MENU_ITEM_ACTIVE : MENU_ITEM_INTERACTIVE,

@@ -42,7 +42,7 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
   return <div className={className ? `review-shell ${className}` : "review-shell"} data-sidebar-collapsed={sidebarCollapsed} style={sidebarCollapsed ? { gridTemplateColumns: "64px minmax(0, 1fr)" } : undefined}>
     <aside className="review-sidebar" aria-label="Module sidebar" data-collapsed={sidebarCollapsed}>
       <div className="review-sidebar-top">
-        <Link className="review-brand" href="/library" aria-label="Back to screen library"><BrandMark /><span>SCREEN LIBRARY</span></Link>
+        <Link className="review-brand" href="/library" aria-label="iFranchise home"><BrandMark /></Link>
         <IconButton className="review-sidebar-toggle" icon={sidebarCollapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={toggleSidebar} />
       </div>
       <div className="review-sidebar-content">

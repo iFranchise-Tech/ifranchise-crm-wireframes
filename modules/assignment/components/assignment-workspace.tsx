@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Fragment } from "react";
 import type { Selection } from "react-aria-components";
-import { RiAdvertisementLine, RiArrowDownSLine, RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiFacebookLine, RiFilter3Line, RiGlobalLine, RiGoogleLine, RiGroupLine, RiInformationLine, RiInstagramLine, RiLayoutColumnLine, RiLogoutBoxRLine, RiMailLine, RiPhoneLine, RiQuestionLine, RiSettings3Line, RiStore2Line, RiUserLine } from "@remixicon/react";
+import { RiAdvertisementLine, RiArrowDownSLine, RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiFacebookLine, RiFilter3Line, RiGlobalLine, RiGoogleLine, RiGroupLine, RiInformationLine, RiInstagramLine, RiLayoutColumnLine, RiLogoutBoxRLine, RiMailLine, RiPhoneLine, RiQuestionLine, RiStarFill, RiStarLine, RiStore2Line, RiUserLine } from "@remixicon/react";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
+import { IconButton } from "@/components/base/buttons/icon-button";
+import { cx } from "@/utils/cx";
+import { useLeadFavourites } from "@/modules/leads/lib/use-lead-favourites";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Dropdown, DropdownDivider, DropdownItem, DropdownPopover, DropdownTrigger } from "@/components/base/dropdown/dropdown";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
@@ -63,16 +66,16 @@ function sourceIconFor(source: string) {
 }
 const assignmentColumns = [
   { id: "select", name: "" },
-  { id: "opportunity", name: "Opportunity", isRowHeader: true },
-  { id: "source", name: "Source" },
+  { id: "opportunity", name: "Enquiry", isRowHeader: true },
+  { id: "source", name: "Lead Source" },
   { id: "category", name: "Enquiry Category" },
   { id: "owner", name: "Assigned To" },
   { id: "stage", name: "Assignment Stage" },
   { id: "created", name: "Created On" },
 ];
 const assignmentAvailableColumns = [
-  { id: "opportunity", name: "Opportunity", isRowHeader: true },
-  { id: "source", name: "Source" },
+  { id: "opportunity", name: "Enquiry", isRowHeader: true },
+  { id: "source", name: "Lead Source" },
   { id: "category", name: "Enquiry Category" },
   { id: "owner", name: "Assigned To" },
   { id: "stage", name: "Assignment Stage" },
@@ -85,7 +88,7 @@ const assignmentAvailableColumns = [
   { id: "notes", name: "Lead Notes" },
 ];
 const assignmentHistoryColumns = [
-  { id: "opportunityId", name: "Opportunity ID", isRowHeader: true },
+  { id: "opportunityId", name: "Enquiry ID", isRowHeader: true },
   { id: "assignmentType", name: "Assignment Type" },
   { id: "previousOwner", name: "Previous Owner" },
   { id: "newOwner", name: "New Owner" },
@@ -95,8 +98,8 @@ const assignmentHistoryColumns = [
   { id: "dateTime", name: "Date & Time" },
   { id: "reason", name: "Reason" },
 ];
-const emptyAssignmentFilters: LeadAdvancedFilters = { match: "all", rules: [{ id: "rule-1", field: "opportunity", operator: "is", value: "" }], activity: "any", activityKind: "All activities", activityStatus: "All statuses", attachment: "any" };
-const emptyHistoryFilters: LeadAdvancedFilters = { match: "all", rules: [{ id: "rule-history-1", field: "opportunityId", operator: "is", value: "" }], activity: "any", activityKind: "All activities", activityStatus: "All statuses", attachment: "any" };
+const emptyAssignmentFilters: LeadAdvancedFilters = { match: "all", rules: [{ id: "rule-1", field: "opportunity", operator: "is", value: "" }] };
+const emptyHistoryFilters: LeadAdvancedFilters = { match: "all", rules: [{ id: "rule-history-1", field: "opportunityId", operator: "is", value: "" }] };
 
 function matchesAssignmentRules(lead: Lead, assignment: Assignment | undefined, filters: LeadAdvancedFilters) {
   const values: Record<string, string> = {
@@ -259,7 +262,7 @@ export function AssignmentWorkspace() {
   const [search, setSearch] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [assignmentDateFilter, setAssignmentDateFilter] = useState("All dates");
-  const [historyAssignedByFilter, setHistoryAssignedByFilter] = useState("All assigned by");
+  const [historyAssignedByFilter, setHistoryAssignedByFilter] = useState("All assigners");
   const [historyDateFilter, setHistoryDateFilter] = useState("All dates");
   const [advancedFilters, setAdvancedFilters] = useState<LeadAdvancedFilters | null>(null);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
@@ -270,6 +273,9 @@ export function AssignmentWorkspace() {
   const [stageFilter, setStageFilter] = useState("All stages");
   const [historyTypeFilter, setHistoryTypeFilter] = useState("All types");
   const [activeProfile, setActiveProfile] = useState<ActiveCrmProfile>({ id: "assignment-coordinator", name: coordinator, title: "Lead Coordinator" });
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const { favouriteIds, toggleFavourite } = useLeadFavourites(activeProfile.id);
+  const favouritesCount = leadSet.filter(lead => favouriteIds.has(lead.code)).length;
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [columnIds, setColumnIds] = useState<string[]>([]);
   const [historyColumnIds, setHistoryColumnIds] = useState<string[]>([]);
@@ -280,27 +286,27 @@ export function AssignmentWorkspace() {
   const assignmentDefaultIds = assignmentColumns.filter(column => column.id !== "select" && column.id !== "action").map(column => column.id);
   const historyDefaultIds = assignmentHistoryColumns.map(column => column.id);
   const advancedFilterFields: LeadFilterField[] = useMemo(() => [
-    { id: "opportunity", name: "Opportunity name", type: "text" },
-    { id: "opportunityId", name: "Opportunity ID", type: "text" },
+    { id: "opportunity", name: "Enquiry name", type: "text", placeholder: "Enter an enquiry name" },
+    { id: "opportunityId", name: "Enquiry ID", type: "text", placeholder: "Enter an enquiry ID" },
     { id: "leadId", name: "Lead ID", type: "text" },
     { id: "phone", name: "Mobile number", type: "text" },
     { id: "email", name: "Email address", type: "text" },
-    { id: "source", name: "Lead source", type: "select", options: Array.from(new Set(leadSet.map(lead => lead.source))) },
-    { id: "category", name: "Enquiry category", type: "select", options: Array.from(new Set(leadSet.map(lead => lead.category))) },
-    { id: "stage", name: "Assignment stage", type: "select", options: stages },
-    { id: "owner", name: "Assigned owner", type: "select", options: ["Unassigned", ...managerOwnerOptions()] },
+    { id: "source", name: "Lead source", type: "select", placeholder: "Select a lead source", options: Array.from(new Set(leadSet.map(lead => lead.source))) },
+    { id: "category", name: "Enquiry category", type: "select", placeholder: "Select an enquiry category", options: Array.from(new Set(leadSet.map(lead => lead.category))) },
+    { id: "stage", name: "Assignment stage", type: "select", placeholder: "Select an assignment stage", options: stages },
+    { id: "owner", name: "Assigned to", type: "select", options: ["Unassigned", ...managerOwnerOptions()] },
     { id: "investment", name: "Investment capacity", type: "select", options: Array.from(new Set(leadSet.map(lead => lead.investment).filter((value): value is string => Boolean(value)))) },
     { id: "leadStatus", name: "Lead status", type: "select", options: Array.from(new Set(leadSet.map(lead => lead.status))) },
     { id: "notes", name: "Lead notes", type: "text" },
-    { id: "created", name: "Created on", type: "text" },
+    { id: "created", name: "Created on", type: "text", placeholder: "Enter a creation date" },
   ], []);
   const historyAdvancedFilterFields: LeadFilterField[] = useMemo(() => [
-    { id: "opportunityId", name: "Opportunity ID", type: "text" },
+    { id: "opportunityId", name: "Enquiry ID", type: "text", placeholder: "Enter an enquiry ID" },
     { id: "leadId", name: "Lead ID", type: "text" },
-    { id: "assignmentType", name: "Assignment type", type: "select", options: ["Initial Assignment", "Reassignment", "Transfer"] },
-    { id: "previousOwner", name: "Previous owner", type: "select", options: Array.from(new Set(history.map(item => item.previousOwner))) },
-    { id: "newOwner", name: "New owner", type: "select", options: Array.from(new Set(history.map(item => item.newOwner))) },
-    { id: "assignedBy", name: "Assigned by", type: "select", options: Array.from(new Set(history.map(item => item.assignedBy))) },
+    { id: "assignmentType", name: "Assignment type", type: "select", placeholder: "Select an assignment type", options: ["Initial Assignment", "Reassignment", "Transfer"] },
+    { id: "previousOwner", name: "Previous owner", type: "select", placeholder: "Select a previous owner", options: Array.from(new Set(history.map(item => item.previousOwner))) },
+    { id: "newOwner", name: "New owner", type: "select", placeholder: "Select a new owner", options: Array.from(new Set(history.map(item => item.newOwner))) },
+    { id: "assignedBy", name: "Assigned by", type: "select", placeholder: "Select who made the assignment", options: Array.from(new Set(history.map(item => item.assignedBy))) },
     { id: "previousTeam", name: "Previous department / team", type: "text" },
     { id: "newTeam", name: "New department / team", type: "text" },
     { id: "date", name: "Date and time", type: "text" },
@@ -315,6 +321,7 @@ export function AssignmentWorkspace() {
   }, []);
 
   useEffect(() => {
+    setColumnIds(readTableColumns(assignmentColumnScope, activeProfile.id, assignmentAvailableColumns, ["opportunity"], assignmentDefaultIds));
     setHistoryColumnIds(readTableColumns(historyColumnScope, activeProfile.id, assignmentHistoryColumns, ["opportunityId"], historyDefaultIds));
   }, [activeProfile.id]);
 
@@ -366,7 +373,7 @@ export function AssignmentWorkspace() {
   const assignmentDateCutoff = assignmentDateFilter === "Last 7 days" || assignmentDateFilter === "Last 30 days"
     ? new Date(Date.now() - (assignmentDateFilter === "Last 7 days" ? 7 : 30) * 24 * 60 * 60 * 1000)
     : null;
-  const filteredLeads = leadSet.filter(lead => {
+  const matchingLeads = leadSet.filter(lead => {
     const assignment = assignments[lead.id];
     const owner = assignment ? ownerLabel(assignment) : "";
     const query = search.trim().toLowerCase();
@@ -379,12 +386,13 @@ export function AssignmentWorkspace() {
       && (categoryFilter === "All categories" || lead.category === categoryFilter)
       && (stageFilter === "All stages" || assignment?.stage === stageFilter)
       && inAssignmentDateRange
-      && (!advancedFilters || matchesAssignmentRules(lead, assignment, advancedFilters));
+      && (!favouritesOnly || favouriteIds.has(lead.code));
   });
+  const filteredLeads = matchingLeads.filter(lead => !advancedFilters || matchesAssignmentRules(lead, assignments[lead.id], advancedFilters));
   const dateCutoff = historyDateFilter === "Last 7 days" || historyDateFilter === "Last 30 days"
     ? new Date(Date.now() - (historyDateFilter === "Last 7 days" ? 7 : 30) * 24 * 60 * 60 * 1000)
     : null;
-  const filteredHistory = tab === "Assignment History" ? history.filter(item => {
+  const matchingHistory = tab === "Assignment History" ? history.filter(item => {
     const query = historySearch.trim().toLowerCase();
     const assignedAt = new Date(`${item.assignmentDate} ${item.assignmentTime}`);
     const inDateRange = historyDateFilter === "All dates"
@@ -392,10 +400,10 @@ export function AssignmentWorkspace() {
       || (dateCutoff !== null && assignedAt >= dateCutoff);
     return (!query || [item.opportunityId, item.leadId, item.previousOwner, item.newOwner, item.assignedBy, item.assignmentReason, item.assignmentType, item.assignmentDate, item.assignmentTime, item.previousTeam, item.newTeam].some(value => value.toLowerCase().includes(query)))
       && (historyTypeFilter === "All types" || item.assignmentType === historyTypeFilter)
-      && (historyAssignedByFilter === "All assigned by" || item.assignedBy === historyAssignedByFilter)
-      && inDateRange
-      && (!historyAdvancedFilters || matchesHistoryRules(item, historyAdvancedFilters));
+      && (historyAssignedByFilter === "All assigners" || item.assignedBy === historyAssignedByFilter)
+      && inDateRange;
   }) : [];
+  const filteredHistory = matchingHistory.filter(item => !historyAdvancedFilters || matchesHistoryRules(item, historyAdvancedFilters));
   const pageSize = 10;
   const pages = Math.max(1, Math.ceil((tab === "Assign Leads" ? filteredLeads.length : filteredHistory.length) / pageSize));
   const currentPage = Math.min(page, pages);
@@ -407,6 +415,7 @@ export function AssignmentWorkspace() {
   const visibleAssignmentColumns = columnIds.length ? columnIds : assignmentDefaultIds;
   const tableColumns = [
     { id: "select", name: "" },
+    { id: "favourite", name: "Favourite" },
     ...visibleAssignmentColumns.map(id => assignmentAvailableColumns.find(column => column.id === id)).filter((column): column is (typeof assignmentAvailableColumns)[number] => Boolean(column)),
   ];
   const visibleHistoryColumns = historyColumnIds.length ? historyColumnIds : historyDefaultIds;
@@ -487,7 +496,7 @@ export function AssignmentWorkspace() {
       <span className="assignment-user-avatar">{personInitials(activeProfile.name)}</span><span className="assignment-profile-name">{activeProfile.name}</span><RiArrowDownSLine aria-hidden="true" />
     </DropdownTrigger>
     <DropdownPopover aria-label="Switch profile" placement="bottom end" className="assignment-profile-popover w-[280px]">
-      {activeCrmProfiles.map(profile => <DropdownItem key={profile.id} selected={profile.id === activeProfile.id} onSelect={() => { setActiveProfile(profile); saveActiveCrmRole(profile); setSelectedId(null); setChecked([]); }}>
+      {activeCrmProfiles.map(profile => <DropdownItem key={profile.id} selected={profile.id === activeProfile.id} onSelect={() => { setActiveProfile(profile); saveActiveCrmRole(profile); setSelectedId(null); setChecked([]); setPage(1); }}>
         <Avatar size="sm" src={portraitFor(profile.name)} initials={personInitials(profile.name)} alt="" />
         <span className="min-w-0"><span className="block truncate">{profile.label ?? profile.name}</span><span className="block text-caption-1-regular text-text-tertiary">{profile.title}</span></span>
       </DropdownItem>)}
@@ -503,26 +512,32 @@ export function AssignmentWorkspace() {
         </div>
 
         {tab === "Assign Leads" ? <section className="assignment-table-panel">
-          <div className="assignment-toolbar assignment-leads-toolbar">
-            <SearchField aria-label="Search opportunities" placeholder="Search opportunities…" value={search} onChange={value => { setSearch(value); setPage(1); }} className="assignment-search-field" fieldClassName="bg-background-primary-default" />
-            <Select aria-label="Filter by assignment stage" selectedKey={stageFilter} onSelectionChange={key => { setStageFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All stages" id="All stages">All stages</SelectItem>{stages.map(stage => <SelectItem key={stage} id={stage}>{stage}</SelectItem>)}</Select>
-            <Select aria-label="Filter by source" selectedKey={sourceFilter} onSelectionChange={key => { setSourceFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All sources" id="All sources">All sources</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.source))).map(source => <SelectItem key={source} id={source}>{source}</SelectItem>)}</Select>
-            <Select aria-label="Filter by category" selectedKey={categoryFilter} onSelectionChange={key => { setCategoryFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All categories" id="All categories">All categories</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.category))).map(category => <SelectItem key={category} id={category}>{category}</SelectItem>)}</Select>
-            <Select aria-label="Filter opportunities by date" selectedKey={assignmentDateFilter} onSelectionChange={key => { setAssignmentDateFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-leads-date-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All dates" id="All dates">All dates</SelectItem>{["Last 7 days", "Last 30 days", "This month"].map(range => <SelectItem key={range} id={range}>{range}</SelectItem>)}</Select>
-            <Button size="small" iconOnly aria-label={advancedFilterCount ? `Advanced filters, ${advancedFilterCount} applied` : "Advanced filters"} title="Advanced filters" className="assignment-filter-advanced-button" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setAdvancedFiltersOpen(current => !current)} />
-            <Button size="small" variant="secondary" leadingIcon={RiSettings3Line} onClick={() => setColumnManagerOpen(true)}>Columns</Button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-separator-border px-3 py-2">
+            <Button size="small" variant={favouritesOnly ? "ghost" : "primary"} aria-pressed={!favouritesOnly} onClick={() => { setFavouritesOnly(false); setChecked([]); setPage(1); }}>All enquiries</Button>
+            <Button className="assignment-favourites-list-button" size="small" variant={favouritesOnly ? "primary" : "ghost"} leadingIcon={favouritesOnly ? RiStarFill : RiStarLine} aria-pressed={favouritesOnly} onClick={() => { setFavouritesOnly(true); setChecked([]); setPage(1); }}>Favourites ({favouritesCount})</Button>
           </div>
-          <div className={`assignment-list-body ${advancedFiltersOpen ? "has-advanced-filters" : ""}`}>
-          {advancedFiltersOpen && <AdvancedLeadFilters className="assignment-advanced-filter-panel" fields={advancedFilterFields} scope="assignment:opportunities" userId={activeProfile.id} resultCount={filteredLeads.length} countFor={filters => filters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length} activeFilterCount={advancedFilterCount} initialFilters={advancedFilters ?? emptyAssignmentFilters} onApply={filters => { setAdvancedFilters(filters); setPage(1); }} onClear={() => { setAdvancedFilters(null); setPage(1); }} onClose={() => setAdvancedFiltersOpen(false)} title="Filter opportunities by" description="Build and save an assignment view." recordLabel="opportunities" showRelatedRecords={false} searchPlaceholder="Search opportunity fields" />}
+          <div className="assignment-toolbar assignment-leads-toolbar">
+            <SearchField aria-label="Search enquiries by name, phone, email or enquiry ID" placeholder="Search enquiries" value={search} onChange={value => { setSearch(value); setPage(1); }} className="assignment-search-field" fieldClassName="bg-background-primary-default" />
+            <Select aria-label="Filter by assignment stage" selectedKey={stageFilter} onSelectionChange={key => { setStageFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All stages" id="All stages">All stages</SelectItem>{stages.map(stage => <SelectItem key={stage} id={stage}>{stage}</SelectItem>)}</Select>
+            <Select aria-label="Filter by lead source" selectedKey={sourceFilter} onSelectionChange={key => { setSourceFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All sources" id="All sources">All sources</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.source))).map(source => <SelectItem key={source} id={source}>{source}</SelectItem>)}</Select>
+            <Select aria-label="Filter by enquiry category" selectedKey={categoryFilter} onSelectionChange={key => { setCategoryFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All categories" id="All categories">All categories</SelectItem>{Array.from(new Set(leadSet.map(lead => lead.category))).map(category => <SelectItem key={category} id={category}>{category}</SelectItem>)}</Select>
+            <Select aria-label="Filter enquiries by date" selectedKey={assignmentDateFilter} onSelectionChange={key => { setAssignmentDateFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-leads-date-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All dates" id="All dates">All dates</SelectItem>{["Last 7 days", "Last 30 days", "This month"].map(range => <SelectItem key={range} id={range}>{range}</SelectItem>)}</Select>
+            <div className="assignment-toolbar-actions">
+              <Button size="small" aria-label={advancedFilterCount ? `Advanced filters, ${advancedFilterCount} applied` : "Advanced filters"} aria-expanded={advancedFiltersOpen} aria-controls="assignment-advanced-filters" title="Advanced filters" variant={advancedFiltersOpen || advancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setAdvancedFiltersOpen(current => !current)}><span className="assignment-toolbar-action-label">{advancedFilterCount ? `Filters (${advancedFilterCount})` : "Advanced filters"}</span></Button>
+              <Button size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} aria-label="Customize columns" title="Customize columns" onClick={() => setColumnManagerOpen(true)}><span className="assignment-toolbar-action-label">Customize columns</span></Button>
+            </div>
+          </div>
+          <div className={cx("assignment-list-body", advancedFiltersOpen && "has-advanced-filters")}>
           <div className="assignment-list-main">
           {checked.length > 0 ? <div className="assignment-bulk-row"><span>{checked.length} selected</span><Button size="small" leadingIcon={RiArrowRightLine} onClick={() => { const lead = leadSet.find(item => item.id === checked[0]); if (lead) openAssignment(lead); }}>Assign selected</Button><Button size="small" variant="ghost" onClick={() => setChecked([])}>Clear selection</Button></div> : null}
           <div className="assignment-table-scroll">
-            <Table key={`assignment:${visibleAssignmentColumns.join(",")}`} aria-label="Opportunities for assignment" size="sm" className="assignment-record-table" containerClassName="assignment-table-overflow" selectionMode="multiple" selectedKeys={new Set(checked)} onSelectionChange={(keys: Selection) => setChecked(keys === "all" ? leadRows.map(lead => lead.id) : Array.from(keys, key => String(key)))} onRowAction={key => { const lead = leadSet.find(item => item.id === String(key)); if (lead) openAssignment(lead); }}>
-              <TableHeader columns={tableColumns}>{column => <TableColumn className={column.id === "owner" || column.id === "stage" ? "assignment-centered-header" : undefined} isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.id === "select" ? <Checkbox slot="selection" aria-label="Select all opportunities" /> : column.name}</TableColumn>}</TableHeader>
-              <TableBody items={leadRows}>
-                {lead => <TableRow columns={tableColumns} className="assignment-record-row cursor-pointer outline-none">
-                  {column => <TableCell className={column.id === "owner" || column.id === "stage" ? "assignment-centered-cell" : undefined}>
+            <Table key={`assignment:${visibleAssignmentColumns.join(",")}`} aria-label="Enquiries for assignment" size="sm" className="assignment-record-table" containerClassName="assignment-table-overflow" selectionMode="multiple" selectedKeys={new Set(checked)} onSelectionChange={(keys: Selection) => setChecked(keys === "all" ? leadRows.map(lead => lead.id) : Array.from(keys, key => String(key)))} onRowAction={key => { const lead = leadSet.find(item => item.id === String(key)); if (lead) openAssignment(lead); }}>
+              <TableHeader columns={tableColumns}>{column => <TableColumn className={cx(`assignment-column-${column.id}`, (column.id === "owner" || column.id === "stage") && "assignment-centered-header")} aria-label={column.id === "favourite" ? "Favourite" : undefined} isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}</TableColumn>}</TableHeader>
+              <TableBody items={leadRows} dependencies={[favouriteIds, assignments]}>
+                {lead => <TableRow columns={tableColumns} dependencies={[lead, favouriteIds.has(lead.code), assignments[lead.id]]} className="assignment-record-row cursor-pointer outline-none">
+                  {column => <TableCell className={cx(`assignment-column-${column.id}`, (column.id === "owner" || column.id === "stage") && "assignment-centered-cell")}>
                     {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${lead.name}`} />}
+                    {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(lead.code) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(lead.code) ? "Remove" : "Add"} ${lead.name} ${favouriteIds.has(lead.code) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(lead.code)} title={favouriteIds.has(lead.code) ? "Remove from favourites" : "Add to favourites"} className="assignment-favourite-button border-0 bg-transparent text-foreground-icon-secondary shadow-none" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(lead.code); }} />}
                     {column.id === "opportunity" && <span className="assignment-opportunity"><strong>{lead.name}</strong><small>{lead.code}</small></span>}
                     {column.id === "source" && <span className={`assignment-source source-${lead.source.toLowerCase().replace(/[^a-z]/g, "")}`}>{lead.source}</span>}
                     {column.id === "category" && <span className="assignment-category">{lead.category}</span>}
@@ -539,22 +554,24 @@ export function AssignmentWorkspace() {
                 </TableRow>}
               </TableBody>
             </Table>
-            {leadRows.length === 0 ? <div className="assignment-empty-state">No opportunities match these filters.</div> : null}
+            {leadRows.length === 0 ? <div className="assignment-empty-state">{favouritesOnly ? "No favourite enquiries match these filters. Star an enquiry to save it here." : "No enquiries match these filters."}</div> : null}
           </div>
-          <div className="assignment-pager"><span>Showing {visibleCount ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, visibleCount)} of {visibleCount} opportunities</span><div><button aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><RiArrowLeftSLine /></button><span>Page {currentPage} of {pages}</span><button aria-label="Next page" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}><RiArrowRightSLine /></button></div></div>
+          <div className="assignment-pager"><span>Showing {visibleCount ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, visibleCount)} of {visibleCount} enquiries</span><div><button aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><RiArrowLeftSLine /></button><span>Page {currentPage} of {pages}</span><button aria-label="Next page" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}><RiArrowRightSLine /></button></div></div>
           </div>
+          {advancedFiltersOpen && <AdvancedLeadFilters id="assignment-advanced-filters" className="assignment-advanced-filter-panel" fields={advancedFilterFields} scope="assignment:opportunities" userId={activeProfile.id} resultCount={filteredLeads.length} countFor={filters => matchingLeads.filter(lead => matchesAssignmentRules(lead, assignments[lead.id], filters)).length} activeFilterCount={advancedFilterCount} initialFilters={advancedFilters ?? emptyAssignmentFilters} onApply={filters => { setAdvancedFilters(filters); setPage(1); }} onClear={() => { setAdvancedFilters(null); setPage(1); }} onClose={() => setAdvancedFiltersOpen(false)} title="Filter enquiries by" description="Build and save an assignment view." recordLabel="enquiries" searchPlaceholder="Find a field" />}
           </div>
         </section> : <section className="assignment-table-panel assignment-history-panel">
           <div className="assignment-toolbar assignment-history-toolbar">
-            <SearchField aria-label="Search assignment history" placeholder="Search history…" value={historySearch} onChange={value => { setHistorySearch(value); setPage(1); }} className="assignment-search-field" fieldClassName="bg-background-primary-default" />
+            <SearchField aria-label="Search assignment history" placeholder="Search assignment history" value={historySearch} onChange={value => { setHistorySearch(value); setPage(1); }} className="assignment-search-field" fieldClassName="bg-background-primary-default" />
             <Select aria-label="Filter by assignment type" selectedKey={historyTypeFilter} onSelectionChange={key => { setHistoryTypeFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-history-type-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All types" id="All types">All types</SelectItem>{["Initial Assignment", "Reassignment", "Transfer"].map(type => <SelectItem key={type} id={type}>{type}</SelectItem>)}</Select>
-            <Select aria-label="Filter assignment history by assigned by" selectedKey={historyAssignedByFilter} onSelectionChange={key => { setHistoryAssignedByFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-history-assigned-by-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All assigned by" id="All assigned by">All assigned by</SelectItem>{Array.from(new Set(history.map(item => item.assignedBy))).map(name => <SelectItem key={name} id={name}>{name}</SelectItem>)}</Select>
+            <Select aria-label="Filter by who made the assignment" selectedKey={historyAssignedByFilter} onSelectionChange={key => { setHistoryAssignedByFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-history-assigned-by-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All assigners" id="All assigners">All assigners</SelectItem>{Array.from(new Set(history.map(item => item.assignedBy))).map(name => <SelectItem key={name} id={name}>{name}</SelectItem>)}</Select>
             <Select aria-label="Filter assignment history by date" selectedKey={historyDateFilter} onSelectionChange={key => { setHistoryDateFilter(String(key)); setPage(1); }} size="sm" className="assignment-filter assignment-history-date-filter" triggerClassName="w-full" popoverClassName="w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)] assignment-option-menu"><SelectItem key="All dates" id="All dates">All dates</SelectItem>{["Last 7 days", "Last 30 days", "This month"].map(range => <SelectItem key={range} id={range}>{range}</SelectItem>)}</Select>
-            <Button size="small" iconOnly aria-label={historyAdvancedFilterCount ? `Advanced history filters, ${historyAdvancedFilterCount} applied` : "Advanced history filters"} title="Advanced filters" className="assignment-filter-advanced-button" variant={historyAdvancedFiltersOpen || historyAdvancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setHistoryAdvancedFiltersOpen(current => !current)} />
-            <Button size="small" variant="secondary" leadingIcon={RiSettings3Line} onClick={() => setColumnManagerOpen(true)}>Columns</Button>
+            <div className="assignment-toolbar-actions">
+              <Button size="small" aria-label={historyAdvancedFilterCount ? `Advanced filters, ${historyAdvancedFilterCount} applied` : "Advanced filters"} aria-expanded={historyAdvancedFiltersOpen} aria-controls="assignment-history-filters" title="Advanced filters" variant={historyAdvancedFiltersOpen || historyAdvancedFilterCount > 0 ? "primary" : "secondary"} leadingIcon={RiFilter3Line} onClick={() => setHistoryAdvancedFiltersOpen(current => !current)}><span className="assignment-toolbar-action-label">{historyAdvancedFilterCount ? `Filters (${historyAdvancedFilterCount})` : "Advanced filters"}</span></Button>
+              <Button size="small" variant="secondary" leadingIcon={RiLayoutColumnLine} aria-label="Customize columns" title="Customize columns" onClick={() => setColumnManagerOpen(true)}><span className="assignment-toolbar-action-label">Customize columns</span></Button>
+            </div>
           </div>
-          <div className={`assignment-history-layout ${historyAdvancedFiltersOpen ? "has-advanced-filters" : ""}`}>
-            {historyAdvancedFiltersOpen && <AdvancedLeadFilters className="assignment-history-advanced-filter-panel" fields={historyAdvancedFilterFields} scope="assignment:history" userId={activeProfile.id} resultCount={filteredHistory.length} countFor={filters => filters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length} activeFilterCount={historyAdvancedFilterCount} initialFilters={historyAdvancedFilters ?? emptyHistoryFilters} onApply={filters => { setHistoryAdvancedFilters(filters); setPage(1); }} onClear={() => { setHistoryAdvancedFilters(null); setPage(1); }} onClose={() => setHistoryAdvancedFiltersOpen(false)} title="Filter assignment history by" description="Combine owner, date, and assignment details." recordLabel="records" showRelatedRecords={false} searchPlaceholder="Search history fields" />}
+          <div className={cx("assignment-history-layout", historyAdvancedFiltersOpen && "has-advanced-filters")}>
             <div className="assignment-history-main">
           <div className="assignment-table-scroll"><Table key={`assignment-history:${visibleHistoryColumns.join(",")}`} aria-label="Assignment history" size="sm" className="assignment-history-table" containerClassName="assignment-table-overflow"><TableHeader columns={visibleHistoryColumnDefs}>{column => <TableColumn className={`assignment-history-column-${column.id}`} isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.name}</TableColumn>}</TableHeader><TableBody items={historyRows}>{item => <TableRow columns={visibleHistoryColumnDefs}>{column => <TableCell className={`assignment-history-column-${column.id}`}>
             {column.id === "opportunityId" && <span className="assignment-history-id"><strong>{item.opportunityId}</strong><small>{item.leadId}</small></span>}
@@ -569,6 +586,7 @@ export function AssignmentWorkspace() {
           </TableCell>}</TableRow>}</TableBody></Table>{historyRows.length === 0 ? <div className="assignment-empty-state">No assignment history matches these filters.</div> : null}</div>
           <div className="assignment-pager"><span>Showing {visibleCount ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, visibleCount)} of {visibleCount} records</span><div><button aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}><RiArrowLeftSLine /></button><span>Page {currentPage} of {pages}</span><button aria-label="Next page" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}><RiArrowRightSLine /></button></div></div>
             </div>
+            {historyAdvancedFiltersOpen && <AdvancedLeadFilters id="assignment-history-filters" className="assignment-history-advanced-filter-panel" fields={historyAdvancedFilterFields} scope="assignment:history" userId={activeProfile.id} resultCount={filteredHistory.length} countFor={filters => matchingHistory.filter(item => matchesHistoryRules(item, filters)).length} activeFilterCount={historyAdvancedFilterCount} initialFilters={historyAdvancedFilters ?? emptyHistoryFilters} onApply={filters => { setHistoryAdvancedFilters(filters); setPage(1); }} onClear={() => { setHistoryAdvancedFilters(null); setPage(1); }} onClose={() => setHistoryAdvancedFiltersOpen(false)} title="Filter assignment history by" description="Combine owner, date, and assignment details." recordLabel="records" searchPlaceholder="Find a field" />}
           </div>
         </section>}
       </div>
@@ -604,7 +622,7 @@ export function AssignmentWorkspace() {
             <span><small>Team path · department / team</small><strong>{teamPathLabel(previousTeam)} → {teamPathLabel(newTeam)}</strong></span><span><small>Urgency</small><strong>{urgency}</strong></span><span><small>Recorded</small><strong>{previewDateTime.date}, {previewDateTime.time}</strong></span>
           </div>
         </ModalBody>
-        <ModalFooter className="assignment-modal-footer"><Button variant="secondary" onClick={() => { setSelectedId(null); setChecked([]); }}>Cancel</Button><Button leadingIcon={RiArrowRightLine} onClick={saveAssignments} disabled={!reason.trim() || (targetRole !== "Central Allocation" && !assignee)}>{targetRole === "Central Allocation" ? "Return to Central Allocation" : `Assign to ${targetRole === "Reporting Manager" ? "Manager" : "BDA"}`}</Button></ModalFooter>
+        <ModalFooter className="assignment-modal-footer"><Button variant="secondary" onClick={() => { setSelectedId(null); setChecked([]); setPage(1); }}>Cancel</Button><Button leadingIcon={RiArrowRightLine} onClick={saveAssignments} disabled={!reason.trim() || (targetRole !== "Central Allocation" && !assignee)}>{targetRole === "Central Allocation" ? "Return to Central Allocation" : `Assign to ${targetRole === "Reporting Manager" ? "Manager" : "BDA"}`}</Button></ModalFooter>
       </> : null}
     </Modal>
     {tab === "Assign Leads" ? <ColumnManagerModal isOpen={columnManagerOpen} onOpenChange={setColumnManagerOpen} availableColumns={assignmentAvailableColumns} selectedIds={visibleAssignmentColumns} requiredIds={["opportunity"]} isSuperAdmin={activeProfile.title === "Superadmin"} scopeLabel="lead assignment" onSave={saveAssignmentColumns} /> : <ColumnManagerModal isOpen={columnManagerOpen} onOpenChange={setColumnManagerOpen} availableColumns={assignmentHistoryColumns} selectedIds={visibleHistoryColumns} requiredIds={["opportunityId"]} isSuperAdmin={activeProfile.title === "Superadmin"} scopeLabel="assignment history" onSave={saveHistoryColumns} />}

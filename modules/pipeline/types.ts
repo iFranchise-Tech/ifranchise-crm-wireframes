@@ -1,3 +1,5 @@
+import type { Activity, Enquiry } from "@/modules/leads/types";
+
 export type PipelineStage = {
   id: string;
   name: string;
@@ -38,6 +40,9 @@ export type Opportunity = {
   activities?: { id: string; title: string; at: string; note: string }[];
   lostReason?: string;
   history: { stage: string; at: string; note?: string }[];
+  leadDetails?: Partial<Enquiry>;
+  leadActivities?: Activity[];
+  hiddenActivityIds?: string[];
 };
 
 export type PipelineActivity = {

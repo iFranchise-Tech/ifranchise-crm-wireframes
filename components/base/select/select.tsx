@@ -24,6 +24,7 @@ import {
 import { Label } from "@/components/base/input/label";
 import { ChevronDownSmall } from "@/components/foundations/icons/chevrons";
 import { cx } from "@/utils/cx";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
 import { useDismissOnOutsidePress, useTriggerToggle } from "@/utils/use-dismiss-on-outside-press";
 
 /**
@@ -56,7 +57,7 @@ export interface SelectProps<T extends object>
   extends Omit<AriaSelectProps<T>, "children"> {
   /** Visible label above the trigger; React Aria wires it as the select's accessible name. */
   label?: ReactNode;
-  /** Trigger width. Defaults to hug content; the menu uses the shared 266px width. */
+  /** Trigger width. The menu fits its contents and is at least as wide as the trigger. */
   className?: string;
   triggerClassName?: string;
   /** Classes for the open popover (e.g. constrain its width). */
@@ -94,6 +95,7 @@ export function Select<T extends object>({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const menuFade = useScrollFade();
   useDismissOnOutsidePress(isOpen, () => setIsOpen(false), [triggerRef, popoverRef]);
   // Pressing the trigger while open closes the popover instead of reopening
   const allowOpenChange = useTriggerToggle(isOpen, triggerRef);
@@ -103,7 +105,7 @@ export function Select<T extends object>({
       ref={ref}
       {...props}
       isOpen={isOpen}
-      onOpenChange={(o) => allowOpenChange(o) && setIsOpen(o)}
+      onOpenChange={(o) => { if (allowOpenChange(o)) { menuFade.reset(); setIsOpen(o); } }}
       className={cx("group flex flex-col", label ? "gap-1" : undefined, className)}
     >
       {({ isOpen, isRequired }) => (
@@ -145,8 +147,9 @@ export function Select<T extends object>({
             ref={popoverRef}
             isNonModal
             offset={4}
+            placement="bottom start"
             className={cx(
-              "w-max min-w-full max-w-[calc(100vw-32px)]",
+              "w-max min-w-(--trigger-width) max-w-[calc(100vw-32px)]",
               MENU_POPOVER_SURFACE,
               // Listbox rows already space themselves 4px apart, so the
               // surface sits a touch tighter than the action-menu Dropdown.
@@ -154,12 +157,16 @@ export function Select<T extends object>({
               popoverClassName,
             )}
           >
-            <AriaListBox
-              items={items}
-              className={cx(MENU_ITEMS_CONTAINER, "max-h-[240px] overflow-auto")}
-            >
-              <SelectSizeContext.Provider value={size}>{children}</SelectSizeContext.Provider>
-            </AriaListBox>
+            <div className="relative min-h-0">
+              <AriaListBox
+                items={items}
+                onScroll={menuFade.onScroll}
+                className={cx(MENU_ITEMS_CONTAINER, "max-h-60 overflow-auto")}
+              >
+                <SelectSizeContext.Provider value={size}>{children}</SelectSizeContext.Provider>
+              </AriaListBox>
+              <ScrollFade progress={menuFade.progress} />
+            </div>
           </AriaPopover>
         </>
       )}
