@@ -28,6 +28,7 @@ import {
   RiMoreLine,
   RiPushpinLine,
   RiDeleteBinLine,
+  RiDownloadLine,
   RiFileCopyLine,
   RiBold,
   RiItalic,
@@ -59,6 +60,8 @@ import { Input } from "@/components/base/input/input";
 import { Select, SelectItem } from "@/components/base/select/select";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { portraitFor } from "@/modules/users-roles/portrait";
+import { invoices as brandInvoices, inr, shortDate } from "@/modules/brands/data";
+import type { Invoice } from "@/modules/brands/types";
 import type { Activity, Enquiry, EnquiryStatus } from "../types";
 import { brands, enquiryStatuses, originalSources, timelines } from "../types";
 import { cityOptions, formatLeadDate, LeadSelect, stateForCity, stateOptions, SuggestField } from "./lead-fields";
@@ -243,6 +246,7 @@ function LeadStageTracker({ stage, stageNames = leadStages, onChange }: { stage:
 }
 
 type EnquiryDoc = { id: string; name: string; type: string; size: string; by: string; when: string; previewUrl?: string };
+type EnquiryInvoiceFile = EnquiryDoc;
 
 const sampleDocs: EnquiryDoc[] = [
   { id: "doc-1", name: "Franchise Deck.pdf", type: "PDF", size: "4.2 MB", by: "Himani Bhargava Tapadiya", when: "12 Nov 2026, 4:00 PM" },
@@ -250,6 +254,13 @@ const sampleDocs: EnquiryDoc[] = [
   { id: "doc-3", name: "Site Photos.zip", type: "ZIP", size: "12.6 MB", by: "Himani Bhargava Tapadiya", when: "7 Nov 2026, 2:15 PM" },
   { id: "doc-4", name: "Location Map.png", type: "PNG", size: "624 KB", by: "Swetha Chintada", when: "4 Nov 2026, 10:30 AM" },
 ];
+
+const sampleLeadInvoices: Record<string, Invoice[]> = {
+  "ENQ-2401": [
+    { id: "INV-ENQ-2401-001", brandId: "brew", opportunityId: "OPP-1001", date: "2026-11-12", amount: 250000, status: "Pending" },
+    { id: "INV-ENQ-2401-002", brandId: "brew", opportunityId: "OPP-1001", date: "2026-11-10", amount: 50000, status: "Partially Paid" },
+  ],
+};
 
 function fileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -313,12 +324,10 @@ export function EnquiryDetail({
   const customerMeetings = canViewActions ? meetingState.meetings.filter(item => item.recordId === enquiry.id) : [];
   const actionHistory: FeedItem[] = [...customerFollowUps.flatMap(item => item.history.map(event => ({ id: event.id, kind: "follow" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "follow-up" as const, id: item.id } }))), ...customerMeetings.flatMap(item => item.history.map(event => ({ id: event.id, kind: "meeting" as const, title: event.action, when: event.at, body: event.detail, person: event.actor, entity: { kind: "meeting" as const, id: item.id } })))];
   const [tab, setTab] = useState("Activity History");
-  const profileColumnRef = useRef<HTMLElement | null>(null);
-  const detailMainRef = useRef<HTMLElement | null>(null);
-  const [activityHistoryHeight, setActivityHistoryHeight] = useState<number>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsView, setActionsView] = useState<"main" | "status" | "stage">("main");
   const [emailMenuOpen, setEmailMenuOpen] = useState(false);
+  const [pipelineVisible, setPipelineVisible] = useState(false);
   const [leadActionDialog, setLeadActionDialog] = useState<LeadActionDialog | null>(null);
   const [pendingStage, setPendingStage] = useState<string | null>(null);
   const [emailPrefill, setEmailPrefill] = useState({ subject: "", message: "" });
@@ -327,33 +336,31 @@ export function EnquiryDetail({
   const [draft, setDraft] = useState<Draft>(() => snapshot(enquiry));
   const [activityTypeFilter, setActivityTypeFilter] = useState("All selected");
   const [activityTimeFilter, setActivityTimeFilter] = useState("All Time");
+  const [sectionTimeFilter, setSectionTimeFilter] = useState("All Time");
   const [docs, setDocs] = useState<EnquiryDoc[]>(sampleDocs);
+  const [invoiceFiles, setInvoiceFiles] = useState<EnquiryInvoiceFile[]>([]);
+  const [removedInvoiceIds, setRemovedInvoiceIds] = useState<string[]>([]);
   useEffect(() => {
     setEditing(false);
     setDraft(snapshot(enquiry));
     setActivityTypeFilter("All selected");
     setActivityTimeFilter("All Time");
+    setSectionTimeFilter("All Time");
     setDocs(sampleDocs);
+    setInvoiceFiles([]);
+    setRemovedInvoiceIds([]);
+    setPipelineVisible(false);
   }, [enquiry.id]);
-  useEffect(() => {
-    if (tab !== "Activity History") { setActivityHistoryHeight(undefined); return; }
-    const profile = profileColumnRef.current;
-    const tabs = detailMainRef.current?.querySelector<HTMLElement>(".ld-tabs");
-    const measure = () => {
-      if (!profile || !tabs) return;
-      const next = Math.max(0, Math.round(profile.getBoundingClientRect().height - tabs.getBoundingClientRect().height - 14));
-      setActivityHistoryHeight(current => current === next ? current : next);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    if (profile) observer.observe(profile);
-    if (tabs) observer.observe(tabs);
-    window.addEventListener("resize", measure);
-    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
-  }, [tab, enquiry.id]);
   const followable = (item: Activity) => item.type !== "Other Communication" && !/note/i.test(item.title);
   const followUp = activities.find(item => followable(item) && (item.status === "Pending" || item.status === "Scheduled")) ?? [...activities].reverse().find(item => followable(item) && item.due);
   const followUps = activities.filter(followable);
+  const visibleFollowUps = customerFollowUps.filter(item => timeRangeMatches(item.dueAt, sectionTimeFilter));
+  const visibleTasks = followUps.filter(item => timeRangeMatches(item.due || item.when, sectionTimeFilter));
+  const visibleNotes = activities.filter(item => item.type === "Other Communication" || /note/i.test(item.title)).filter(item => timeRangeMatches(item.when, sectionTimeFilter));
+  const visibleSalesActivity = activities.filter(item => timeRangeMatches(item.when || item.due, sectionTimeFilter));
+  const linkedInvoices = [...(sampleLeadInvoices[enquiry.id] ?? []), ...brandInvoices.filter(item => item.opportunityId === customer.opportunityId)].filter(item => !removedInvoiceIds.includes(item.id));
+  const visibleInvoices = linkedInvoices.filter(item => timeRangeMatches(item.date, sectionTimeFilter));
+  const visibleInvoiceFiles = invoiceFiles.filter(item => timeRangeMatches(item.when, sectionTimeFilter));
   const view = editing ? draft : snapshot(enquiry);
   const facts = enquiry.category === "Job"
     ? [
@@ -420,6 +427,7 @@ export function EnquiryDetail({
         </div>
         <div className="ld-detail-actions">
           {editing ? <Button variant="secondary" size="small" onClick={() => setEditing(false)}>Cancel edit</Button> : null}
+          {enquiry.salesPipeline && !enquiry.disqualified && <Button variant="secondary" size="small" leadingIcon={RiStackLine} aria-expanded={pipelineVisible} onClick={() => setPipelineVisible(value => !value)}>{pipelineVisible ? "Hide Pipeline" : "View Pipeline"}</Button>}
           <Dropdown isOpen={emailMenuOpen} onOpenChange={setEmailMenuOpen}>
             <DropdownTrigger className="ld-email-trigger"><RiMailLine />Send Email<RiArrowDownSLine /></DropdownTrigger>
             <DropdownPopover aria-label="Send email actions" placement="bottom end" className="w-[240px] ld-action-menu" dialogClassName="text-body-medium">
@@ -453,10 +461,10 @@ export function EnquiryDetail({
         </div>
       </div>
 
-      {enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} stageNames={pipelineStages} onChange={onPipelineStageChange ?? setPendingStage} /> : null}
+      {pipelineVisible && enquiry.salesPipeline && !enquiry.disqualified ? <LeadStageTracker stage={enquiry.stage || leadStages[0]} stageNames={pipelineStages} onChange={onPipelineStageChange ?? setPendingStage} /> : null}
 
       <div className={`ld-detail-layout${tab === "Lead Details" ? " is-lead-details" : ""}${tab === "Activity History" ? " is-activity-history" : ""}`}>
-        <aside className="ld-profile-column" ref={profileColumnRef}>
+        <aside className="ld-profile-column">
           <section className="ld-hero">
             <div className="ld-profile-heading">
               <Avatar size="lg" initials={initials(enquiry.name)} alt="" className="ld-initials size-16" />
@@ -492,14 +500,16 @@ export function EnquiryDetail({
             <h3><RiGlobalLine />Social Profiles</h3>
             <SocialProfileList enquiry={enquiry} />
           </section>
+
         </aside>
 
-        <main className="ld-detail-main" ref={detailMainRef}>
+        <main className="ld-detail-main">
           <div className="ld-tabs" role="tablist" aria-label="Lead details sections">
-            {["Activity History", "Lead Details", "Follow-ups", "Tasks", "Notes", "Sales Activity", "Documents"].map(item => (
+            {["Activity History", "Lead Details", "Follow-ups", "Tasks", "Notes", "Sales Activity", "Documents", "Invoices"].map(item => (
               <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => { setTab(item); if (item === "Notes") setNoteComposerOpen(false); }}>{item}</button>
             ))}
           </div>
+
 
       {tab === "Lead Details" && (
         <div className="ld-detail-grid ld-lead-info-grid">
@@ -541,7 +551,6 @@ export function EnquiryDetail({
 
       {tab === "Activity History" && <ActivityHistory
         items={[...feedItems(enquiry, activities), ...actionHistory]}
-        panelHeight={activityHistoryHeight}
         onFollowUp={canManageActions ? source => setFollowUpComposer({ source }) : undefined}
         onOpenRecord={setActionDetail}
         typeFilter={activityTypeFilter}
@@ -550,15 +559,22 @@ export function EnquiryDetail({
         onTimeFilter={setActivityTimeFilter}
       />}
 
-      {tab === "Follow-ups" && <section className="ld-card flex flex-col gap-4 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3>Customer follow-ups</h3>{canManageActions && <Button size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}</div>{customerFollowUps.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-separator-border p-4"><div className="flex flex-col gap-1"><Button variant="ghost" size="small" className="self-start" onClick={() => setActionDetail({ kind: "follow-up", id: item.id })}>{item.title}</Button><p className="text-body-2-regular text-text-secondary">{item.assignedTo} · {displayTime(item.dueAt)} IST</p></div><StatusBadge status={followUpStatus(item, meetingNow)} /></div>)}{!customerFollowUps.length && <p className="text-body-regular text-text-secondary">No follow-ups in your authorised view.</p>}</section>}
+      {tab === "Follow-ups" && <section className="ld-card ld-filterable-page flex flex-col gap-4 p-5"><div className="ld-section-heading"><h3>Customer follow-ups</h3><div className="ld-section-actions"><SectionTimeSelect value={sectionTimeFilter} onChange={setSectionTimeFilter} label="Follow-ups" />{canManageActions && <Button size="small" leadingIcon={RiAddLine} onClick={() => setFollowUpComposer({})}>Create follow-up</Button>}</div></div>{visibleFollowUps.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-separator-border p-4"><div className="flex flex-col gap-1"><Button variant="ghost" size="small" className="self-start" onClick={() => setActionDetail({ kind: "follow-up", id: item.id })}>{item.title}</Button><p className="text-body-2-regular text-text-secondary">{item.assignedTo} · {displayTime(item.dueAt)} IST</p></div><StatusBadge status={followUpStatus(item, meetingNow)} /></div>)}{!visibleFollowUps.length && <p className="text-body-regular text-text-secondary">No follow-ups match this time range.</p>}</section>}
 
-      {tab === "Tasks" && <TasksPage items={followUps} owners={owners} onCreate={onCreateTask} onPatch={onPatchActivity} onDelete={onDeleteActivity} />}
+      {tab === "Tasks" && <TasksPage items={visibleTasks} owners={owners} onCreate={onCreateTask} onPatch={onPatchActivity} onDelete={onDeleteActivity} timeFilter={sectionTimeFilter} onTimeFilter={setSectionTimeFilter} />}
 
-      {tab === "Notes" && <NotesPage items={activities.filter(item => item.type === "Other Communication" || /note/i.test(item.title))} onCreate={onCreateNote} onPatch={onPatchActivity} onDelete={onDeleteActivity} openRequested={noteComposerOpen} onRequestConsumed={() => setNoteComposerOpen(false)} />}
+      {tab === "Notes" && <NotesPage items={visibleNotes} onCreate={onCreateNote} onPatch={onPatchActivity} onDelete={onDeleteActivity} openRequested={noteComposerOpen} onRequestConsumed={() => setNoteComposerOpen(false)} timeFilter={sectionTimeFilter} onTimeFilter={setSectionTimeFilter} />}
 
-      {tab === "Sales Activity" && <SalesActivityPage items={activities} />}
+      {tab === "Sales Activity" && <SalesActivityPage items={visibleSalesActivity} timeFilter={sectionTimeFilter} onTimeFilter={setSectionTimeFilter} />}
 
-      {tab === "Documents" && <Documents docs={docs} onChange={setDocs} />}
+      {tab === "Documents" && <Documents docs={docs} onChange={setDocs} timeFilter={sectionTimeFilter} onTimeFilter={setSectionTimeFilter} />}
+
+      {tab === "Invoices" && <LeadInvoices invoices={visibleInvoices} files={visibleInvoiceFiles} onUpload={files => {
+        if (!files?.length) return;
+        const stamp = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+        const next = [...files].map(file => ({ id: `invoice-${file.name}-${file.size}-${file.lastModified}`, name: file.name, type: fileType(file.name), size: fileSize(file.size), by: meetingProfile.name, when: stamp, previewUrl: URL.createObjectURL(file) }));
+        setInvoiceFiles(current => [...next, ...current]);
+      }} onRemove={id => setInvoiceFiles(current => current.filter(file => file.id !== id))} onRemoveInvoice={id => setRemovedInvoiceIds(current => [...current, id])} timeFilter={sectionTimeFilter} onTimeFilter={setSectionTimeFilter} />}
 
         </main>
       </div>
@@ -924,6 +940,25 @@ function FeedRow({ item }: { item: FeedItem }) {
 const activityTypeOptions = ["All selected", "Calls", "Meetings", "Follow-ups", "Emails", "Notes", "Form submissions", "Status Changes"] as const;
 const activityTimeOptions = ["All Time", "Today", "Last 7 days", "Last 30 days"] as const;
 
+function SectionTimeSelect({ value, onChange, label }: { value: string; onChange: (value: string) => void; label: string }) {
+  return <label className="ld-section-time-control"><span>Time</span><LeadSelect aria-label={`${label} time range`} selectedKey={value} onSelectionChange={key => onChange(String(key))} className="ld-section-time-select" triggerClassName="ld-history-select-trigger">{activityTimeOptions.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect></label>;
+}
+
+function timeRangeMatches(value: string | undefined, range: string) {
+  if (range === "All Time") return true;
+  if (!value) return false;
+  const parsed = Date.parse(value);
+  const timestamp = Number.isFinite(parsed) ? parsed : historyTimestamp(value);
+  if (!Number.isFinite(timestamp)) return false;
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (range === "Today") return timestamp >= today.getTime();
+  if (range === "Last 7 days") return timestamp >= now - 7 * 86_400_000;
+  if (range === "Last 30 days") return timestamp >= now - 30 * 86_400_000;
+  return true;
+}
+
 function historyTimestamp(value: string) {
   if (/^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) return Date.parse(value);
   const date = parseLeadDate(value);
@@ -945,7 +980,7 @@ function historyGroupLabel(timestamp: number) {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
-function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter, onFollowUp, onOpenRecord, panelHeight }: {
+function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFilter, onFollowUp, onOpenRecord }: {
   onFollowUp?: (source: ActivitySource) => void;
   onOpenRecord: (entity: { kind: "meeting" | "follow-up"; id: string }) => void;
   items: FeedItem[];
@@ -953,7 +988,6 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
   timeFilter: string;
   onTypeFilter: (value: string) => void;
   onTimeFilter: (value: string) => void;
-  panelHeight?: number;
 }) {
   const now = Date.now();
   const dayStart = new Date().setHours(0, 0, 0, 0);
@@ -983,7 +1017,7 @@ function ActivityHistory({ items, typeFilter, timeFilter, onTypeFilter, onTimeFi
     return result;
   }, []);
 
-  return <section className="ld-card ld-history-panel" style={panelHeight ? { height: panelHeight, flex: "none" } : undefined}>
+  return <section className="ld-card ld-history-panel">
     <div className="ld-history-controls">
       <label><span>Notable Activity Type</span><LeadSelect aria-label="Notable activity type" selectedKey={typeFilter} onSelectionChange={key => onTypeFilter(String(key))} className="ld-history-select" triggerClassName="ld-history-select-trigger">{activityTypeOptions.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect></label>
       <label><span>Time</span><LeadSelect aria-label="Activity time range" selectedKey={timeFilter} onSelectionChange={key => onTimeFilter(String(key))} className="ld-history-select" triggerClassName="ld-history-select-trigger">{activityTimeOptions.map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</LeadSelect></label>
@@ -1006,13 +1040,12 @@ function ActivityHistoryRow({ item, timestamp, onFollowUp, onOpenRecord }: { ite
     <time dateTime={date.toISOString()}><strong>{date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</strong><span>{date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></time>
     <span className="ld-history-icon"><Icon /></span>
     <div className="ld-history-copy">
-      <p><strong>{item.title}</strong>{item.body ? <>: {item.body}</> : null}</p>
+      <p><strong>{item.title}</strong>{item.body ? <>: {item.body}</> : null}{(item.source && onFollowUp || item.entity) && <span className="ld-history-inline-actions">
+        {item.source && onFollowUp && <button type="button" className="ld-history-action-link" onClick={() => onFollowUp(item.source!)}>Create follow-up</button>}
+        {item.entity && <button type="button" className="ld-history-action-link" onClick={() => onOpenRecord(item.entity!)}>View {item.entity.kind}</button>}
+      </span>}</p>
       {item.person && <em>Added by {item.person} on {date.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</em>}
-    </div>
-    <div className="ld-history-actions flex flex-col items-end gap-2">
-    {item.source && onFollowUp && <Button variant="secondary" size="small" onClick={() => onFollowUp(item.source!)}>Create follow-up</Button>}
-    {item.entity && <Button variant="secondary" size="small" onClick={() => onOpenRecord(item.entity!)}>View {item.entity.kind}</Button>}
-    {item.done && <span className="ld-history-status"><RiCheckboxCircleLine />Completed</span>}
+      {item.done && <span className="ld-history-status"><RiCheckboxCircleLine />Completed</span>}
     </div>
   </li>;
 }
@@ -1137,7 +1170,7 @@ function RichNoteEditor({ value, onChange, label = "Note Detail" }: { value: str
   </div>;
 }
 
-function TasksPage({ items, owners, onCreate, onPatch, onDelete }: { items: Activity[]; owners: string[]; onCreate: (task: TaskDraft) => void; onPatch: (id: string, patch: Partial<Activity>) => void; onDelete: (id: string) => void }) {
+function TasksPage({ items, owners, onCreate, onPatch, onDelete, timeFilter, onTimeFilter }: { items: Activity[]; owners: string[]; onCreate: (task: TaskDraft) => void; onPatch: (id: string, patch: Partial<Activity>) => void; onDelete: (id: string) => void; timeFilter: string; onTimeFilter: (value: string) => void }) {
   const [dialog, setDialog] = useState<"add" | "edit" | "view" | null>(null);
   const [selected, setSelected] = useState<Activity | null>(null);
   const [draft, setDraft] = useState<TaskDraft>(emptyTask(owners[0] ?? ""));
@@ -1157,7 +1190,7 @@ function TasksPage({ items, owners, onCreate, onPatch, onDelete }: { items: Acti
   const set = <K extends keyof TaskDraft>(key: K, value: TaskDraft[K]) => setDraft(current => ({ ...current, [key]: value }));
   const statusOptions = ["Scheduled", "In Progress", "Pending"] as const;
   return <section className="ld-card ld-tasks-page">
-    <div className="ld-section-heading"><div><h3>Tasks ({items.length})</h3><p>Track follow-ups and actions for this lead.</p></div><Button size="small" leadingIcon={RiAddLine} onClick={() => open("add")}>Add Task</Button></div>
+    <div className="ld-section-heading"><div><h3>Tasks ({items.length})</h3><p>Track follow-ups and actions for this lead.</p></div><div className="ld-section-actions"><SectionTimeSelect value={timeFilter} onChange={onTimeFilter} label="Tasks" /><Button size="small" leadingIcon={RiAddLine} onClick={() => open("add")}>Add Task</Button></div></div>
     <div className="ld-task-table-wrap"><table className="ld-task-table"><thead><tr><th aria-label="Complete" /><th>Task</th><th>Due date</th><th>Priority</th><th>Status</th><th /></tr></thead><tbody>
       {items.map(item => <tr key={item.id}>
         <td><Checkbox aria-label={`Complete ${item.title}`} isSelected={item.status === "Completed"} onChange={() => onPatch(item.id, { status: item.status === "Completed" ? "Scheduled" : "Completed" })} /></td>
@@ -1193,7 +1226,7 @@ function TasksPage({ items, owners, onCreate, onPatch, onDelete }: { items: Acti
   </section>;
 }
 
-function NotesPage({ items, onCreate, onPatch, onDelete, openRequested, onRequestConsumed }: { items: Activity[]; onCreate: (note: { title: string; detail: string; noteType: string; pinned: boolean }) => void; onPatch: (id: string, patch: Partial<Activity>) => void; onDelete: (id: string) => void; openRequested: boolean; onRequestConsumed: () => void }) {
+function NotesPage({ items, onCreate, onPatch, onDelete, openRequested, onRequestConsumed, timeFilter, onTimeFilter }: { items: Activity[]; onCreate: (note: { title: string; detail: string; noteType: string; pinned: boolean }) => void; onPatch: (id: string, patch: Partial<Activity>) => void; onDelete: (id: string) => void; openRequested: boolean; onRequestConsumed: () => void; timeFilter: string; onTimeFilter: (value: string) => void }) {
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
   const [title, setTitle] = useState("");
@@ -1205,7 +1238,7 @@ function NotesPage({ items, onCreate, onPatch, onDelete, openRequested, onReques
   const open = (item?: Activity) => { setEditing(item ?? null); setTitle(item?.title ?? ""); setDetail(item?.summary ?? ""); setNoteType(item?.noteType ?? "General"); setPinned(item?.pinned ?? false); setDialog(true); };
   const save = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!title.trim() || !plainNoteText(detail).trim()) return; if (editing) onPatch(editing.id, { title: title.trim(), summary: sanitizeRichNote(detail), noteType, pinned }); else onCreate({ title: title.trim(), detail: sanitizeRichNote(detail), noteType, pinned }); setDialog(false); };
   return <section className="ld-card ld-notes-page">
-    <div className="ld-section-heading"><div><h3>Notes ({items.length})</h3><p>Keep key conversations and context together.</p></div><Button size="small" leadingIcon={RiAddLine} onClick={() => open()}>Add Note</Button></div>
+    <div className="ld-section-heading"><div><h3>Notes ({items.length})</h3><p>Keep key conversations and context together.</p></div><div className="ld-section-actions"><SectionTimeSelect value={timeFilter} onChange={onTimeFilter} label="Notes" /><Button size="small" leadingIcon={RiAddLine} onClick={() => open()}>Add Note</Button></div></div>
     <div className="ld-note-list">
       {[...items].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))).map(item => <article className="ld-note-entry" key={item.id}><span className="ld-note-entry-icon"><RiFileTextLine /></span><div><strong>{item.title}</strong><small>{item.when}{item.noteType ? ` · ${item.noteType}` : ""}{item.createdBy ? ` · By ${item.createdBy}` : ""}{item.pinned ? " · Pinned" : ""}</small><NoteContent html={item.summary || "No note details added."} /></div><Dropdown isOpen={openMenuId === item.id} onOpenChange={isOpen => setOpenMenuId(isOpen ? item.id : null)}><DropdownTrigger className="ld-more" aria-label={`Actions for ${item.title}`}><RiMoreLine /></DropdownTrigger><DropdownPopover aria-label={`Actions for ${item.title}`} placement="bottom end" className="w-[190px]"><DropdownItem onSelect={() => { open(item); setOpenMenuId(null); }}><RiPencilLine />Edit Note</DropdownItem><DropdownItem onSelect={() => { onPatch(item.id, { pinned: !item.pinned }); setOpenMenuId(null); }}><RiPushpinLine />{item.pinned ? "Unpin Note" : "Pin Note"}</DropdownItem><DropdownItem onSelect={() => { void navigator.clipboard?.writeText(`${item.title}\n${plainNoteText(item.summary)}`); setOpenMenuId(null); }}><RiFileCopyLine />Copy Note</DropdownItem><DropdownDivider /><DropdownItem className="text-text-error-primary" onSelect={() => { onDelete(item.id); setOpenMenuId(null); }}><RiDeleteBinLine />Delete Note</DropdownItem></DropdownPopover></Dropdown></article>)}
       {!items.length && <p className="ld-task-empty">No notes yet. Add a note to keep useful details here.</p>}
@@ -1220,9 +1253,9 @@ function NotesPage({ items, onCreate, onPatch, onDelete, openRequested, onReques
   </section>;
 }
 
-function SalesActivityPage({ items }: { items: Activity[] }) {
+function SalesActivityPage({ items, timeFilter, onTimeFilter }: { items: Activity[]; timeFilter: string; onTimeFilter: (value: string) => void }) {
   return <section className="ld-card ld-sales-page">
-    <div className="ld-section-heading"><div><h3>Sales Activity ({items.length})</h3><p>Review calls, meetings, emails and follow-ups recorded for this lead.</p></div></div>
+    <div className="ld-section-heading"><div><h3>Sales Activity ({items.length})</h3><p>Review calls, meetings, emails and follow-ups recorded for this lead.</p></div><SectionTimeSelect value={timeFilter} onChange={onTimeFilter} label="Sales activity" /></div>
     <div className="ld-task-table-wrap"><table className="ld-sales-table"><thead><tr><th>Date &amp; time</th><th>Activity</th><th>Details</th><th>Owner</th><th>Outcome</th></tr></thead><tbody>
       {[...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(item => <tr key={item.id}>
         <td><span className="ld-table-date"><RiCalendarLine />{item.when || item.due || "—"}</span></td>
@@ -1313,9 +1346,10 @@ function FollowRow({ item, label, onReschedule, onPatch }: { item: Activity; lab
   );
 }
 
-function Documents({ docs, onChange }: { docs: EnquiryDoc[]; onChange: (docs: EnquiryDoc[]) => void }) {
+function Documents({ docs, onChange, timeFilter, onTimeFilter }: { docs: EnquiryDoc[]; onChange: (docs: EnquiryDoc[]) => void; timeFilter: string; onTimeFilter: (value: string) => void }) {
   const [over, setOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const visibleDocs = docs.filter(item => timeRangeMatches(item.when, timeFilter));
   function add(files: FileList | null) {
     if (!files?.length) return;
     const stamp = "12 Nov 2026, 6:20 PM";
@@ -1330,7 +1364,7 @@ function Documents({ docs, onChange }: { docs: EnquiryDoc[]; onChange: (docs: En
             <h3>Documents</h3>
             <p>Manage all files related to this enquiry.</p>
           </div>
-          <Button size="small" leadingIcon={RiUpload2Line} onClick={() => fileInputRef.current?.click()}>Upload Files</Button>
+          <div className="ld-section-actions"><SectionTimeSelect value={timeFilter} onChange={onTimeFilter} label="Documents" /><Button size="small" leadingIcon={RiUpload2Line} onClick={() => fileInputRef.current?.click()}>Upload Files</Button></div>
           <input ref={fileInputRef} className="ld-doc-upload-input" type="file" multiple aria-label="Upload documents" onChange={event => { add(event.target.files); event.target.value = ""; }} />
         </div>
         <div className="ld-docs-table">
@@ -1339,8 +1373,8 @@ function Documents({ docs, onChange }: { docs: EnquiryDoc[]; onChange: (docs: En
               <tr><th>Name</th><th>Size</th><th>Uploaded By</th><th>Uploaded On</th><th /></tr>
             </thead>
             <tbody>
-              {docs.map(doc => <DocRow key={doc.id} doc={doc} onRemove={() => onChange(docs.filter(item => item.id !== doc.id))} />)}
-              {!docs.length && <tr><td colSpan={5} className="ld-follow-empty">No documents yet.</td></tr>}
+              {visibleDocs.map(doc => <DocRow key={doc.id} doc={doc} onRemove={() => onChange(docs.filter(item => item.id !== doc.id))} />)}
+              {!visibleDocs.length && <tr><td colSpan={5} className="ld-follow-empty">{docs.length ? "No documents match this time range." : "No documents yet."}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1349,10 +1383,116 @@ function Documents({ docs, onChange }: { docs: EnquiryDoc[]; onChange: (docs: En
   );
 }
 
+function LeadInvoices({ invoices, files, onUpload, onRemove, onRemoveInvoice, timeFilter, onTimeFilter }: { invoices: Invoice[]; files: EnquiryInvoiceFile[]; onUpload: (files: FileList | null) => void; onRemove: (id: string) => void; onRemoveInvoice: (id: string) => void; timeFilter: string; onTimeFilter: (value: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasInvoices = Boolean(invoices.length || files.length);
+  return (
+    <div className="ld-pane ld-documents-pane">
+      <section className="ld-card ld-docs ld-invoices-card">
+        <div className="ld-docs-head">
+          <div><h3>Invoices</h3><p>View invoices related to this enquiry.</p></div>
+          <div className="ld-section-actions"><SectionTimeSelect value={timeFilter} onChange={onTimeFilter} label="Invoices" /><Button size="small" leadingIcon={RiUpload2Line} onClick={() => fileInputRef.current?.click()}>Upload Invoices</Button></div>
+          <input ref={fileInputRef} className="ld-doc-upload-input" type="file" multiple accept=".pdf,.png,.jpg,.jpeg" aria-label="Upload invoices" onChange={event => { onUpload(event.target.files); event.target.value = ""; }} />
+        </div>
+        <div className={`ld-docs-table${hasInvoices ? " has-invoices" : " is-empty"}`}>
+          {hasInvoices ? <table>
+            <thead><tr><th>Invoice</th><th>Amount</th><th>Status</th><th>Issued On</th><th /></tr></thead>
+            <tbody>
+              {invoices.map(invoice => <InvoiceRow key={invoice.id} invoice={invoice} onRemove={() => onRemoveInvoice(invoice.id)} />)}
+              {files.map(file => <InvoiceFileRow key={file.id} file={file} onRemove={() => onRemove(file.id)} />)}
+            </tbody>
+          </table> : <p className="ld-invoice-empty-state">No invoices are linked to this enquiry.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function InvoiceFileRow({ file, onRemove }: { file: EnquiryInvoiceFile; onRemove: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  const Icon = file.type === "PDF" ? RiFilePdf2Line : file.type === "PNG" || file.type === "JPG" ? RiImageLine : RiFileTextLine;
+  function download() {
+    const anchor = document.createElement("a");
+    anchor.href = file.previewUrl ?? "";
+    anchor.download = file.name;
+    anchor.click();
+  }
+  return <tr>
+    <td><span className={`ld-doc-file ld-doc-${file.type.toLowerCase()}`}><Icon />{file.name}</span></td>
+    <td>{file.size}</td>
+    <td><span className="ld-invoice-status">Uploaded</span></td>
+    <td className="ld-doc-when">{file.when}</td>
+    <td>
+      <Dropdown isOpen={open} onOpenChange={setOpen}>
+        <DropdownTrigger className="ld-more" aria-label={`Actions for ${file.name}`}><RiMoreLine /></DropdownTrigger>
+        <DropdownPopover aria-label={`Actions for ${file.name}`} placement="bottom end" className="w-[160px]">
+          <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
+          <DropdownDivider />
+          <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+          <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
+        </DropdownPopover>
+      </Dropdown>
+    </td>
+    {viewing && <Modal isOpen onOpenChange={isOpen => !isOpen && setViewing(false)} size="lg" aria-label={`View ${file.name}`}>
+      <ModalHeader title={file.name} description={`${file.size} · Uploaded by ${firstName(file.by)} on ${file.when}`} />
+      <ModalBody className="ld-document-preview">{file.previewUrl && file.type === "PDF" ? <iframe title={`Preview of ${file.name}`} src={file.previewUrl} /> : file.previewUrl && (file.type === "PNG" || file.type === "JPG") ? <img src={file.previewUrl} alt={file.name} /> : <div className="ld-document-preview-empty"><Icon /><strong>{file.name}</strong><span>{file.type} · {file.size}</span><p>Preview is unavailable for this invoice file.</p></div>}</ModalBody>
+      <ModalFooter><Button variant="secondary" onClick={() => setViewing(false)}>Close</Button><Button leadingIcon={RiDownloadLine} onClick={download}>Download</Button></ModalFooter>
+    </Modal>}
+  </tr>;
+}
+
+function InvoiceRow({ invoice, onRemove }: { invoice: Invoice; onRemove: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  function download() {
+    const content = [`Invoice ${invoice.id}`, `Opportunity ${invoice.opportunityId}`, `Date ${shortDate(invoice.date)}`, `Amount ${inr(invoice.amount)}`, `Status ${invoice.status}`].join("\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${invoice.id}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+  return (
+    <tr>
+      <td><span className="ld-doc-file ld-invoice-file"><RiFileTextLine />{invoice.id}</span></td>
+      <td>{inr(invoice.amount)}</td>
+      <td><span className={`ld-invoice-status is-${invoice.status.toLowerCase().replaceAll(" ", "-")}`}>{invoice.status}</span></td>
+      <td className="ld-doc-when">{shortDate(invoice.date)}</td>
+      <td>
+        <Dropdown isOpen={open} onOpenChange={setOpen}>
+          <DropdownTrigger className="ld-more" aria-label={`Actions for ${invoice.id}`}><RiMoreLine /></DropdownTrigger>
+          <DropdownPopover aria-label={`Actions for ${invoice.id}`} placement="bottom end" className="w-[160px]">
+            <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
+            <DropdownDivider />
+            <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+            <DropdownDivider />
+            <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
+          </DropdownPopover>
+        </Dropdown>
+      </td>
+      {viewing && <Modal isOpen onOpenChange={isOpen => !isOpen && setViewing(false)} size="md" aria-label={`View invoice ${invoice.id}`}>
+        <ModalHeader title={invoice.id} description="Invoice details for this enquiry" />
+        <ModalBody><div className="ld-invoice-preview"><div><span>Opportunity</span><strong>{invoice.opportunityId}</strong></div><div><span>Issued on</span><strong>{shortDate(invoice.date)}</strong></div><div><span>Amount</span><strong>{inr(invoice.amount)}</strong></div><div><span>Status</span><strong>{invoice.status}</strong></div></div></ModalBody>
+        <ModalFooter><Button variant="secondary" onClick={() => setViewing(false)}>Close</Button><Button leadingIcon={RiDownloadLine} onClick={download}>Download invoice</Button></ModalFooter>
+      </Modal>}
+    </tr>
+  );
+}
+
 function DocRow({ doc, onRemove }: { doc: EnquiryDoc; onRemove: () => void }) {
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState(false);
   const Icon = doc.type === "PDF" ? RiFilePdf2Line : doc.type === "XLSX" || doc.type === "XLS" ? RiFileExcelLine : doc.type === "ZIP" ? RiFileZipLine : doc.type === "PNG" || doc.type === "JPG" ? RiImageLine : RiFileTextLine;
+  function download() {
+    const url = doc.previewUrl ?? URL.createObjectURL(new Blob([`Sample document: ${doc.name}\nUploaded by ${doc.by} on ${doc.when}.`], { type: "text/plain" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = doc.name;
+    anchor.click();
+    if (!doc.previewUrl) URL.revokeObjectURL(url);
+  }
   return (
     <tr>
       <td><span className={`ld-doc-file ld-doc-${doc.type.toLowerCase()}`}><Icon />{doc.name}</span></td>
@@ -1366,6 +1506,7 @@ function DocRow({ doc, onRemove }: { doc: EnquiryDoc; onRemove: () => void }) {
             <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
             <DropdownDivider />
             <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+            <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
           </DropdownPopover>
         </Dropdown>
       </td>

@@ -10,42 +10,50 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiAddLine,
+  RiArchiveLine,
   RiCalendarLine,
   RiCheckLine,
   RiCloseLine,
   RiDownloadLine,
+  RiDeleteBinLine,
   RiExternalLinkLine,
   RiEyeLine,
-  RiFireLine,
+  RiFacebookFill,
   RiFileTextLine,
   RiBarChartLine,
   RiFolderLine,
   RiGroupLine,
+  RiGlobalLine,
+  RiInstagramLine,
+  RiLinkedinBoxFill,
   RiHomeLine,
   RiLogoutBoxRLine,
   RiMailLine,
+  RiMailUnreadLine,
   RiMapPin2Line,
   RiNotification3Line,
   RiPhoneLine,
   RiQuestionLine,
-  RiUserLine,
   RiStore2Line,
-  RiBankCardLine,
-  RiMoneyDollarCircleLine,
   RiSearchLine,
+  RiStarFill,
+  RiStarLine,
   RiStackLine,
   RiSparklingLine,
   RiTimeLine,
   RiTrophyLine,
-  RiVideoOnLine,
 } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Avatar } from "@/components/base/avatar/avatar";
+import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { DateCalendar } from "@/components/base/date-picker/date-calendar";
 import { Dropdown, DropdownDivider, DropdownItem, DropdownPopover, DropdownTrigger } from "@/components/base/dropdown/dropdown";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/modal/modal";
+import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
+import { portraitFor } from "@/modules/users-roles/portrait";
 import { Select as BoardSelect, SelectItem } from "@/components/base/select/select";
+import { cx } from "@/utils/cx";
 import {
   documents,
   emoriInvoiceSummary,
@@ -157,6 +165,13 @@ const brandGallery: Record<BrandId, BrandGalleryTile[]> = {
   ],
 };
 const pageSize = 15;
+const socialPlatforms = [
+  { name: "Instagram", Icon: RiInstagramLine },
+  { name: "LinkedIn", Icon: RiLinkedinBoxFill },
+  { name: "Facebook", Icon: RiFacebookFill },
+  { name: "Website", Icon: RiGlobalLine },
+] as const;
+
 const stageColor: Record<Stage, ChipColor> = {
   New: "gray",
   Qualified: "lime",
@@ -181,6 +196,33 @@ function asView(view?: string): ViewId {
 function initials(name: string) {
   const parts = name.split(" ").filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function maskOpportunityEmail(email?: string) {
+  const [local = "", domain = ""] = email?.split("@") ?? [];
+  if (!local || !domain) return "********";
+  const visiblePrefix = local.slice(0, 2);
+  return `${visiblePrefix}${"*".repeat(Math.max(3, local.length - visiblePrefix.length))}@${domain}`;
+}
+
+function maskOpportunityPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const countryCode = phone.match(/^\+\d+/)?.[0] ?? "";
+  const lastFour = digits.slice(-4);
+  return `${countryCode ? `${countryCode} ` : ""}*** *** ${lastFour}`.trim();
+}
+
+function opportunityMatchesTimeRange(value: string, range: string) {
+  if (range === "All Time") return true;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return false;
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (range === "Today") return timestamp >= today.getTime();
+  if (range === "Last 7 days") return timestamp >= now - 7 * 86_400_000;
+  if (range === "Last 30 days") return timestamp >= now - 30 * 86_400_000;
+  return true;
 }
 
 function inRange(iso: string, range: string) {
@@ -216,6 +258,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
   const [dealClosure, setDealClosure] = useState("All dates");
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showOpportunityOverview, setShowOpportunityOverview] = useState(false);
   const [docTab, setDocTab] = useState<"Invoices" | "Documents">("Invoices");
 
   const user = people.find(item => item.id === userId) ?? initialUsers[0];
@@ -374,7 +417,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
       </div>
     } sidebarFooter={<div className="bp-sidebar-brand">{brand.logo ? <img className={brand.id === "emori" ? "is-emori-logo" : ""} src={brand.logo} alt={`${brand.name} logo`} /> : <><span className="bp-sidebar-brand-spark">✦</span><strong>{brand.name.toUpperCase()}</strong><small>BRAND PORTAL</small></>}</div>}>
       <div className="bp-board">
-      <div className="bp-scroll" data-view={section}>
+      <div className="bp-scroll" data-view={section} data-detail={open ? "true" : undefined}>
           {open ? (
             <OpportunityDetail
               opportunity={open}
@@ -396,16 +439,9 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
                     <h2>{brand.headline}<br /><em>{brand.accent}</em></h2>
                     <p>{brand.description}</p>
                     <div className="bp-banner-points">{brand.highlights.map((highlight, index) => <span key={highlight}>{index > 0 && <i />}{highlight}</span>)}</div>
-                    <div className="bp-banner-actions"><button onClick={() => go("Opportunities")}>Explore Opportunities<RiArrowRightSLine /></button><button onClick={() => go("Reports")}>View Brand Growth</button></div>
+                    <div className="bp-banner-actions"><button onClick={() => go("Opportunities")}>Explore Opportunities<RiArrowRightSLine /></button></div>
                   </div>
                 </section>
-                <div className="bp-overview-stats" aria-label="Brand performance summary">
-                  <button className="bp-overview-stat" onClick={() => go("Opportunities")}><i className="is-blue"><RiGroupLine /></i><span><strong>{brandOpps.length}</strong><small>Total Opportunities</small></span></button>
-                  <button className="bp-overview-stat" onClick={() => go("Meetings")}><i className="is-violet"><RiCalendarLine /></i><span><strong>{upcoming.length}</strong><small>Upcoming Meetings</small></span></button>
-                  <button className="bp-overview-stat" onClick={() => go("Deals")}><i className="is-green"><RiTrophyLine /></i><span><strong>{brandOpps.filter(item => item.dealValue != null).length}</strong><small>Active Deals</small></span></button>
-                  <button className="bp-overview-stat" onClick={() => go("Invoices")}><i className="is-amber"><RiFileTextLine /></i><span><strong>{brandInvoices.length}</strong><small>Invoices</small></span></button>
-                  <button className="bp-overview-stat" onClick={() => go("Notifications")}><i><RiNotification3Line /></i><span><strong>{unread}</strong><small>Unread Notifications</small></span></button>
-                </div>
                 <div className="bp-overview-grid">
                   <section className="bp-card bp-pipeline-card">
                     <div className="bp-card-head"><h3>Opportunity Pipeline</h3><button className="bp-link bp-pipeline-view-all" onClick={() => go("Opportunities")}>View all <RiArrowRightSLine /></button></div>
@@ -433,14 +469,14 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
           ) : section === "Opportunities" ? (
             <>
               <div className="bp-list-page">
-                <header className="bp-hello"><div><h2>Opportunities</h2><p>Franchise opportunities assigned to {brand.name} only.</p></div></header>
-                <div className="bp-list-stats" aria-label="Opportunity summary">
+                <header className="bp-hello"><div><h2>Opportunities</h2><p>Franchise opportunities assigned to {brand.name} only.</p></div><button type="button" className="bp-quick-overview-trigger" aria-expanded={showOpportunityOverview} onClick={() => setShowOpportunityOverview(value => !value)}><RiBarChartLine />{showOpportunityOverview ? "Hide quick overview" : "Quick overview"}</button></header>
+                {showOpportunityOverview && <div className="bp-list-stats" aria-label="Opportunity summary">
                   <Stat icon={<RiGroupLine />} tone="blue" value={String(brandOpps.length)} label="Total Opportunities" onClick={() => setOppStage("All stages")} />
                   <Stat icon={<RiStackLine />} tone="purple" value={String(count("New", brandOpps))} label="New" onClick={() => setOppStage("New")} />
                   <Stat icon={<RiSparklingLine />} tone="green" value={String(count("Qualified", brandOpps))} label="Qualified" onClick={() => setOppStage("Qualified")} />
                   <Stat icon={<RiCalendarLine />} tone="amber" value={String(count("Meeting", brandOpps))} label="Meetings" onClick={() => setOppStage("Meeting")} />
                   <Stat icon={<RiTrophyLine />} tone="green" value={String(count("Won", brandOpps))} label="Won" onClick={() => setOppStage("Won")} />
-                </div>
+                </div>}
                 <section className="bp-list-card" aria-label="Opportunity list">
                   <div className="bp-opportunity-toolbar">
                     <label className="bp-search"><RiSearchLine /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search by customer or opportunity ID" aria-label="Search opportunities" /></label>
@@ -522,6 +558,9 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
                 meetings={brandMeetings}
                 opportunities={brandOpps}
                 onRead={id => setNotices(list => list.map(item => item.id === id ? { ...item, unread: false } : item))}
+                onSetRead={(id, unread) => setNotices(list => list.map(item => item.id === id ? { ...item, unread } : item))}
+                onReadMany={ids => setNotices(list => list.map(item => ids.includes(item.id) ? { ...item, unread: false } : item))}
+                onDeleteMany={ids => setNotices(list => list.filter(item => !ids.includes(item.id)))}
                 onOpenTarget={notice => {
                   const target = notice.targetId;
                   if (!target) { go("Overview"); return; }
@@ -577,7 +616,7 @@ function DataTable({ rows, mode, onOpen }: { rows: Opportunity[]; mode: "opportu
               <td><span className="bp-row-location"><RiMapPin2Line />{row.city}</span></td>
               {mode === "opportunity" ? (
                 <>
-                  <td><span className="bp-row-contact"><strong>{row.contact}</strong><small>Phone · •••• ••••</small></span></td>
+                  <td><span className="bp-row-contact"><strong>{row.contact}</strong><small>Phone · {maskOpportunityPhone(row.phone)}</small></span></td>
                   <td><Chip variant="caption" color={stageColor[row.stage]}>{row.stage}</Chip></td>
                   <td>{row.activity}</td>
                   <td>{shortDate(row.created)}</td>
@@ -701,6 +740,7 @@ function MeetingCalendar({ meetings, brandId, brandName, opportunities: rows, us
     <>
       <section className="bp-calendar-board" aria-label="Meeting calendar">
         <header className="bp-calendar-board-head">
+          <div className="bp-calendar-heading"><h3>Meetings</h3></div>
           <div className="bp-calendar-controls">
             <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)}><RiArrowLeftSLine /></button>
             <strong>{monthLabel}</strong>
@@ -921,58 +961,83 @@ function InvoicePanel({ tab, onTab, brandName, invoices: rows, docs, focusId, on
   );
 }
 
+function OpportunityScrollRegion({ children, className }: { children: ReactNode; className?: string }) {
+  const fade = useScrollFade();
+  return <div className={cx("bp-opportunity-scroll-region", className)}><div className="bp-opportunity-scroll-content" onScroll={fade.onScroll}>{children}</div><ScrollFade progress={fade.progress} surfaceClassName="from-background-primary-default" /></div>;
+}
+
+function OpportunityTimeSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <label className="bp-opportunity-time-control"><span>Time</span><BoardSelect aria-label="Time" selectedKey={value} onSelectionChange={key => onChange(String(key))} className="bp-opportunity-time-select" triggerClassName="bp-opportunity-time-trigger" popoverClassName="bp-menu-fit">{["All Time", "Today", "Last 7 days", "Last 30 days"].map(item => <SelectItem key={item} id={item}>{item}</SelectItem>)}</BoardSelect></label>;
+}
+
 function OpportunityDetail({ opportunity, returnLabel, brandName, coordinator, meetings, invoices: bills, docs, onBack, onDownload }: { opportunity: Opportunity; returnLabel: string; brandName: string; coordinator: string; meetings: Meeting[]; invoices: Invoice[]; docs: BrandDocument[]; onBack: () => void; onDownload: (invoice: Invoice) => void }) {
-  const [tab, setTab] = useState("Overview");
+  const [tab, setTab] = useState("Recent Activity");
+  const [pipelineVisible, setPipelineVisible] = useState(false);
+  const [timeFilter, setTimeFilter] = useState("All Time");
   const [invoicePreview, setInvoicePreview] = useState<Invoice | null>(null);
   const [documentPreview, setDocumentPreview] = useState<BrandDocument | null>(null);
-  useEffect(() => setTab("Overview"), [opportunity.id]);
+  useEffect(() => { setTab("Recent Activity"); setPipelineVisible(false); setTimeFilter("All Time"); }, [opportunity.id]);
   const stageIndex = stages.indexOf(opportunity.stage);
-  const nextMeeting = meetings.filter(item => item.status === "Upcoming").sort((a, b) => a.date.localeCompare(b.date))[0];
-  const recentActivity = [
+  const leadOwner = coordinator === "Himani" ? "Himani Bhargava Tapadiya" : coordinator;
+  const ownerPortrait = portraitFor(leadOwner);
+  const emailLabel = maskOpportunityEmail(opportunity.email);
+  const phoneLabel = maskOpportunityPhone(opportunity.phone);
+  const leadAgeDays = Math.max(0, Math.floor((new Date(`${reviewDate}T00:00:00`).getTime() - new Date(`${opportunity.created}T00:00:00`).getTime()) / 86_400_000));
+  const recentActivity: { id: string; label: string; detail: string; date: string; icon: ReactNode; meeting?: Meeting; invoice?: Invoice; document?: BrandDocument }[] = [
     { id: "activity", label: opportunity.activity, detail: `${opportunity.customer} · ${shortDate(opportunity.created)}`, date: opportunity.created, icon: <RiTimeLine /> },
     { id: "shared", label: `Opportunity shared with ${brandName}`, detail: shortDate(opportunity.created), date: opportunity.created, icon: <RiStackLine /> },
-    ...meetings.map(item => ({ id: item.id, label: item.status === "Upcoming" ? `Meeting scheduled: ${item.title}` : `Meeting completed: ${item.title}`, detail: `${item.time} · ${shortDate(item.date)}`, date: item.date, icon: <RiCalendarLine /> })),
-    ...bills.map(item => ({ id: item.id, label: `Invoice ${item.id} · ${item.status}`, detail: `${inr(item.amount)} · ${shortDate(item.date)}`, date: item.date, icon: <RiFileTextLine /> })),
-    ...docs.map(item => ({ id: item.id, label: `${item.name} · ${item.status}`, detail: `Shared with ${item.party}`, date: opportunity.created, icon: <RiFolderLine /> })),
+    ...meetings.map(item => ({ id: item.id, label: item.status === "Upcoming" ? `Meeting scheduled: ${item.title}` : `Meeting completed: ${item.title}`, detail: `${item.time} · ${shortDate(item.date)}`, date: item.date, icon: <RiCalendarLine />, meeting: item })),
+    ...bills.map(item => ({ id: item.id, label: `Invoice ${item.id} · ${item.status}`, detail: `${inr(item.amount)} · ${shortDate(item.date)}`, date: item.date, icon: <RiFileTextLine />, invoice: item })),
+    ...docs.map(item => ({ id: item.id, label: `${item.name} · ${item.status}`, detail: `Shared with ${item.party}`, date: opportunity.created, icon: <RiFolderLine />, document: item })),
   ].sort((a, b) => b.date.localeCompare(a.date));
-  const showSubpage = (title: string, children: ReactNode) => <section className="bp-card bp-detail-subpage"><div className="bp-card-head"><div><h3>{title}</h3></div><button className="bp-link" onClick={() => setTab("Overview")}><RiArrowLeftLine />Overview</button></div>{children}</section>;
+  const visibleActivity = recentActivity.filter(item => opportunityMatchesTimeRange(item.date, timeFilter));
+  const visibleBills = bills.filter(item => opportunityMatchesTimeRange(item.date, timeFilter));
+  const visibleDocs = docs.filter(() => opportunityMatchesTimeRange(opportunity.created, timeFilter));
   return (
     <div className="bp-opportunity-detail">
-      <button className="bp-back" onClick={onBack}><RiArrowLeftLine /> {returnLabel}</button>
+      <header className="bp-opportunity-detail-topbar"><button className="bp-back" onClick={onBack} aria-label={`Back to ${returnLabel}`}><RiArrowLeftLine /></button><h2>Opportunity Details</h2><button className="bp-opportunity-pipeline-toggle" type="button" aria-expanded={pipelineVisible} onClick={() => setPipelineVisible(value => !value)}><RiStackLine />{pipelineVisible ? "Hide Pipeline" : "View Pipeline"}</button></header>
+      {pipelineVisible && <section className="bp-card bp-opportunity-stage-card" aria-label={`Opportunity stage: ${opportunity.stage}`}>
+        <div className="bp-opportunity-stage-heading"><span><strong>Opportunity Pipeline</strong><small>Current stage for this opportunity</small></span><Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip></div>
+        <div className="bp-opportunity-stage-track">{stages.map((item, index) => <div className={`bp-opportunity-stage-step${index < stageIndex ? " is-complete" : index === stageIndex ? " is-current" : ""}`} key={item}><i>{index + 1}</i><small>{item}</small></div>)}</div>
+      </section>}
       <div className="bp-opportunity-detail-layout">
         <aside className="bp-opportunity-profile-column">
           <section className="bp-card bp-opportunity-profile-card">
             <span className="bp-opportunity-avatar">{initials(opportunity.customer)}</span>
-            <small>{opportunity.id}</small>
             <h2>{opportunity.customer}</h2>
-            {opportunity.stage === "Hot" ? <span className="bp-hot-stage"><RiFireLine />Hot</span> : <Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip>}
-            <span className="bp-opportunity-profile-contact">{opportunity.contact}</span>
-            <div className="bp-opportunity-profile-facts"><span><RiMapPin2Line />{opportunity.city}, {brandName}</span><span><RiStore2Line />{opportunity.model}</span><span><RiGroupLine />{coordinator}</span></div>
+            <small>{opportunity.id}</small>
+            <div className="bp-opportunity-profile-contacts">
+              <span><RiMailLine /><bdi dir="ltr">{emailLabel}</bdi></span>
+              <span><RiPhoneLine /><bdi dir="ltr">{phoneLabel}</bdi></span>
+              <span><RiStore2Line /><b><small>Brand</small>{brandName}</b></span>
+            </div>
+            <div className="bp-opportunity-profile-stats"><div><strong>{meetings.length}</strong><small>Meetings</small></div><div><strong>{bills.length}</strong><small>Invoices</small></div><div><strong>{docs.length}</strong><small>Documents</small></div></div>
           </section>
+          <section className="bp-card bp-opportunity-owner-card"><h3>Lead Owner</h3><div>{ownerPortrait ? <img src={ownerPortrait} alt="" /> : <span className="bp-owner-initials">{initials(leadOwner)}</span>}<strong>{leadOwner}</strong></div></section>
+          <section className="bp-card bp-opportunity-social-card"><h3><RiGlobalLine />Lead Social Profiles</h3><div className="bp-opportunity-social-links" aria-label="Lead social profile platforms">{socialPlatforms.map(({ name, Icon }) => <span key={name} role="img" aria-label={name} title={name}><Icon /></span>)}</div></section>
         </aside>
         <main className="bp-opportunity-detail-main">
           <nav className="bp-opportunity-detail-tabs" role="tablist" aria-label="Opportunity details">
-            {["Overview", "Activity", "Meetings", "Invoices & Documents"].map(item => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{item}</button>)}
+            {["Recent Activity", "Additional Details", "Invoices", "Documents"].map(item => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{item}</button>)}
           </nav>
-      {tab === "Overview" ? <>
-        <div className="bp-opportunity-grid bp-opportunity-overview-grid">
-          <section className="bp-card bp-opportunity-info-card"><div className="bp-card-head"><h3><RiFileTextLine />Opportunity Details</h3></div><dl className="bp-opportunity-info-grid">
-            <div><RiUserLine /><span><dt>Customer Contact</dt><dd>{opportunity.contact}</dd></span></div><div><RiPhoneLine /><span><dt>Phone</dt><dd>•••• ••••</dd></span></div>
-            <div><RiStore2Line /><span><dt>Franchise Model</dt><dd>{opportunity.model}</dd></span></div><div><RiMapPin2Line /><span><dt>City</dt><dd>{opportunity.city}</dd></span></div>
-            <div><RiCalendarLine /><span><dt>Created On</dt><dd>{shortDate(opportunity.created)}</dd></span></div><div><RiGroupLine /><span><dt>Brand Coordinator</dt><dd>{coordinator}</dd></span></div>
-            <div><RiMoneyDollarCircleLine /><span><dt>Approved Deal Value</dt><dd>{opportunity.dealValue != null ? inr(opportunity.dealValue) : "—"}</dd></span></div><div><RiBankCardLine /><span><dt>Payment Status</dt><dd><span className={`bp-payment-tag is-${(opportunity.payment ?? "none").toLowerCase().replaceAll(" ", "-")}`}>{opportunity.payment ?? "—"}</span></dd></span></div>
-          </dl></section>
-          <section className="bp-card bp-deal-summary bp-next-meeting-card"><div className="bp-card-head"><h3><RiCalendarLine />Next Meeting</h3></div>{nextMeeting ? <div className="bp-detail-meeting"><span className="bp-datebadge"><span>{monthDay(nextMeeting.date).month}</span><b>{monthDay(nextMeeting.date).day}</b></span><span><strong>{nextMeeting.title}</strong><small><RiTimeLine />{nextMeeting.time}</small><small>{nextMeeting.kind === "Virtual" ? <img className="bp-google-meet-icon" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Google_Meet_icon_%282026%29.svg" alt="" /> : <RiMapPin2Line />}{nextMeeting.kind === "Virtual" ? "Google Meet" : nextMeeting.place}</small>{nextMeeting.kind === "Virtual" && nextMeeting.meetLink && <a className="bp-meeting-link" href={nextMeeting.meetLink} target="_blank" rel="noreferrer">Join Google Meet <RiExternalLinkLine /></a>}</span></div> : <p className="bp-empty">No upcoming meeting scheduled.</p>}</section>
-        </div>
-        <section className="bp-card bp-deal-progress"><div className="bp-card-head"><h3><RiStackLine />Deal Progress</h3></div><div className="bp-stage-track" aria-label={`Opportunity stage: ${opportunity.stage}`}>{stages.map((item, index) => <div className={`bp-stage-step${index < stageIndex ? " is-complete" : index === stageIndex ? " is-current" : ""}`} key={item}><i>{index < stageIndex ? <RiCheckLine /> : index === stageIndex ? <span /> : null}</i><small>{item === "Token Collected" ? <>Token<br />Collected</> : item}</small></div>)}</div></section>
-        <div className="bp-opportunity-bottom-grid">
-          <section className="bp-card"><div className="bp-card-head"><h3><RiTimeLine />Recent Activity</h3></div><div className="bp-detail-rows bp-scroll-rows">{recentActivity.map(item => <div className="bp-overview-activity-row" key={item.id}><i>{item.icon}</i><span><strong>{item.label}</strong><small>{item.detail}</small></span></div>)}{!recentActivity.length && <p className="bp-empty">No recent activity.</p>}</div></section>
-          <section className="bp-card"><div className="bp-card-head"><h3><RiFileTextLine />Invoices ({bills.length})</h3></div><div className="bp-detail-rows bp-scroll-rows">{bills.map(item => <div className="bp-overview-file-row" key={item.id}><i className="is-invoice"><RiFileTextLine /></i><span><strong>{item.id}</strong><small>{shortDate(item.date)} · {item.status}</small></span><span className="bp-file-actions"><button className="bp-row-action" onClick={() => setInvoicePreview(item)} aria-label={`View invoice ${item.id}`} title="View invoice"><RiEyeLine /></button><button className="bp-row-action" onClick={() => onDownload(item)} aria-label={`Download invoice ${item.id}`} title="Download invoice"><RiDownloadLine /></button></span></div>)}{!bills.length && <p className="bp-empty">No invoices yet.</p>}</div></section>
-          <section className="bp-card"><div className="bp-card-head"><h3><RiFolderLine />Documents ({docs.length})</h3></div><div className="bp-detail-rows bp-scroll-rows">{docs.map(item => <div className="bp-overview-file-row" key={item.id}><i className="is-document"><RiFolderLine /></i><span><strong>{item.name}</strong><small>{item.status} · {item.party}</small></span><span className="bp-file-actions"><button className="bp-row-action" onClick={() => setDocumentPreview(item)} aria-label={`View document ${item.name}`} title="View document"><RiEyeLine /></button><button className="bp-row-action" onClick={() => downloadBrandDocument(item)} aria-label={`Download document ${item.name}`} title="Download document"><RiDownloadLine /></button></span></div>)}{!docs.length && <p className="bp-empty">No documents shared yet.</p>}</div></section>
-        </div>
-      </> : tab === "Activity" ? showSubpage("Activity & Updates", <ol className="bp-activity-timeline"><li><i /><span><strong>{opportunity.activity}</strong><small>{shortDate(opportunity.created)}</small></span><Chip variant="caption" color={stageColor[opportunity.stage]}>{opportunity.stage}</Chip></li><li><i /><span><strong>Opportunity shared with {brandName}</strong><small>{shortDate(opportunity.created)}</small></span></li><li><i /><span><strong>Opportunity created</strong><small>{shortDate(opportunity.created)}</small></span></li></ol>)
-        : tab === "Meetings" ? showSubpage("Meetings", <div className="bp-detail-rows">{meetings.map(item => <div className="bp-detail-meeting" key={item.id}><span className="bp-datebadge"><span>{monthDay(item.date).month}</span><b>{monthDay(item.date).day}</b></span><span><strong>{item.title}</strong><small>{item.time} · {item.kind} · {item.status}</small></span>{item.kind === "Virtual" && item.meetLink && <a className="bp-join" href={item.meetLink} target="_blank" rel="noreferrer">Join Meet</a>}</div>)}{!meetings.length && <p className="bp-empty">No meetings on this opportunity yet.</p>}</div>)
-          : showSubpage("Invoices & Documents", <div className="bp-detail-rows">{bills.map(item => <div className="bp-detail-file" key={item.id}><span className="bp-invoice-id"><i><RiFileTextLine /></i><b>{item.id}</b></span><span>{inr(item.amount)}</span><Chip variant="caption" color={paymentColor[item.status]}>{item.status}</Chip><button className="bp-row-action" onClick={() => onDownload(item)} aria-label={`Download ${item.id}`}><RiDownloadLine /></button></div>)}{docs.map(item => <div className="bp-detail-file" key={item.id}><span className="bp-invoice-id"><i><RiFolderLine /></i><b>{item.name}</b></span><span>{item.party}</span><Chip variant="caption" color={item.status === "Approved" ? "lime" : "yellow"}>{item.status}</Chip></div>)}{!bills.length && !docs.length && <p className="bp-empty">No invoices or documents yet.</p>}</div>)}
+      {tab === "Recent Activity" ? <>
+        <section className="bp-card bp-opportunity-recent-activity"><div className="bp-card-head"><h3><RiTimeLine />Recent Activity</h3><OpportunityTimeSelect value={timeFilter} onChange={setTimeFilter} /></div><OpportunityScrollRegion><div className="bp-detail-rows bp-scroll-rows">{visibleActivity.map(item => <div className="bp-overview-activity-row" key={item.id}><i>{item.icon}</i><span><strong>{item.label}</strong><small>{item.detail}</small>{item.meeting?.meetLink && <a className="bp-opportunity-activity-link" href={item.meeting.meetLink} target="_blank" rel="noreferrer">Join meeting <RiExternalLinkLine /></a>}{item.invoice && <button className="bp-opportunity-activity-link" type="button" onClick={() => setInvoicePreview(item.invoice!)}>View invoice</button>}{item.document && <button className="bp-opportunity-activity-link" type="button" onClick={() => setDocumentPreview(item.document!)}>View document</button>}</span></div>)}{!visibleActivity.length && <p className="bp-empty">No recent activity in this time range.</p>}</div></OpportunityScrollRegion></section>
+      </> : tab === "Additional Details" ? <>
+        <section className="bp-card bp-opportunity-additional-card"><div className="bp-card-head"><h3><RiStackLine />Additional Details</h3></div><dl className="bp-opportunity-additional-grid">
+          <div><dt>Investment Capacity</dt><dd>—</dd></div><div><dt>Interested Brand</dt><dd>{brandName}</dd></div>
+          <div><dt>Location</dt><dd>{opportunity.city}</dd></div><div><dt>Enquiry Date</dt><dd>{shortDate(opportunity.created)}</dd></div>
+          <div><dt>Lead Type</dt><dd>Franchise</dd></div><div><dt>Requirement</dt><dd>—</dd></div>
+          <div><dt>Lead Age</dt><dd>{leadAgeDays} days</dd></div>
+          <div><dt>Lead Source</dt><dd>—</dd></div><div><dt>How they heard about us</dt><dd>—</dd></div>
+          <div><dt>Campaign</dt><dd>—</dd></div><div><dt>Recorded by</dt><dd>—</dd></div>
+          <div><dt>Approved Deal Value</dt><dd>{opportunity.dealValue != null ? inr(opportunity.dealValue) : "—"}</dd></div>
+          <div><dt>Payment Status</dt><dd>{opportunity.payment ? <span className={`bp-payment-tag is-${opportunity.payment.toLowerCase().replaceAll(" ", "-")}`}>{opportunity.payment}</span> : "—"}</dd></div>
+        </dl></section>
+      </> : tab === "Invoices" ? <>
+        <section className="bp-card bp-opportunity-support-card"><div className="bp-card-head"><h3><RiFileTextLine />Invoices ({visibleBills.length})</h3><OpportunityTimeSelect value={timeFilter} onChange={setTimeFilter} /></div><OpportunityScrollRegion><div className="bp-opportunity-data-table" role="table" aria-label="Opportunity invoices"><div className="bp-opportunity-data-header is-invoice" role="row"><span role="columnheader">Invoice</span><span role="columnheader">Amount</span><span role="columnheader">Status</span><span role="columnheader">Issued On</span><span role="columnheader" aria-label="Actions" /></div>{visibleBills.map(item => <div className="bp-opportunity-data-row is-invoice" role="row" key={item.id}><span className="bp-opportunity-invoice-id" role="cell"><RiFileTextLine /><strong>{item.id}</strong></span><span role="cell">{inr(item.amount)}</span><span role="cell"><span className={`bp-payment-tag is-${item.status.toLowerCase().replaceAll(" ", "-")}`}>{item.status}</span></span><span role="cell">{shortDate(item.date)}</span><span className="bp-opportunity-row-menu" role="cell"><Dropdown><DropdownTrigger className="bp-opportunity-row-menu-trigger" aria-label={`Actions for invoice ${item.id}`}>···</DropdownTrigger><DropdownPopover aria-label={`Actions for invoice ${item.id}`} placement="bottom end" className="w-[170px]" dialogClassName="gap-1"><DropdownItem onSelect={() => setInvoicePreview(item)}><RiEyeLine />View</DropdownItem><DropdownItem onSelect={() => onDownload(item)}><RiDownloadLine />Download</DropdownItem></DropdownPopover></Dropdown></span></div>)}{!visibleBills.length && <p className="bp-empty">No invoices match this time range.</p>}</div></OpportunityScrollRegion></section>
+      </> : tab === "Documents" ? <>
+        <section className="bp-card bp-opportunity-support-card"><div className="bp-card-head"><h3><RiFolderLine />Documents ({visibleDocs.length})</h3><OpportunityTimeSelect value={timeFilter} onChange={setTimeFilter} /></div><OpportunityScrollRegion><div className="bp-opportunity-data-table" role="table" aria-label="Opportunity documents"><div className="bp-opportunity-data-header is-document" role="row"><span role="columnheader">Name</span><span role="columnheader">Size</span><span role="columnheader">Uploaded By</span><span role="columnheader">Uploaded On</span><span role="columnheader" aria-label="Actions" /></div>{visibleDocs.map(item => <div className="bp-opportunity-data-row is-document" role="row" key={item.id}><span className="bp-detail-doc-name" role="cell"><i><RiFolderLine /></i><strong>{item.name}</strong></span><span role="cell">—</span><span role="cell">—</span><span role="cell">—</span><span className="bp-opportunity-row-menu" role="cell"><Dropdown><DropdownTrigger className="bp-opportunity-row-menu-trigger" aria-label={`Actions for document ${item.name}`}>···</DropdownTrigger><DropdownPopover aria-label={`Actions for document ${item.name}`} placement="bottom end" className="w-[170px]" dialogClassName="gap-1"><DropdownItem onSelect={() => setDocumentPreview(item)}><RiEyeLine />View</DropdownItem><DropdownItem onSelect={() => downloadBrandDocument(item)}><RiDownloadLine />Download</DropdownItem></DropdownPopover></Dropdown></span></div>)}{!visibleDocs.length && <p className="bp-empty">No documents match this time range.</p>}</div></OpportunityScrollRegion></section>
+      </> : null}
         </main>
       </div>
       {invoicePreview && <Modal className="bp-invoice-preview-modal" isOpen onOpenChange={isOpen => { if (!isOpen) setInvoicePreview(null); }} size="md" aria-label={`Invoice ${invoicePreview.id} preview`}><ModalHeader title="Invoice preview" description={`${brandName} · ${invoicePreview.id}`} /><ModalBody><article className="bp-invoice-preview-sheet"><div className="bp-invoice-preview-brand"><span>iFranchise</span><span>INVOICE</span></div><div className="bp-invoice-preview-number"><strong>{invoicePreview.id}</strong><span>{shortDate(invoicePreview.date)}</span></div><div className="bp-invoice-preview-line"><span>Opportunity reference</span><strong>{invoicePreview.opportunityId}</strong></div><div className="bp-invoice-preview-line"><span>Payment status</span><strong>{invoicePreview.status}</strong></div><div className="bp-invoice-preview-total"><span>Total due</span><strong>{inr(invoicePreview.amount)}</strong></div></article></ModalBody><ModalFooter><button type="button" className="bp-event-close" onClick={() => setInvoicePreview(null)}>Close</button><button type="button" className="bp-event-edit" onClick={() => onDownload(invoicePreview)}><RiDownloadLine />Download</button></ModalFooter></Modal>}
@@ -1116,66 +1181,73 @@ function notificationIcon(category: NoticeCategory) {
   return RiNotification3Line;
 }
 
-function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, onOpenTarget }: { notices: Notice[]; meetings: Meeting[]; opportunities: Opportunity[]; onRead: (id: string) => void; onOpenTarget: (notice: Notice) => void }) {
-  const filters = ["All", "Unread", "Meetings", "Opportunities", "Deals", "Invoices"] as const;
+function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, onSetRead, onReadMany, onDeleteMany, onOpenTarget }: { notices: Notice[]; meetings: Meeting[]; opportunities: Opportunity[]; onRead: (id: string) => void; onSetRead: (id: string, unread: boolean) => void; onReadMany: (ids: string[]) => void; onDeleteMany: (ids: string[]) => void; onOpenTarget: (notice: Notice) => void }) {
+  const filters = ["All", "Unread", "Meetings", "Opportunities", "Deals", "Invoices", "Archived", "Favorites"] as const;
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [meetingPanelState, setMeetingPanelState] = useState<"closed" | "open" | "closing">("closed");
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [archivedIds, setArchivedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const unreadCount = notices.filter(item => item.unread).length;
-  const visible = notices.filter(item => filter === "All" || (filter === "Unread" ? item.unread : noticeCategory(item) === filter)).sort((a, b) => noticeTimestamp(b.when) - noticeTimestamp(a.when));
+  const visible = notices.filter(item => {
+    const archived = archivedIds.includes(item.id);
+    if (filter === "Archived") return archived;
+    if (archived) return false;
+    return filter === "All" || (filter === "Unread" ? item.unread : filter === "Favorites" ? favoriteIds.includes(item.id) : noticeCategory(item) === filter);
+  }).sort((a, b) => noticeTimestamp(b.when) - noticeTimestamp(a.when));
   const selected = visible.find(item => item.id === selectedId) ?? visible[0] ?? null;
   const groups = ["Today", "Yesterday", "Earlier"] as const;
-  return (
-    <div className="bp-notification-layout">
-      <section className="bp-notification-list-panel">
-        <div className="bp-notification-filters" role="tablist" aria-label="Filter notifications">
-          {filters.map(item => <button key={item} role="tab" aria-selected={filter === item} onClick={() => { setFilter(item); setSelectedId(null); setMeetingPanelState("closed"); }}>{item}{item === "Unread" && unreadCount > 0 && <b>{unreadCount}</b>}</button>)}
+  const visibleIds = visible.map(item => item.id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.includes(id));
+  const someSelected = visibleIds.some(id => selectedIds.includes(id));
+  const toggleFavorite = (id: string) => setFavoriteIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
+  useEffect(() => { const ids = new Set(notices.map(item => item.id)); setFavoriteIds(current => current.filter(id => ids.has(id))); setSelectedIds(current => current.filter(id => ids.has(id))); }, [notices]);
+  return <div className="bp-notification-layout">
+    <section className="bp-notification-list-panel">
+      <div className="bp-notification-list-head">
+        <Checkbox size="sm" aria-label="Select all notifications" isSelected={allSelected} isIndeterminate={someSelected && !allSelected} isDisabled={!visible.length} onChange={() => setSelectedIds(allSelected ? [] : visibleIds)} />
+        <div className="bp-notification-list-tools">
+          <BoardSelect aria-label="Filter notifications" selectedKey={filter} onSelectionChange={key => { setFilter(String(key) as (typeof filters)[number]); setSelectedId(null); setSelectedIds([]); }} className="bp-notification-filter-select">
+            {filters.map(item => <SelectItem key={item} id={item}>{item}{item === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}</SelectItem>)}
+          </BoardSelect>
+          {someSelected && <div className="bp-notification-bulk-actions"><button type="button" aria-label={`Delete ${selectedIds.length} selected notifications`} title="Delete selected" onClick={() => { onDeleteMany(selectedIds); setSelectedIds([]); }}><RiDeleteBinLine /></button><button type="button" aria-label={`Mark ${selectedIds.length} selected notifications as read`} title="Mark selected as read" onClick={() => onReadMany(selectedIds)}><RiCheckLine /></button></div>}
         </div>
-        <div className="bp-notification-list">
-          {groups.map(group => {
-            const groupItems = visible.filter(item => noticeDateGroup(item.when) === group);
-            if (!groupItems.length) return null;
-            return <section className="bp-notification-group" key={group}><h3>{group}</h3>{groupItems.map(item => {
-              const category = noticeCategory(item);
-              const Icon = notificationIcon(category);
-              return <button className="bp-notification-row" key={item.id} data-selected={item.id === selected?.id} data-unread={item.unread} onClick={() => { setSelectedId(item.id); setMeetingPanelState("closed"); }}>
-                <span className={`bp-notification-icon is-${category.toLowerCase()}`}><Icon /></span>
-                <span className="bp-notification-copy"><strong>{item.title}</strong><small>{item.detail}</small></span>
-                <span className="bp-notification-time">{item.when.split(", ").slice(1).join(", ")}</span><RiArrowRightSLine className="bp-notification-arrow" />
-              </button>;
-            })}</section>;
-          })}
-          {!visible.length && <p className="bp-empty">No notifications in this view.</p>}
+      </div>
+      <div className="bp-notification-list">{groups.map(group => {
+        const groupItems = visible.filter(item => noticeDateGroup(item.when) === group);
+        if (!groupItems.length) return null;
+        return <section className="bp-notification-group" key={group}><h3>{group}</h3>{groupItems.map(item => {
+          const category = noticeCategory(item); const Icon = notificationIcon(category); const favorite = favoriteIds.includes(item.id);
+          return <div className="bp-notification-row" key={item.id} data-selected={item.id === selected?.id} data-unread={item.unread}>
+            <Checkbox size="sm" aria-label={`Select ${item.title}`} isSelected={selectedIds.includes(item.id)} onChange={() => setSelectedIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} />
+            <span className={`bp-notification-icon is-${category.toLowerCase()}`}><Icon /></span>
+            <button type="button" className="bp-notification-row-main" onClick={() => { setSelectedId(item.id); if (item.unread) onRead(item.id); }}><span className="bp-notification-copy"><strong>{item.title}</strong><small>{item.detail}</small></span></button>
+            <span className="bp-notification-time">{item.when.split(", ").slice(1).join(", ")}</span>
+            <button type="button" className={`bp-notification-star${favorite ? " is-favorite" : ""}`} aria-label={favorite ? "Remove from favorites" : "Add to favorites"} title={favorite ? "Remove favorite" : "Add favorite"} onClick={() => toggleFavorite(item.id)}>{favorite ? <RiStarFill /> : <RiStarLine />}</button>
+          </div>;
+        })}</section>;
+      })}{!visible.length && <p className="bp-empty">No notifications in this view.</p>}</div>
+    </section>
+    {selected && (() => {
+      const category = noticeCategory(selected); const Icon = notificationIcon(category);
+      const meeting = selected.targetType === "meeting" ? meetings.find(item => item.id === selected.targetId) : undefined;
+      const opportunity = selected.targetType === "opportunity" ? rows.find(item => item.id === selected.targetId) : undefined;
+      const relatedLabel = selected.targetType === "meeting" ? "meeting" : selected.targetType === "opportunity" ? (category === "Deals" ? "deal" : "opportunity") : selected.targetType === "invoice" ? "invoice" : selected.targetType === "document" ? "document" : "record";
+      return <aside className="bp-notification-detail" key={selected.id}>
+        <div className="bp-notice-detail-actions"><span className={`bp-notification-icon is-${category.toLowerCase()}`}><Icon /></span><div className="bp-notice-detail-toolbar">
+          <button type="button" aria-label={archivedIds.includes(selected.id) ? "Restore notification" : "Archive notification"} title={archivedIds.includes(selected.id) ? "Restore" : "Archive"} onClick={() => { setArchivedIds(current => current.includes(selected.id) ? current.filter(id => id !== selected.id) : [...current, selected.id]); setSelectedId(null); }}><RiArchiveLine /></button>
+          <button type="button" aria-label="Delete notification" title="Delete" className="is-delete" onClick={() => { onDeleteMany([selected.id]); setSelectedId(null); }}><RiDeleteBinLine /></button>
+          <button type="button" className="bp-notice-mark-read" aria-label={selected.unread ? "Mark as read" : "Mark as unread"} title={selected.unread ? "Mark as read" : "Mark as unread"} onClick={() => onSetRead(selected.id, !selected.unread)}>{selected.unread ? <RiMailLine /> : <RiMailUnreadLine />}</button>
+        </div></div>
+        <span className="bp-notice-category">{category}</span><h3>{selected.title}</h3><p className="bp-notice-when">{selected.when}</p><p className="bp-notice-description">{selected.detail}</p>
+        <div className="bp-notice-context"><span><RiNotification3Line />{category} update</span>
+          {meeting && <><span><RiTimeLine />{meeting.date} · {meeting.time}</span>{meeting.kind === "Virtual" && meeting.meetLink && <a href={meeting.meetLink} target="_blank" rel="noreferrer"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Google_Meet_icon_%282026%29.svg" alt="" />Join with Google Meet<RiExternalLinkLine /></a>}{meeting.kind !== "Virtual" && meeting.place && <span><RiMapPin2Line />{meeting.place}</span>}{meeting.participants.length > 0 && <span><RiGroupLine />{meeting.participants.map(person => person.name).join(", ")}</span>}</>}
+          {opportunity && <><span><RiMapPin2Line />{opportunity.city}</span><span><RiStackLine />{opportunity.model} · {opportunity.stage}</span></>}
+          {selected.targetId && <button type="button" onClick={() => onOpenTarget(selected)}>Open {relatedLabel} · {selected.targetId}<RiArrowRightSLine /></button>}
         </div>
-      </section>
-      {selected && (() => {
-        const category = noticeCategory(selected);
-        const Icon = notificationIcon(category);
-        const meeting = selected.targetType === "meeting" ? meetings.find(item => item.id === selected.targetId) : undefined;
-        const meetCode = meeting?.meetLink.split("/").filter(Boolean).at(-1) ?? "";
-        const relatedLabel = selected.targetType === "meeting" ? "Meeting" : selected.targetType === "opportunity" ? (category === "Deals" ? "Deal" : "Opportunity") : selected.targetType === "invoice" ? "Invoice" : selected.targetType === "document" ? "Document" : "Overview";
-        const closeMeetingPanel = () => {
-          setMeetingPanelState("closing");
-          window.setTimeout(() => setMeetingPanelState("closed"), 220);
-        };
-        return <aside className="bp-notification-detail" key={selected.id}>
-          <div className="bp-notice-detail-actions"><span className={`bp-notification-icon is-${category.toLowerCase()}`}><Icon /></span>{selected.unread ? <button aria-label="Mark notification as read" title="Mark as read" onClick={() => onRead(selected.id)}><RiCheckLine /></button> : <span className="bp-notice-read-indicator" aria-label="Read"><RiCheckLine /></span>}</div>
-          <span className="bp-notice-category">{category}</span>
-          <h3>{selected.title}</h3>
-          <p className="bp-notice-when">{selected.when}</p>
-          <p className="bp-notice-description">{selected.detail}</p>
-          {!(meeting && meetingPanelState !== "closed") && <div className="bp-notice-context"><span><RiNotification3Line />{category} update</span></div>}
-          {meetingPanelState !== "closed" && meeting && <section className={`bp-notice-inline-meeting is-${meetingPanelState}`} aria-label="Meeting details">
-            {meeting.kind === "Virtual" ? <div className="bp-notice-meeting-service"><span><img src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Google_Meet_icon_%282026%29.svg" alt="" /><span><strong>Google Meet</strong><small>{meetCode || "Meeting link not added"}</small></span></span>{meeting.meetLink && <a href={meeting.meetLink} target="_blank" rel="noreferrer">Join</a>}</div> : <div className="bp-notice-meeting-time"><RiMapPin2Line /><strong>{meeting.place || "Location not added"}</strong></div>}
-            <div className="bp-notice-meeting-time"><RiTimeLine /><strong>{meeting.time}</strong></div>
-            <section className="bp-notice-meeting-participants"><h4><RiGroupLine />Participants</h4><div>{meeting.participants.map(person => <span key={`${person.name}-${person.side}`}><i>{initials(person.name)}</i><strong>{person.name}</strong></span>)}</div></section>
-            <footer><button type="button" onClick={closeMeetingPanel}>Close</button></footer>
-          </section>}
-          {meeting ? meetingPanelState === "closed" ? <div className="bp-notice-detail-actions-bottom"><button className="is-primary" onClick={() => setMeetingPanelState("open")}>View Meeting<RiArrowRightSLine /></button></div> : null : <div className="bp-notice-detail-actions-bottom"><button className="is-primary" onClick={() => onOpenTarget(selected)}>View {relatedLabel}<RiArrowRightSLine /></button></div>}
-        </aside>;
-      })()}
-    </div>
-  );
+      </aside>;
+    })()}
+  </div>;
 }
 
 const permissionOptions = [

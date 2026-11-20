@@ -52,7 +52,13 @@ function initialize() {
   if (initialized || typeof window === "undefined") return;
   const stored = readStored();
   const records = directory(stored?.records);
-  current = stored ? { ...stored, records } : seed(records, Date.now());
+  const sample = seed(records, Date.now());
+  current = stored ? {
+    ...stored,
+    records,
+    meetings: stored.meetings.length ? stored.meetings : sample.meetings,
+    followUps: stored.followUps.length ? stored.followUps : sample.followUps,
+  } : sample;
   current = collectReminders(current);
   window.localStorage.setItem(key, JSON.stringify(current));
   initialized = true;
