@@ -2,7 +2,7 @@ import type { IconName } from "@/modules/auth/components/icon";
 
 export type CrmModule = { id: string; name: string; icon: IconName; section: string; description: string; scope: string[]; category: "Sales & relationships" | "Business operations" | "Platform & governance" };
 
-// Scope follows CRM PRODUCT.pdf sections 02–17. These are scope summaries, not implemented modules.
+// Scope follows CRM PRODUCT.pdf sections 02–17. Implemented workspaces replace the scope summary at their module route.
 export const crmModules: CrmModule[] = [
   { id: "roles", name: "User Roles & Permissions", icon: "users", section: "02", category: "Platform & governance", description: "The right access for every person, team and brand.", scope: ["Role, department and team access", "Record, field and action permissions", "Account lifecycle and access history"] },
   { id: "leads", name: "Lead Management", icon: "user", section: "03", category: "Sales & relationships", description: "A complete view of contacts, enquiries and opportunities.", scope: ["Franchise and brand expansion enquiries", "Duplicate review and source attribution", "Contact history and manual activity logging"] },
@@ -25,5 +25,5 @@ type ModuleCard = Pick<CrmModule, "id" | "name" | "icon" | "section" | "category
 
 export const moduleCards: ModuleCard[] = [
   { id: "authentication", name: "Authentication", icon: "lock", section: "01", category: "Platform & governance", description: "Sign-in, recovery and account access. Every screen, in one place.", href: "/library/authentication/sign-in", available: true },
-  ...crmModules.map(module => ({ ...module, href: module.id === "pipeline" ? "/library/modules/pipeline" : `/library/modules/${module.id}`, available: module.id === "meetings" || module.id === "roles" || module.id === "leads" || module.id === "brands" || module.id === "assignment" || module.id === "pipeline" })),
+  ...crmModules.map(module => ({ ...module, href: module.id === "pipeline" ? "/library/modules/pipeline" : `/library/modules/${module.id}`, available: module.id === "meetings" || module.id === "roles" || module.id === "leads" || module.id === "brands" || module.id === "assignment" || module.id === "pipeline" || module.id === "marketing" || module.id === "notifications" })),
 ];

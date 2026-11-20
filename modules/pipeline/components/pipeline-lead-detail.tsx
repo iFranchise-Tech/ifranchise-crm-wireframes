@@ -1,6 +1,7 @@
 "use client";
 
 import { EnquiryDetail } from "@/modules/leads/components/enquiry-detail";
+import { useDeleteConfirmation } from "@/components/base/modal/use-delete-confirmation";
 import { initialActivities, initialEnquiries } from "@/modules/leads/data";
 import type { Activity, Enquiry } from "@/modules/leads/types";
 import { initialOpportunities } from "../data";
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function PipelineLeadDetail({ opportunity, stages, owners, contacts, actor, onBack, onPatch, onStageChange, onDelete }: Props) {
+  const { requestDelete, confirmationDialog } = useDeleteConfirmation();
   const isOriginalLead = initialOpportunities.some(item => item.id === opportunity.id && item.enquiryId === opportunity.enquiryId);
   const enquiry = opportunityLead(opportunity, stages, isOriginalLead ? initialEnquiries.find(item => item.id === opportunity.enquiryId) : undefined);
   const activities = opportunity.leadActivities ?? (isOriginalLead ? initialActivities.filter(item => item.enquiryId === opportunity.enquiryId) : []);
@@ -59,7 +61,7 @@ export function PipelineLeadDetail({ opportunity, stages, owners, contacts, acto
     onPatch({ leadActivities: [activity, ...activities], lastActivity: "Just now" });
   }
 
-  return <EnquiryDetail
+  return <><EnquiryDetail
     opportunityId={opportunity.id} enquiry={enquiry} activities={allActivities} owners={owners} contacts={contacts} canDelete
     pipelineStages={stages.map(stage => stage.name)} onPipelineStageChange={onStageChange}
     backLabel="Back to sales pipeline" onBack={onBack} onSave={saveLead}
@@ -70,8 +72,8 @@ export function PipelineLeadDetail({ opportunity, stages, owners, contacts, acto
       } else addActivity({ title: update.title ?? "Follow-up call", kind: update.kind ?? "follow-up", type: update.type ?? "Phone Call", due: update.due, when: update.due, meetLink: update.meetLink, summary: update.summary ?? "Follow-up scheduled." });
     }}
     onPatchActivity={(id, patch) => onPatch({ leadActivities: allActivities.map(item => item.id === id ? { ...item, ...patch } : item) })}
-    onDeleteActivity={id => onPatch({ leadActivities: activities.filter(item => item.id !== id), hiddenActivityIds: [...hidden, id] })}
+    onDeleteActivity={id => requestDelete(allActivities.find(item => item.id === id)?.title ?? "lead activity", () => onPatch({ leadActivities: activities.filter(item => item.id !== id), hiddenActivityIds: [...hidden, id] }))}
     onCreateTask={task => addActivity({ ...task, when: task.due, kind: "follow-up", type: "Task" })}
     onCreateNote={note => addActivity({ title: note.title, summary: note.detail, noteType: note.noteType, pinned: note.pinned, kind: "follow-up", type: "Other Communication", status: "Completed", outcome: "Other" })}
-  />;
+  />{confirmationDialog}</>;
 }

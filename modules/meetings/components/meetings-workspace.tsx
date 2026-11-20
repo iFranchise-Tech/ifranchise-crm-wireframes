@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RiAddLine, RiArchiveLine, RiArrowLeftSLine, RiArrowRightSLine, RiArrowRightUpLine, RiBarChartBoxLine, RiCalendarLine, RiCheckLine, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiEyeLine, RiFilter3Line, RiInboxUnarchiveLine, RiLayoutColumnLine, RiListUnordered, RiMailLine, RiMailUnreadLine, RiMore2Fill, RiNotification3Line, RiSettings3Line, RiStarFill, RiStarLine, RiTimeLine, RiUserSharedLine } from "@remixicon/react";
 import { Button } from "@/components/base/buttons/button";
+import { useDeleteConfirmation } from "@/components/base/modal/use-delete-confirmation";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
@@ -32,6 +33,7 @@ type View = "Meetings" | "Follow-ups" | "Notifications" | "Reminder settings";
 const baseColumns = [{ id: "title", name: "Activity" }, { id: "customer", name: "Customer / enquiry" }, { id: "brand", name: "Brand" }, { id: "owner", name: "Assigned to" }, { id: "due", name: "Date & time (IST)" }, { id: "status", name: "Status" }];
 const statusOptions = ["Pending sync", "Scheduled", "Rescheduled", "Awaiting MOM", "MOM submitted", "Postponed", "Customer did not attend", "Internal participant did not attend", "Cancelled"];
 export function MeetingsWorkspace() {
+  const { requestDelete, confirmationDialog } = useDeleteConfirmation();
   const router = useRouter();
   const { state, now, error, ready } = useMeetings(); const [profile, setProfile] = useMeetingProfile();
   const [view, setView] = useState<View>("Meetings"); const [overview, setOverview] = useState(false);
@@ -86,14 +88,13 @@ export function MeetingsWorkspace() {
   function markRead(id?: string) { try { updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => (!id || item.id === id) && !item.deletedBy?.includes(profile.id) && (id || !item.archivedBy?.includes(profile.id)) && canViewRecord(profile, current.records.find(record => record.id === item.recordId)) ? { ...item, readBy: [...new Set([...item.readBy, profile.id])] } : item) })); } catch (failure) { setNotice((failure as Error).message); } }
   function markNotificationsRead(ids: string[]) { try { const selectedIds = new Set(ids); updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => selectedIds.has(item.id) ? { ...item, readBy: [...new Set([...item.readBy, profile.id])] } : item) })); } catch (failure) { setNotice((failure as Error).message); } }
   function setNotificationRead(id: string, isRead: boolean) { try { updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => item.id === id ? { ...item, readBy: isRead ? [...new Set([...item.readBy, profile.id])] : item.readBy.filter(userId => userId !== profile.id) } : item) })); } catch (failure) { setNotice((failure as Error).message); } }
-  function updateNotification(id: string, action: "archive" | "restore" | "delete" | "star") { try { updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => {
+  function updateNotification(id: string, action: "archive" | "restore" | "delete" | "star") { if (action === "delete") { const item = state.notifications.find(notification => notification.id === id); if (item) requestDelete("notification", () => { try { updateMeetings(current => ({ ...current, notifications: current.notifications.map(entry => entry.id === id ? { ...entry, deletedBy: [...new Set([...(entry.deletedBy ?? []), profile.id])] } : entry) })); setSelectedNotificationId(null); } catch (failure) { setNotice((failure as Error).message); } }); return; } try { updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => {
     if (item.id !== id) return item;
-    if (action === "delete") return { ...item, deletedBy: [...new Set([...(item.deletedBy ?? []), profile.id])] };
     if (action === "archive") return { ...item, archivedBy: [...new Set([...(item.archivedBy ?? []), profile.id])] };
     if (action === "star") return { ...item, starredBy: item.starredBy?.includes(profile.id) ? item.starredBy.filter(userId => userId !== profile.id) : [...new Set([...(item.starredBy ?? []), profile.id])] };
     return { ...item, archivedBy: (item.archivedBy ?? []).filter(userId => userId !== profile.id) };
   }) })); if (action !== "star") setSelectedNotificationId(null); } catch (failure) { setNotice((failure as Error).message); } }
-  function deleteNotifications(ids: string[]) { try { const selectedIds = new Set(ids); updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => selectedIds.has(item.id) ? { ...item, deletedBy: [...new Set([...(item.deletedBy ?? []), profile.id])] } : item) })); setSelectedNotificationId(null); } catch (failure) { setNotice((failure as Error).message); } }
+  function deleteNotifications(ids: string[]) { if (!ids.length) return; requestDelete(ids.length === 1 ? "notification" : `${ids.length} notifications`, () => { try { const selectedIds = new Set(ids); updateMeetings(current => ({ ...current, notifications: current.notifications.map(item => selectedIds.has(item.id) ? { ...item, deletedBy: [...new Set([...(item.deletedBy ?? []), profile.id])] } : item) })); setSelectedNotificationId(null); } catch (failure) { setNotice((failure as Error).message); } }); }
   const visibleNotifications = notifications.filter(item => {
     const archived = item.archivedBy?.includes(profile.id) ?? false;
     if (notificationFilter === "Archived") return archived;
@@ -173,6 +174,7 @@ export function MeetingsWorkspace() {
     {create === "meeting" && <MeetingForm state={state} profile={profile} onClose={() => setCreate(null)} onSaved={id => setDetail({ kind: "meeting", id })} />}
     {detail && !create && <EntityDetail key={`${detail.kind}:${detail.id}:${detail.action ?? "view"}`} {...detail} initialMode={detail.action ?? null} state={state} profile={profile} now={now} onClose={() => setDetail(null)} />}
     {columnsOpen && <ColumnManagerModal isOpen onOpenChange={setColumnsOpen} availableColumns={columns} selectedIds={columnIds} requiredIds={["title"]} scopeLabel={scope} onSave={ids => { try { savePersonalTableColumns(scope, profile.id, ids); setColumnIds(ids); setColumnsOpen(false); } catch { setNotice("Column preferences could not be saved."); } }} />}
+    {confirmationDialog}
   </ReviewShell></DirectionProvider>;
 }
 

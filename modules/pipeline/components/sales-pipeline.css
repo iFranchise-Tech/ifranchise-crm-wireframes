@@ -151,6 +151,62 @@
 .sp-detail-workspace .ld-stage-tracker { overflow-x: auto; }
 .sp-detail-workspace .ld-stage-steps { min-width: 800px; padding-block: 4px; }
 
+/* Give the pipeline's embedded lead detail a stable canvas. Without a definite
+   height, the lead module's full-height tab panels can collapse inside this
+   independently scrolling workspace. */
+.sp-detail-workspace .ld-detail {
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+}
+.sp-detail-workspace .ld-detail-layout {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+.sp-detail-workspace .ld-profile-column,
+.sp-detail-workspace .ld-detail-main { height: 100%; min-height: 0; }
+.sp-detail-workspace .ld-detail-main > :not(.ld-tabs) {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 0;
+}
+.sp-detail-workspace .ld-detail-main > .ld-history-panel {
+  height: auto;
+  min-height: 0;
+}
+.sp-detail-workspace .ld-detail-main > .ld-filterable-page { overflow: auto; }
+.sp-detail-workspace .ld-detail-main > .ld-lead-info-grid {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
+.sp-detail-workspace .ld-detail-main .ld-card {
+  border: 1px solid var(--color-border-button-default);
+  box-shadow: none;
+}
+.sp-detail-workspace .ld-lead-additional {
+  height: 100%;
+}
+
+@media (max-width: 1100px) {
+  .sp-detail-workspace .ld-detail { height: auto; min-height: 0; overflow: visible; }
+  .sp-detail-workspace .ld-detail-layout { height: auto; flex: none; grid-template-columns: minmax(0, 1fr); }
+  .sp-detail-workspace .ld-detail-main { height: auto; }
+  .sp-detail-workspace .ld-detail-main > :not(.ld-tabs) {
+    height: 68dvh;
+    min-height: 360px;
+    max-height: 680px;
+    flex: none;
+    overflow: auto;
+  }
+}
+
 .sp-lane-scroll { position: relative; display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .sp-lane-header, .sp-rnr-note { flex-shrink: 0; }
 

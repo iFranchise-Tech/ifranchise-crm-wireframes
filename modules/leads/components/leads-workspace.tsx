@@ -921,7 +921,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
                 }, ...list]);
               }}
               onPatchActivity={(id, patch) => setActivities(list => list.map(item => item.id === id ? { ...item, ...patch } : item))}
-              onDeleteActivity={id => setActivities(list => list.filter(item => item.id !== id))}
+              onDeleteActivity={id => setPendingDelete({ name: "lead activity", run: () => setActivities(list => list.filter(item => item.id !== id)) })}
               onDeleteEnquiry={() => setPendingDelete({ name: open.name, run: () => { setEnquiries(list => list.filter(item => item.id !== open.id)); setActivities(list => list.filter(item => item.enquiryId !== open.id)); setOpen(current => current?.id === open.id ? null : current); } })}
               onCreateTask={task => {
                 const stamp = now();

@@ -1429,7 +1429,7 @@ function InvoiceFileRow({ file, onRemove }: { file: EnquiryInvoiceFile; onRemove
         <DropdownPopover aria-label={`Actions for ${file.name}`} placement="bottom end" className="w-[160px]">
           <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
           <DropdownDivider />
-          <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+          <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); if (window.confirm(`Delete “${file.name}”? This action can’t be undone.`)) onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
           <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
         </DropdownPopover>
       </Dropdown>
@@ -1466,7 +1466,7 @@ function InvoiceRow({ invoice, onRemove }: { invoice: Invoice; onRemove: () => v
           <DropdownPopover aria-label={`Actions for ${invoice.id}`} placement="bottom end" className="w-[160px]">
             <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
             <DropdownDivider />
-            <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+            <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); if (window.confirm(`Delete invoice ${invoice.id}? This action can’t be undone.`)) onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
             <DropdownDivider />
             <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
           </DropdownPopover>
@@ -1505,7 +1505,7 @@ function DocRow({ doc, onRemove }: { doc: EnquiryDoc; onRemove: () => void }) {
           <DropdownPopover aria-label={`Actions for ${doc.name}`} placement="bottom end" className="w-[160px]">
             <DropdownItem onSelect={() => { setOpen(false); setViewing(true); }}><RiEyeLine />View</DropdownItem>
             <DropdownDivider />
-            <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
+            <DropdownItem className="text-text-error-primary" onSelect={() => { setOpen(false); if (window.confirm(`Delete “${doc.name}”? This action can’t be undone.`)) onRemove(); }}><RiDeleteBinLine />Delete</DropdownItem>
             <DropdownItem onSelect={() => { setOpen(false); download(); }}><RiDownloadLine />Download</DropdownItem>
           </DropdownPopover>
         </Dropdown>
