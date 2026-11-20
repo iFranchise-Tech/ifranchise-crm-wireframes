@@ -35,6 +35,7 @@ export type Opportunity = {
   brandId: BrandId;
   customer: string;
   contact: string;
+  email?: string;
   city: string;
   phone: string;
   model: FranchiseModel;

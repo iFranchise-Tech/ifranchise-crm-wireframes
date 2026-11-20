@@ -49,7 +49,7 @@ export function MeetingsWorkspace() {
   const columns = [...baseColumns.map(column => column.id === "title" ? { ...column, name: follow ? "Follow-up" : "Meeting" } : column), { id: "category", name: follow ? "Priority" : "Category" }, { id: "source", name: follow ? "Source activity" : "Format" }];
   const scope = follow ? "follow-ups" : "meetings";
   useEffect(() => { setColumnIds(readTableColumns(scope, profile.id, columns, ["title"], [...baseColumns.filter(item => item.id !== "brand").map(item => item.id), "category"])); }, [scope, profile.id]); // Column definitions are stable by scope.
-  useEffect(() => { if (ready && calendarMonth.getFullYear() === 2000) { const date = new Date(now); setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1)); } }, [ready, now, calendarMonth]);
+  useEffect(() => { if (ready && now > 0 && calendarMonth.getFullYear() === 2000) { const date = new Date(now); setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1)); } }, [ready, now, calendarMonth]);
   useEffect(() => { setPage(1); }, [query, status, owner, category, filters, view, profile.id]);
   const recordFor = (id: string) => state.records.find(record => record.id === id);
   const scopedRecords = state.records.filter(record => canViewRecord(profile, record));
