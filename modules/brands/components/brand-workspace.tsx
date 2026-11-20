@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent, type ReactNode } from "react";
+import { useDeleteConfirmation } from "@/components/base/modal/use-delete-confirmation";
 import { CalendarDate } from "@internationalized/date";
 import {
   RiArrowDownSLine,
@@ -1182,6 +1183,7 @@ function notificationIcon(category: NoticeCategory) {
 }
 
 function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, onSetRead, onReadMany, onDeleteMany, onOpenTarget }: { notices: Notice[]; meetings: Meeting[]; opportunities: Opportunity[]; onRead: (id: string) => void; onSetRead: (id: string, unread: boolean) => void; onReadMany: (ids: string[]) => void; onDeleteMany: (ids: string[]) => void; onOpenTarget: (notice: Notice) => void }) {
+  const { requestDelete, confirmationDialog } = useDeleteConfirmation();
   const filters = ["All", "Unread", "Meetings", "Opportunities", "Deals", "Invoices", "Archived", "Favorites"] as const;
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1202,7 +1204,7 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
   const someSelected = visibleIds.some(id => selectedIds.includes(id));
   const toggleFavorite = (id: string) => setFavoriteIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   useEffect(() => { const ids = new Set(notices.map(item => item.id)); setFavoriteIds(current => current.filter(id => ids.has(id))); setSelectedIds(current => current.filter(id => ids.has(id))); }, [notices]);
-  return <div className="bp-notification-layout">
+  return <><div className="bp-notification-layout">
     <section className="bp-notification-list-panel">
       <div className="bp-notification-list-head">
         <Checkbox size="sm" aria-label="Select all notifications" isSelected={allSelected} isIndeterminate={someSelected && !allSelected} isDisabled={!visible.length} onChange={() => setSelectedIds(allSelected ? [] : visibleIds)} />
@@ -1210,7 +1212,7 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
           <BoardSelect aria-label="Filter notifications" selectedKey={filter} onSelectionChange={key => { setFilter(String(key) as (typeof filters)[number]); setSelectedId(null); setSelectedIds([]); }} className="bp-notification-filter-select">
             {filters.map(item => <SelectItem key={item} id={item}>{item}{item === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}</SelectItem>)}
           </BoardSelect>
-          {someSelected && <div className="bp-notification-bulk-actions"><button type="button" aria-label={`Delete ${selectedIds.length} selected notifications`} title="Delete selected" onClick={() => { onDeleteMany(selectedIds); setSelectedIds([]); }}><RiDeleteBinLine /></button><button type="button" aria-label={`Mark ${selectedIds.length} selected notifications as read`} title="Mark selected as read" onClick={() => onReadMany(selectedIds)}><RiCheckLine /></button></div>}
+          {someSelected && <div className="bp-notification-bulk-actions"><button type="button" aria-label={`Delete ${selectedIds.length} selected notifications`} title="Delete selected" onClick={() => requestDelete(`${selectedIds.length} notifications`, () => { onDeleteMany(selectedIds); setSelectedIds([]); })}><RiDeleteBinLine /></button><button type="button" aria-label={`Mark ${selectedIds.length} selected notifications as read`} title="Mark selected as read" onClick={() => onReadMany(selectedIds)}><RiCheckLine /></button></div>}
         </div>
       </div>
       <div className="bp-notification-list">{groups.map(group => {
@@ -1236,7 +1238,7 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
       return <aside className="bp-notification-detail" key={selected.id}>
         <div className="bp-notice-detail-actions"><span className={`bp-notification-icon is-${category.toLowerCase()}`}><Icon /></span><div className="bp-notice-detail-toolbar">
           <button type="button" aria-label={archivedIds.includes(selected.id) ? "Restore notification" : "Archive notification"} title={archivedIds.includes(selected.id) ? "Restore" : "Archive"} onClick={() => { setArchivedIds(current => current.includes(selected.id) ? current.filter(id => id !== selected.id) : [...current, selected.id]); setSelectedId(null); }}><RiArchiveLine /></button>
-          <button type="button" aria-label="Delete notification" title="Delete" className="is-delete" onClick={() => { onDeleteMany([selected.id]); setSelectedId(null); }}><RiDeleteBinLine /></button>
+          <button type="button" aria-label="Delete notification" title="Delete" className="is-delete" onClick={() => requestDelete("notification", () => { onDeleteMany([selected.id]); setSelectedId(null); })}><RiDeleteBinLine /></button>
           <button type="button" className="bp-notice-mark-read" aria-label={selected.unread ? "Mark as read" : "Mark as unread"} title={selected.unread ? "Mark as read" : "Mark as unread"} onClick={() => onSetRead(selected.id, !selected.unread)}>{selected.unread ? <RiMailLine /> : <RiMailUnreadLine />}</button>
         </div></div>
         <span className="bp-notice-category">{category}</span><h3>{selected.title}</h3><p className="bp-notice-when">{selected.when}</p><p className="bp-notice-description">{selected.detail}</p>
@@ -1247,7 +1249,7 @@ function NotificationsPanel({ notices, meetings, opportunities: rows, onRead, on
         </div>
       </aside>;
     })()}
-  </div>;
+  </div>{confirmationDialog}</>;
 }
 
 const permissionOptions = [

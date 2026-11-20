@@ -8,6 +8,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { SearchField } from "@/components/base/search-field/search-field";
 import { Select, SelectItem } from "@/components/base/select/select";
+import { useDeleteConfirmation } from "@/components/base/modal/use-delete-confirmation";
 
 export type LeadFilterRule = { id: string; field: string; operator: string; value: string };
 export type LeadAdvancedFilters = {
@@ -85,6 +86,7 @@ export function AdvancedLeadFilters({
   searchPlaceholder?: string;
   contextFilters?: ReactNode;
 }) {
+  const { requestDelete, confirmationDialog } = useDeleteConfirmation();
   const scrollFade = useScrollFade();
   const defaultField = fields[0]?.id ?? "person";
   const [draft, setDraft] = useState<LeadAdvancedFilters>(() => cloneFilters(initialFilters ?? emptyFiltersFor(defaultField)));
@@ -189,7 +191,7 @@ export function AdvancedLeadFilters({
             <span className="ld-saved-filter-count">{countFor(filter.filters)}</span>
             <button type="button" aria-label={`Move ${filter.name} up`} disabled={index === 0} onClick={() => moveSaved(index, -1)}>↑</button>
             <button type="button" aria-label={`Move ${filter.name} down`} disabled={index === saved.length - 1} onClick={() => moveSaved(index, 1)}>↓</button>
-            <button type="button" aria-label={`Delete ${filter.name}`} onClick={() => removeSaved(filter.id)}><RiDeleteBinLine aria-hidden="true" /></button>
+            <button type="button" aria-label={`Delete ${filter.name}`} onClick={() => requestDelete(`saved filter “${filter.name}”`, () => removeSaved(filter.id))}><RiDeleteBinLine aria-hidden="true" /></button>
           </div>)}
         </div>
       </section>}
@@ -240,6 +242,7 @@ export function AdvancedLeadFilters({
           <Button size="small" onClick={() => apply(draft)}>Apply filters</Button>
         </div>
       </footer>
+      {confirmationDialog}
     </aside>
   );
 }

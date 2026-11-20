@@ -151,7 +151,7 @@ export function PipelineManagement({ pipelines, opportunities, onSave, onOpenBoa
               <TableCell><Chip variant="caption" color={categoryColor}>{stage.category}</Chip></TableCell>
               <TableCell><div className="sp-stage-actions">
                 <Button iconOnly size="small" variant="ghost" leadingIcon={RiEditLine} aria-label={`Edit ${stage.name}`} title={`Edit ${stage.name}`} onClick={() => openStageEditor(stage)} />
-                <Button iconOnly size="small" variant="ghost" leadingIcon={RiDeleteBinLine} aria-label={`Remove ${stage.name}`} title={!stage.id.startsWith("custom-") ? "Standard stages cannot be removed" : hasRecords ? "Move opportunities out of this stage before removing it" : `Remove ${stage.name}`} disabled={!stage.id.startsWith("custom-") || hasRecords} onClick={() => setDraft(current => current ? { ...current, stages: current.stages.filter(item => item.id !== stage.id) } : current)} />
+                <Button iconOnly size="small" variant="ghost" leadingIcon={RiDeleteBinLine} aria-label={`Remove ${stage.name}`} title={!stage.id.startsWith("custom-") ? "Standard stages cannot be removed" : hasRecords ? "Move opportunities out of this stage before removing it" : `Remove ${stage.name}`} disabled={!stage.id.startsWith("custom-") || hasRecords} onClick={() => { if (!window.confirm(`Remove the “${stage.name}” stage from this pipeline? Save stages to apply this change.`)) return; setDraft(current => current ? { ...current, stages: current.stages.filter(item => item.id !== stage.id) } : current); }} />
               </div></TableCell>
             </TableRow>;
           })}</TableBody>
