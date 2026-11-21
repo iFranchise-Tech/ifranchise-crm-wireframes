@@ -343,8 +343,6 @@ function Overview({ rows, onNavigate }: { rows: Record<Exclude<Key, "Overview">,
     { title: "Approved devices", value: "94", note: "89 active · 5 need review", section: "Security & Devices" },
     { title: "Integrations", value: "8 / 9", note: "One sync needs attention", section: "Integrations", status: "Needs attention" },
     { title: "Platform health", value: "6 / 7", note: "One background job degraded", section: "Infrastructure & Database", status: "Degraded" },
-    { title: "Latest backup", value: "Verified", note: "Today · 2:08 am · 30 day retention", section: "Backup & Recovery", status: "Verified" },
-    { title: "Current releases", value: "2", note: "Android rollout · web stable", section: "Versions & Deployments" },
   ];
   const events = rows["Audit Logs"].slice(0, 4);
   const issues = [...rows.Integrations.filter(row => row["Sync status"] !== "Healthy"), ...rows["Infrastructure & Database"].filter(row => row.Health === "Degraded"), ...rows["Backup & Recovery"].filter(row => row.Status === "Failed")].slice(0, 4);
