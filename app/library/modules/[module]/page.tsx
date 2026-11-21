@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { crmModules } from "@/modules/screen-library/config/modules";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Icon } from "@/modules/auth/components/icon";
+import { SecurityWorkspace } from "@/modules/security/components/security-workspace";
 
 export function generateStaticParams() { return crmModules.map(module => ({ module: module.id })); }
 export async function generateMetadata({ params }: { params: Promise<{ module: string }> }) {
@@ -13,10 +14,11 @@ export default async function ModuleScopePage({ params, searchParams }: { params
   const [{ module: id }, query] = await Promise.all([params, searchParams]);
   const module = crmModules.find(item => item.id === id);
   if (!module) notFound();
+  if (id === "security") return <SecurityWorkspace view={query.view ?? "Overview"} />;
   const isOverview = query.view === "overview";
   const scopeHref = `/library/modules/${module.id}`;
   const overviewHref = `${scopeHref}?view=overview`;
-  return <ReviewShell moduleName={module.name} icon={module.icon} subtitle="Product scope defined" overviewHref={overviewHref} title={isOverview ? "Module overview" : "Product scope"} controls={<span className="review-toolbar-status"><span className="status-dot" />Planned module</span>} navigation={<nav className="review-navigation" aria-label={`${module.name} navigation`}>
+  return <ReviewShell moduleName={module.name} icon={module.icon} subtitle="Product scope defined" overviewHref={overviewHref} title={isOverview ? "Module overview" : "Product scope"} controls={<span className="review-toolbar-status"><span className="status-dot" />Planned module</span>} moduleDropdown={module.id !== "authentication"} navigation={<nav className="review-navigation" aria-label={`${module.name} navigation`}>
     <Link className="review-overview-link" href={scopeHref} aria-current={!isOverview ? "page" : undefined}><Icon name="layers" />Product scope</Link>
   </nav>}>
     <div className="review-information"><div className="module-overview module-scope">

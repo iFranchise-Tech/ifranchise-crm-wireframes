@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import type { Selection } from "react-aria-components";
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -57,6 +56,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/mo
 import { SearchField } from "@/components/base/search-field/search-field";
 import { SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
+import { TableSelectionCheckbox } from "@/components/base/table/table-selection-checkbox";
 import { Textarea } from "@/components/base/textarea/textarea";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
 import { ScrollFade, useScrollFade } from "@/components/foundations/scroll-fade/scroll-fade";
@@ -495,7 +495,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   const [related, setRelated] = useState("All enquiries");
   const [assignee, setAssignee] = useState("All people");
   const [sourceKind, setSourceKind] = useState("All types");
-  const [selected, setSelected] = useState<Selection>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<Enquiry | null>(null);
   const [editing, setEditing] = useState<Enquiry | null>(null);
   const [assignIds, setAssignIds] = useState<string[] | null>(null);
@@ -718,7 +718,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   }), [scopedEnquiries, query, activeCategory, status, brand, location, favouritesOnly, favouriteIds]);
   const visibleEnquiries = useMemo(() => matchingEnquiryPool.filter(enquiry => !advancedFilters || matchesLeadCriteria(enquiry, advancedFilters, advancedFilterFields)), [matchingEnquiryPool, advancedFilters, advancedFilterFields]);
   const enquiryPage = slicePage(visibleEnquiries, page);
-  const selectedIds = selected === "all" ? visibleEnquiries.map(item => item.id) : [...selected].map(String).filter(id => visibleEnquiries.some(item => item.id === id));
+  const selectedIds = [...selected].filter(id => visibleEnquiries.some(item => item.id === id));
   const advancedFilterCount = advancedFilters ? advancedFilters.rules.filter(rule => rule.value || ["is empty", "is not empty"].includes(rule.operator)).length : 0;
   const defaultColumnIds = baseColumns.filter(column => column.id !== "select" && column.id !== "actions").map(column => column.id);
   const requiredColumnId = enquiryView ? "person" : section === "Activity" ? "activity" : "source";
@@ -855,16 +855,16 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   const nav = (
     <nav className="review-navigation ld-side-nav">
       {enquiryTabs.filter(tab => role.categories.includes(tab.id)).map(tab => (
-        <Link className="review-overview-link" key={tab.id} href={`/library/modules/leads?view=${encodeURIComponent(tab.id)}`} aria-current={section === tab.id ? "page" : undefined}>{tab.label}</Link>
+        <Link className="review-overview-link" key={tab.id} href={`/library/modules/leads?view=${encodeURIComponent(tab.id)}`} aria-current={section === tab.id ? "page" : undefined}><tab.icon aria-hidden="true" />{tab.label}</Link>
       ))}
-      {role.sections.includes("Activity") && <Link className="review-overview-link ld-side-split" href="/library/modules/leads?view=Activity" aria-current={section === "Activity" ? "page" : undefined}>Activity</Link>}
-      {role.sections.includes("Sources") && <Link className="review-overview-link" href="/library/modules/leads?view=Sources" aria-current={section === "Sources" ? "page" : undefined}>Sources</Link>}
+      {role.sections.includes("Activity") && <Link className="review-overview-link ld-side-split" href="/library/modules/leads?view=Activity" aria-current={section === "Activity" ? "page" : undefined}><RiCalendarLine aria-hidden="true" />Activity</Link>}
+      {role.sections.includes("Sources") && <Link className="review-overview-link" href="/library/modules/leads?view=Sources" aria-current={section === "Sources" ? "page" : undefined}><RiGlobalLine aria-hidden="true" />Sources</Link>}
     </nav>
   );
 
   return (
     <DirectionProvider locale="en-US">
-      <ReviewShell className="ld-shell" moduleName="Lead Management" icon="user" subtitle="Enquiries, activity & sources" overviewHref="/library/modules/leads?view=Franchise" title={heading} navigation={nav} controls={
+      <ReviewShell className="ld-shell" moduleName="Lead Management" icon="user" subtitle="Enquiries, activity & sources" overviewHref="/library/modules/leads?view=Franchise" title={heading} navigation={nav} moduleDropdown controls={
         <Dropdown isOpen={roleOpen} onOpenChange={setRoleOpen}>
           <DropdownTrigger className="ld-role" aria-label={`${role.name}, ${role.title}`}>
             <Avatar size="sm" src={portraitFor(role.name)} initials={initials(role.name)} alt="" />
@@ -1068,20 +1068,20 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
             <div className={cx("ld-record-content relative", section === "Activity" && "ld-scroll-fit")}>
             <div className={cx("ld-scroll", section === "Activity" && "ld-activity-scroll")} onScroll={section === "Activity" ? activityScrollFade.onScroll : undefined}>
               {enquiryView && (
-                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" selectionMode="multiple" selectedKeys={selected} onSelectionChange={setSelected} onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
+                <Table key={`${role.id}:${columnScope}:${visibleColumnIds.join(",")}`} aria-label="Enquiries" onRowAction={key => setOpen(scopedEnquiries.find(enquiry => enquiry.id === String(key)) || null)}>
                   <TableHeader columns={tableColumns}>
                     {(column: Column) => (
                       <TableColumn isRowHeader={column.isRowHeader} aria-label={column.id === "favourite" ? "Favourite" : undefined} className={cx(column.id === "status" && "ld-status-heading", column.id === "favourite" && "ld-favourite-cell")}>
-                        {column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}
+                        {column.id === "select" ? <TableSelectionCheckbox label="Select all enquiries" isSelected={enquiryPage.rows.length > 0 && enquiryPage.rows.every(item => selected.has(item.id))} onChange={isSelected => setSelected(current => { const next = new Set(current); enquiryPage.rows.forEach(item => isSelected ? next.add(item.id) : next.delete(item.id)); return next; })} /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}
                       </TableColumn>
                     )}
                   </TableHeader>
-                  <TableBody items={enquiryPage.rows} dependencies={[favouriteIds]}>
+                  <TableBody items={enquiryPage.rows.map(item => ({ ...item, __selected: selected.has(item.id) }))} dependencies={[favouriteIds]}>
                     {enquiry => (
                       <TableRow columns={tableColumns} dependencies={[enquiry, favouriteIds.has(enquiry.id)]} className="cursor-pointer outline-none">
                         {(column: Column) => (
                           <TableCell className={cx(column.id === "status" && "ld-status-cell", column.id === "favourite" && "ld-favourite-cell")}>
-                            {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${enquiry.name}`} />}
+                            {column.id === "select" && <TableSelectionCheckbox label={`Select ${enquiry.name}`} isSelected={enquiry.__selected === true} onChange={isSelected => setSelected(current => { const next = new Set(current); isSelected ? next.add(enquiry.id) : next.delete(enquiry.id); return next; })} />}
                             {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(enquiry.id) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(enquiry.id) ? "Remove" : "Add"} ${enquiry.name} ${favouriteIds.has(enquiry.id) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(enquiry.id)} title={favouriteIds.has(enquiry.id) ? "Remove from favourites" : "Add to favourites"} className="ld-favourite-button border-0 bg-transparent text-foreground-icon-secondary shadow-none" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(enquiry.id); }} />}
                             {column.id === "person" && <Person name={enquiry.name} meta={enquiry.id} />}
                             {column.id === "brand" && enquiry.brand}

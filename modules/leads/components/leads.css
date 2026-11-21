@@ -293,7 +293,7 @@ button.ld-stat:hover { border-color: #d5d5dc; background: #fafafa; }
 
 .review-shell.ld-shell { grid-template-columns: 280px minmax(0, 1fr); }
 .ld-side-nav.review-navigation { overflow-x: hidden; padding: 2px 12px 16px; }
-.ld-side-nav .review-overview-link { white-space: nowrap; }
+.ld-side-nav .review-overview-link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ld-side-nav .ld-side-split { margin-top: 0; }
 
 .ld-stat strong {

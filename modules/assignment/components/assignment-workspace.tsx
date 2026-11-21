@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Fragment } from "react";
-import type { Selection } from "react-aria-components";
 import { RiAdvertisementLine, RiArrowDownSLine, RiArrowLeftSLine, RiArrowRightLine, RiArrowRightSLine, RiCalendarLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiFacebookLine, RiFilter3Line, RiGlobalLine, RiGoogleLine, RiGroupLine, RiInformationLine, RiInstagramLine, RiLayoutColumnLine, RiLogoutBoxRLine, RiMailLine, RiPhoneLine, RiQuestionLine, RiStarFill, RiStarLine, RiStore2Line, RiUserLine } from "@remixicon/react";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -16,6 +15,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/base/mo
 import { SearchField } from "@/components/base/search-field/search-field";
 import { Select, SelectItem } from "@/components/base/select/select";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@/components/base/table/table";
+import { TableSelectionCheckbox } from "@/components/base/table/table-selection-checkbox";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { ColumnManagerModal } from "@/modules/screen-library/components/column-manager-modal";
 import { activeCrmProfiles, readActiveCrmRole, readTableColumns, saveActiveCrmRole, saveOrganizationTableColumns, savePersonalTableColumns, type ActiveCrmProfile } from "@/modules/screen-library/lib/table-columns";
@@ -531,12 +531,12 @@ export function AssignmentWorkspace() {
           <div className="assignment-list-main">
           {checked.length > 0 ? <div className="assignment-bulk-row"><span>{checked.length} selected</span><Button size="small" leadingIcon={RiArrowRightLine} onClick={() => { const lead = leadSet.find(item => item.id === checked[0]); if (lead) openAssignment(lead); }}>Assign selected</Button><Button size="small" variant="ghost" onClick={() => setChecked([])}>Clear selection</Button></div> : null}
           <div className="assignment-table-scroll">
-            <Table key={`assignment:${visibleAssignmentColumns.join(",")}`} aria-label="Enquiries for assignment" size="sm" className="assignment-record-table" containerClassName="assignment-table-overflow" selectionMode="multiple" selectedKeys={new Set(checked)} onSelectionChange={(keys: Selection) => setChecked(keys === "all" ? leadRows.map(lead => lead.id) : Array.from(keys, key => String(key)))} onRowAction={key => { const lead = leadSet.find(item => item.id === String(key)); if (lead) openAssignment(lead); }}>
-              <TableHeader columns={tableColumns}>{column => <TableColumn className={cx(`assignment-column-${column.id}`, (column.id === "owner" || column.id === "stage") && "assignment-centered-header")} aria-label={column.id === "favourite" ? "Favourite" : undefined} isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.id === "select" ? <Checkbox slot="selection" aria-label="Select all enquiries" /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}</TableColumn>}</TableHeader>
-              <TableBody items={leadRows} dependencies={[favouriteIds, assignments]}>
+            <Table key={`assignment:${visibleAssignmentColumns.join(",")}`} aria-label="Enquiries for assignment" size="sm" className="assignment-record-table" containerClassName="assignment-table-overflow" onRowAction={key => { const lead = leadSet.find(item => item.id === String(key)); if (lead) openAssignment(lead); }}>
+              <TableHeader columns={tableColumns}>{column => <TableColumn className={cx(`assignment-column-${column.id}`, (column.id === "owner" || column.id === "stage") && "assignment-centered-header")} aria-label={column.id === "favourite" ? "Favourite" : undefined} isRowHeader={"isRowHeader" in column ? column.isRowHeader : false}>{column.id === "select" ? <TableSelectionCheckbox label="Select all enquiries" isSelected={leadRows.length > 0 && leadRows.every(lead => checked.includes(lead.id))} onChange={isSelected => setChecked(current => isSelected ? [...new Set([...current, ...leadRows.map(lead => lead.id)])] : current.filter(id => !leadRows.some(lead => lead.id === id)))} /> : column.id === "favourite" ? <RiStarLine className="size-4" aria-hidden /> : column.name}</TableColumn>}</TableHeader>
+              <TableBody items={leadRows.map(lead => ({ ...lead, __selected: checked.includes(lead.id) }))} dependencies={[favouriteIds, assignments]}>
                 {lead => <TableRow columns={tableColumns} dependencies={[lead, favouriteIds.has(lead.code), assignments[lead.id]]} className="assignment-record-row cursor-pointer outline-none">
                   {column => <TableCell className={cx(`assignment-column-${column.id}`, (column.id === "owner" || column.id === "stage") && "assignment-centered-cell")}>
-                    {column.id === "select" && <Checkbox slot="selection" aria-label={`Select ${lead.name}`} />}
+                    {column.id === "select" && <TableSelectionCheckbox label={`Select ${lead.name}`} isSelected={lead.__selected === true} onChange={isSelected => setChecked(current => isSelected ? [...new Set([...current, lead.id])] : current.filter(id => id !== lead.id))} />}
                     {column.id === "favourite" && <IconButton size="small" icon={favouriteIds.has(lead.code) ? RiStarFill : RiStarLine} aria-label={`${favouriteIds.has(lead.code) ? "Remove" : "Add"} ${lead.name} ${favouriteIds.has(lead.code) ? "from" : "to"} favourites`} aria-pressed={favouriteIds.has(lead.code)} title={favouriteIds.has(lead.code) ? "Remove from favourites" : "Add to favourites"} className="assignment-favourite-button border-0 bg-transparent text-foreground-icon-secondary shadow-none" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); toggleFavourite(lead.code); }} />}
                     {column.id === "opportunity" && <span className="assignment-opportunity"><strong>{lead.name}</strong><small>{lead.code}</small></span>}
                     {column.id === "source" && <span className={`assignment-source source-${lead.source.toLowerCase().replace(/[^a-z]/g, "")}`}>{lead.source}</span>}
