@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { RiAddLine, RiArrowRightSLine, RiCheckLine, RiMore2Line, RiRefreshLine, RiSettings3Line } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
@@ -172,8 +172,10 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const [editor, setEditor] = useState<{ row: RecordRow; isNew: boolean } | null>(null);
   const [detail, setDetail] = useState<RecordRow | null>(null);
   const [effectiveEmployeeId, setEffectiveEmployeeId] = useState("IF2026001");
-  const [confirm, setConfirm] = useState<{ title: string; description: string; run: () => void } | null>(null);
+  const [confirm, setConfirm] = useState<{ title: string; description: string; confirmLabel?: string; run: () => void } | null>(null);
   const [notice, setNotice] = useState("");
+
+  useEffect(() => setSelected([]), [section]);
 
   const screen = section === "Overview" ? null : screens[section];
   const dataSection = section === "Overview" ? null : section;
@@ -211,13 +213,49 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const changeStatus = (ids: string[], value: string) => {
     if (!screen || !dataSection) return;
     const target = ids.length === 1 ? rows[dataSection].find(row => row.id === ids[0]) : null;
-    setConfirm({ title: `${value} ${ids.length === 1 ? "this record" : `${ids.length} selected records`}?`, description: target ? `${target[screen.columns[0]?.id] || target.id}. Historical references will remain available.` : "The selected records and their history will remain available.", run: () => {
+    setConfirm({ title: `${value} ${ids.length === 1 ? "this record" : `${ids.length} selected records`}?`, description: target ? `${target[screen.columns[0]?.id] || target.id}. Historical references will remain available.` : "The selected records and their history will remain available.", confirmLabel: `Confirm ${value.toLowerCase()}`, run: () => {
       const selectedRecords = rows[dataSection].filter(row => ids.includes(row.id));
       setRows(current => ({ ...current, [dataSection]: current[dataSection].map(row => ids.includes(row.id) ? { ...row, Status: value, Connection: value === "Inactive" ? "Disconnected" : row.Connection || value } : row), "Audit Logs": [{ id: `AUD-${Date.now()}`, Action: value === "Revoked" ? "Device access revoked" : `Record status changed to ${value}`, Actor: people[profiles.indexOf(profile)] + " · administration", Module: section, Resource: selectedRecords.map(row => row.id).join(", "), "Previous value": selectedRecords.map(row => row.Status || row.Connection || "Active").join(", "), "New value": value, "Date and time": "Just now", "IP / Device": "Preview environment", Result: "Completed" }, ...current["Audit Logs"]] }));
       setSelected([]);
       setNotice(`Status changed to ${value}.`);
       setConfirm(null);
     } });
+  };
+  const exportSelected = () => {
+    if (!dataSection || selected.length === 0) return;
+    const records = rows[dataSection].filter(row => selected.includes(row.id));
+    const columns = [...new Set(records.flatMap(row => Object.keys(row)))];
+    const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const csv = [columns, ...records.map(row => columns.map(column => row[column] || ""))]
+      .map(values => values.map(escapeCsv).join(","))
+      .join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${section.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}-selected.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice(`Exported ${records.length} selected ${records.length === 1 ? "record" : "records"}.`);
+  };
+  const removeSelectedIntegrations = () => {
+    if (!dataSection || section !== "Integrations" || selected.length === 0) return;
+    const records = rows[dataSection].filter(row => selected.includes(row.id));
+    setConfirm({
+      title: `Remove ${records.length} selected integration${records.length === 1 ? "" : "s"}?`,
+      description: "This removes the integration configuration from the preview. Related audit history is retained.",
+      confirmLabel: "Remove integrations",
+      run: () => {
+        const resources = records.map(row => row.id).join(", ");
+        setRows(current => ({
+          ...current,
+          [dataSection]: current[dataSection].filter(row => !selected.includes(row.id)),
+          "Audit Logs": [{ id: `AUD-${Date.now()}`, Action: "Integration configuration removed", Actor: people[profiles.indexOf(profile)] + " · administration", Module: section, Resource: resources, "Previous value": "Configured", "New value": "Removed", "Date and time": "Just now", "IP / Device": "Preview environment", Result: "Completed" }, ...current["Audit Logs"]],
+        }));
+        setSelected([]);
+        setConfirm(null);
+        setNotice(`Removed ${records.length} integration${records.length === 1 ? "" : "s"} in this preview.`);
+      },
+    });
   };
   const retry = (row: RecordRow) => {
     setRows(current => ({ ...current, "Integrations": current["Integrations"].map(item => item.id === row.id ? { ...item, "Sync status": "Retry queued", "Last failure": "Retry requested just now" } : item) }));
@@ -254,10 +292,16 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
 
       {section === "Overview" ? <Overview rows={rows} onNavigate={(key, filter) => router.push(`/library/modules/administration?view=${encodeURIComponent(key)}${filter ? `&status=${encodeURIComponent(filter)}` : ""}`)} /> : !allowed ? <section className="admin-panel flex flex-1 items-center justify-center p-8"><div className="max-w-md text-center"><span className="mb-3 inline-flex rounded-full bg-background-secondary-default p-3 text-foreground-icon-secondary"><RiSettings3Line className="size-5" /></span><h3 className="text-headline-medium text-text-primary">Access restricted</h3><p className="mt-2 text-body-regular text-text-secondary">{profile} does not administer this area in the review profile. Choose another profile to inspect its authorized controls.</p></div></section> : <section className="admin-panel flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-separator-border p-4">
-          <SearchField aria-label={`Search ${section}`} placeholder={`Search ${section.toLowerCase()}`} value={query} onChange={value => { setQuery(value); setPage(0); }} className="min-w-56 flex-1" />
-          <Select aria-label="Filter by status" selectedKey={statusFilter} onSelectionChange={key => { setStatusFilter(String(key)); setPage(0); }} className="w-44"><SelectItem id="All statuses">All statuses</SelectItem>{[...new Set(activeRows.flatMap(row => Object.entries(row).filter(([key]) => ["Status", "Health", "Connection", "Sync status", "Verification", "Result"].includes(key)).map(([, value]) => value)))].map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>
-          {selected.length > 0 && screen?.supportsDeactivate && <><span className="text-body-2-regular text-text-secondary">{selected.length} selected</span><Button variant="secondary" size="small" onClick={() => changeStatus(selected, section === "Security & Devices" ? "Revoked" : "Deactivated")}>{section === "Security & Devices" ? "Revoke selected devices" : "Deactivate selected"}</Button></>}
+          <SearchField aria-label={`Search ${section}`} placeholder={`Search ${section.toLowerCase()}`} value={query} onChange={value => { setQuery(value); setPage(0); setSelected([]); }} className="min-w-56 flex-1" />
+          <Select aria-label="Filter by status" selectedKey={statusFilter} onSelectionChange={key => { setStatusFilter(String(key)); setPage(0); setSelected([]); }} className="w-44"><SelectItem id="All statuses">All statuses</SelectItem>{[...new Set(activeRows.flatMap(row => Object.entries(row).filter(([key]) => ["Status", "Health", "Connection", "Sync status", "Verification", "Result"].includes(key)).map(([, value]) => value)))].map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>
         </div>
+        {selected.length > 0 && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-separator-border bg-background-secondary-default px-4 py-3" role="region" aria-label="Selected record actions">
+          <span className="mr-auto text-body-2-medium text-text-primary">{selected.length} selected</span>
+          <Button variant="secondary" size="small" onClick={exportSelected}>Export selected</Button>
+          {screen?.supportsDeactivate && <Button variant="secondary" size="small" onClick={() => changeStatus(selected, section === "Security & Devices" ? "Revoked" : "Deactivated")}>{section === "Security & Devices" ? "Revoke selected devices" : "Deactivate selected"}</Button>}
+          {section === "Integrations" && (profile === "IT Administrator" || profile === "CEO / Super Admin") && <Button variant="danger" size="small" onClick={removeSelectedIntegrations}>Remove selected</Button>}
+          <Button variant="ghost" size="small" onClick={() => setSelected([])}>Clear selection</Button>
+        </div>}
         <div className="admin-table-scroll min-h-0 flex-1 overflow-auto">
           {section === "Departments & Hierarchy" && <div className="admin-hierarchy-strip"><span className="admin-hierarchy-root">Leadership</span><RiArrowRightSLine className="size-4 text-text-tertiary" /><div className="admin-hierarchy-branches">{["Sales · 18", "Marketing · 4", "MIS / Operations · 6", "Finance · 5", "IT · 4", "HR · 3", "Brands · 8"].map(name => <span key={name}>{name}</span>)}</div></div>}
           <Table aria-label={section} selectionMode="multiple" selectedKeys={new Set(selected)} onSelectionChange={keys => setSelected(keys === "all" ? selectableRows.map(row => row.id) : Array.from(keys).map(String))} size="sm" className="admin-table">
@@ -276,9 +320,9 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
       </section>}
     </div>
 
-    {editor && screen && <Modal isOpen onOpenChange={open => !open && setEditor(null)} size="xl" className="max-h-[min(88vh,880px)]"><ModalHeader title={editor.isNew ? screen.add || "Create record" : `Edit ${section}`} description={`${section} · ${editor.row.id}`} /><ModalBody><form id="admin-record-form" onSubmit={saveRecord} className="grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">{editFields.filter(field => !(section === "Roles & Permissions" && field === "Permissions")).map(field => <Input key={field} label={field} value={editor.row[field] || ""} onChange={value => setEditor(current => current ? { ...current, row: { ...current.row, [field]: value } } : current)} placeholder={`Enter ${field.toLowerCase()}`} />)}{section === "Roles & Permissions" && <fieldset className="col-span-full rounded-xl border border-separator-border p-4"><legend className="px-1 text-body-2-medium text-text-primary">Action permissions</legend><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{permissionActions.map(action => { const values = (editor.row.Permissions || "").split(/[·,]/).map(value => value.trim()); return <Checkbox key={action} isSelected={values.includes(action)} onChange={checked => setEditor(current => { if (!current) return current; const next = new Set((current.row.Permissions || "").split(/[·,]/).map(value => value.trim()).filter(Boolean)); checked ? next.add(action) : next.delete(action); return { ...current, row: { ...current.row, Permissions: [...next].join(" · ") } }; })}>{action}</Checkbox>; })}</div></fieldset>}</form><p className="mt-3 text-caption-1-regular text-text-tertiary">Changes are simulated in this review and recorded in the audit history. Credentials are never shown.</p></ModalBody><ModalFooter><Button variant="secondary" onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" form="admin-record-form">{editor.isNew ? "Create record" : "Save changes"}</Button></ModalFooter></Modal>}
+    {editor && screen && <Modal isOpen onOpenChange={open => !open && setEditor(null)} size="xl" className="max-h-[min(88vh,880px)]"><ModalHeader title={editor.isNew ? screen.add || "Create record" : `Edit ${section}`} description={`${section} · ${editor.row.id}`} /><ModalBody><form id="admin-record-form" onSubmit={saveRecord} className="admin-record-form grid grid-cols-1 gap-4 py-3 sm:grid-cols-2">{editFields.filter(field => !(section === "Roles & Permissions" && field === "Permissions")).map(field => <Input key={field} label={field} value={editor.row[field] || ""} onChange={value => setEditor(current => current ? { ...current, row: { ...current.row, [field]: value } } : current)} placeholder={`Enter ${field.toLowerCase()}`} />)}{section === "Roles & Permissions" && <fieldset className="col-span-full rounded-xl border border-separator-border p-4"><legend className="px-1 text-body-2-medium text-text-primary">Action permissions</legend><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{permissionActions.map(action => { const values = (editor.row.Permissions || "").split(/[·,]/).map(value => value.trim()); return <Checkbox key={action} isSelected={values.includes(action)} onChange={checked => setEditor(current => { if (!current) return current; const next = new Set((current.row.Permissions || "").split(/[·,]/).map(value => value.trim()).filter(Boolean)); checked ? next.add(action) : next.delete(action); return { ...current, row: { ...current.row, Permissions: [...next].join(" · ") } }; })}>{action}</Checkbox>; })}</div></fieldset>}</form><p className="mt-3 text-caption-1-regular text-text-tertiary">Changes are simulated in this review and recorded in the audit history. Credentials are never shown.</p></ModalBody><ModalFooter><Button variant="secondary" onClick={() => setEditor(null)}>Cancel</Button><Button type="submit" form="admin-record-form">{editor.isNew ? "Create record" : "Save changes"}</Button></ModalFooter></Modal>}
     {detail && <Modal isOpen onOpenChange={open => !open && setDetail(null)} size="lg"><ModalHeader title={detail[screens[section as Exclude<Key, "Overview">]?.columns[0]?.id || "Action"] || detail.id} description={`${section} · ${detail.id}`} /><ModalBody><dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">{Object.entries(detail).filter(([key]) => key !== "id").map(([key, value]) => <div key={key} className="border-b border-separator-border py-3"><dt className="text-caption-1-regular text-text-tertiary">{key}</dt><dd className="mt-1 break-words text-body-2-medium text-text-primary">{profile === "IT Administrator" && section === "Franchise Models & Pricing" && ["Investment range", "Franchise fee", "GST"].includes(key) ? "Restricted · Finance access required" : value || "—"}</dd></div>)}</dl>{section === "Roles & Permissions" && <section className="mt-5 rounded-xl border border-separator-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-body-2-medium text-text-primary">Effective permissions preview</h3><Select aria-label="Preview employee access" selectedKey={effectiveEmployeeId} onSelectionChange={key => setEffectiveEmployeeId(String(key))} className="min-w-56">{rows["Users & Accounts"].map(user => <SelectItem key={user.id} id={user.id}>{user["Employee name"]} · {user["Employee ID"]}</SelectItem>)}</Select></div><p className="mt-3 text-caption-1-regular text-text-secondary">{effectiveEmployee?.["Employee name"]} · {effectiveRole?.["Role name"] || effectiveEmployee?.["Assigned role"]} · {effectiveRole?.Scope || "Assigned scope"}</p><div className="mt-3 flex flex-wrap gap-2">{permissionActions.map(action => { const granted = (effectiveRole?.Permissions || "").includes(action); return <Chip key={action} variant="caption" color={granted ? "purple" : "neutral"}>{action}{granted ? " · allowed" : " · not granted"}</Chip>; })}</div><p className="mt-3 text-caption-1-regular text-text-tertiary">Record-level restrictions still apply. Critical permission updates are recorded in audit history.</p></section>}</ModalBody><ModalFooter><Button variant="secondary" onClick={() => setDetail(null)}>Close</Button></ModalFooter></Modal>}
-    {confirm && <AlertDialog isOpen title={confirm.title} description={confirm.description} confirmLabel="Confirm change" onConfirm={confirm.run} onOpenChange={open => !open && setConfirm(null)} />}
+    {confirm && <AlertDialog isOpen title={confirm.title} description={confirm.description} confirmLabel={confirm.confirmLabel || "Confirm change"} onConfirm={confirm.run} onOpenChange={open => !open && setConfirm(null)} />}
   </ReviewShell></DirectionProvider>;
 }
 

@@ -30,6 +30,7 @@
 .admin-more-trigger { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 8px; color: var(--color-text-secondary); transition: background-color 140ms ease, color 140ms ease; }
 .admin-more-trigger:hover { background: var(--color-background-secondary-hover); color: var(--color-text-primary); }
 .admin-shell [data-slot="modal"] form { align-items: start; }
+.admin-record-form [data-label="true"] { color: var(--color-text-primary); }
 @media (max-width: 760px) {
   .admin-board { padding: 16px; }
   .admin-shell .review-workspace { grid-template-rows: 58px minmax(0, 1fr); }
