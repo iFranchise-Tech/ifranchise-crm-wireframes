@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { crmModules } from "@/modules/screen-library/config/modules";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Icon } from "@/modules/auth/components/icon";
+import { SecurityWorkspace } from "@/modules/security/components/security-workspace";
 
 export function generateStaticParams() { return crmModules.map(module => ({ module: module.id })); }
 export async function generateMetadata({ params }: { params: Promise<{ module: string }> }) {
@@ -13,6 +14,7 @@ export default async function ModuleScopePage({ params, searchParams }: { params
   const [{ module: id }, query] = await Promise.all([params, searchParams]);
   const module = crmModules.find(item => item.id === id);
   if (!module) notFound();
+  if (id === "security") return <SecurityWorkspace view={query.view ?? "Overview"} />;
   const isOverview = query.view === "overview";
   const scopeHref = `/library/modules/${module.id}`;
   const overviewHref = `${scopeHref}?view=overview`;
