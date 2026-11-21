@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { RiSidebarFoldLine, RiSidebarUnfoldLine } from "@remixicon/react";
+import { RiArrowDownSLine, RiSidebarFoldLine, RiSidebarUnfoldLine } from "@remixicon/react";
 import { Breadcrumb, BreadcrumbItem } from "@/components/base/breadcrumb/breadcrumb";
 import { IconButton } from "@/components/base/buttons/icon-button";
 import { BrandMark } from "@/components/layout/brand-mark";
@@ -18,14 +18,16 @@ type ReviewShellProps = {
   controls?: ReactNode;
   sidebarAccount?: ReactNode;
   sidebarFooter?: ReactNode;
+  collapsibleNavigation?: boolean;
   className?: string;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, className, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, collapsibleNavigation = false, className, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [navigationOpen, setNavigationOpen] = useState(true);
 
   useEffect(() => {
     setSidebarCollapsed(window.localStorage.getItem("ifranchise-sidebar-collapsed") === "true");
@@ -46,8 +48,8 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
         <IconButton className="review-sidebar-toggle" icon={sidebarCollapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={toggleSidebar} />
       </div>
       <div className="review-sidebar-content">
-        {sidebarAccount ?? <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>}
-        {navigation}
+        {sidebarAccount ?? <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div className="min-w-0 flex-1"><strong>{moduleName}</strong><span>{subtitle}</span></div>{collapsibleNavigation && <button type="button" className="ms-auto flex size-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={navigationOpen ? `Collapse ${moduleName} sections` : `Expand ${moduleName} sections`} aria-expanded={navigationOpen} aria-controls="review-module-navigation" onClick={() => setNavigationOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${navigationOpen ? "" : "-rotate-90"}`} /></button>}</div>}
+        {collapsibleNavigation ? <div id="review-module-navigation" hidden={!navigationOpen}>{navigation}</div> : navigation}
         {sidebarFooter ?? <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>}
         <Link className="review-all-modules-card" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link>
       </div>
