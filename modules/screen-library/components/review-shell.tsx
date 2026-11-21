@@ -54,7 +54,7 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
         </div>}
         {sidebarAccount ?? (!moduleDropdown && <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>)}
         {moduleDropdown ? <div id="review-module-navigation" className="review-module-navigation flex min-h-0 flex-1 flex-col" hidden={!navigationOpen}>{navigation}</div> : navigation}
-        {sidebarFooter ?? <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>}
+        {sidebarFooter}
         <Link className="review-all-modules-card" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link>
       </div>
     </aside>
