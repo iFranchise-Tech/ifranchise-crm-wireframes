@@ -491,7 +491,7 @@ export function AssignmentWorkspace() {
   const tabItems = ["Assign Leads", "Assignment History"] as const;
   const assignmentNavigation = <nav className="review-navigation assignment-nav" aria-label="Lead assignment navigation"><button type="button" className="review-overview-link is-active" onClick={() => { setTab("Assign Leads"); setPage(1); }}><RiLayoutColumnLine aria-hidden="true" />Lead Assignment</button></nav>;
 
-  return <ReviewShell className="assignment-shell" moduleName="Lead Assignment" icon="user" subtitle="Assignments & history" overviewHref="/library/modules/assignment" title={tab} navigation={assignmentNavigation} sidebarFooter={<div className="assignment-sidebar-spacer" aria-hidden="true" />} controls={<div className="assignment-header-meta"><Dropdown>
+  return <ReviewShell className="assignment-shell" moduleName="Lead Assignment" icon="user" subtitle="Assignments & history" overviewHref="/library/modules/assignment" title={tab} navigation={assignmentNavigation} moduleDropdown sidebarFooter={<div className="assignment-sidebar-spacer" aria-hidden="true" />} controls={<div className="assignment-header-meta"><Dropdown>
     <DropdownTrigger className="assignment-profile-trigger" aria-label={`Switch profile, current profile ${activeProfile.name}`}>
       <span className="assignment-user-avatar">{personInitials(activeProfile.name)}</span><span className="assignment-profile-name">{activeProfile.name}</span><RiArrowDownSLine aria-hidden="true" />
     </DropdownTrigger>

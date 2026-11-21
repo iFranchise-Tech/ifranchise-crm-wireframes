@@ -657,7 +657,7 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
 
   return (
     <DirectionProvider locale="en-US">
-      <ReviewShell moduleName="Users & Roles" icon="users" subtitle="People, roles & access" overviewHref="/library/modules/roles?view=Users" title={section} navigation={nav}>
+      <ReviewShell moduleName="Users & Roles" icon="users" subtitle="People, roles & access" overviewHref="/library/modules/roles?view=Users" title={section} navigation={nav} moduleDropdown>
         <div className="ur-board flex h-full min-h-0 flex-col gap-6 overflow-hidden p-6 font-sans text-text-primary">
           {section !== "Effective access" && (
             <div className="flex shrink-0 items-center justify-between gap-4">

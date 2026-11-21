@@ -864,7 +864,7 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
 
   return (
     <DirectionProvider locale="en-US">
-      <ReviewShell className="ld-shell" moduleName="Lead Management" icon="user" subtitle="Enquiries, activity & sources" overviewHref="/library/modules/leads?view=Franchise" title={heading} navigation={nav} controls={
+      <ReviewShell className="ld-shell" moduleName="Lead Management" icon="user" subtitle="Enquiries, activity & sources" overviewHref="/library/modules/leads?view=Franchise" title={heading} navigation={nav} moduleDropdown controls={
         <Dropdown isOpen={roleOpen} onOpenChange={setRoleOpen}>
           <DropdownTrigger className="ld-role" aria-label={`${role.name}, ${role.title}`}>
             <Avatar size="sm" src={portraitFor(role.name)} initials={initials(role.name)} alt="" />

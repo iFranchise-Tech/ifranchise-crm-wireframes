@@ -18,13 +18,13 @@ type ReviewShellProps = {
   controls?: ReactNode;
   sidebarAccount?: ReactNode;
   sidebarFooter?: ReactNode;
-  collapsibleNavigation?: boolean;
+  moduleDropdown?: boolean;
   className?: string;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, collapsibleNavigation = false, className, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, moduleDropdown = false, className, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
@@ -48,8 +48,12 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
         <IconButton className="review-sidebar-toggle" icon={sidebarCollapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={toggleSidebar} />
       </div>
       <div className="review-sidebar-content">
-        {sidebarAccount ?? <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div className="min-w-0 flex-1"><strong>{moduleName}</strong><span>{subtitle}</span></div>{collapsibleNavigation && <button type="button" className="ms-auto flex size-8 shrink-0 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-background-secondary-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={navigationOpen ? `Collapse ${moduleName} sections` : `Expand ${moduleName} sections`} aria-expanded={navigationOpen} aria-controls="review-module-navigation" onClick={() => setNavigationOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${navigationOpen ? "" : "-rotate-90"}`} /></button>}</div>}
-        {collapsibleNavigation ? <div id="review-module-navigation" hidden={!navigationOpen}>{navigation}</div> : navigation}
+        {moduleDropdown && <div className="mx-3 mt-3 flex items-stretch gap-0 rounded-xl bg-button-primary p-1 text-text-white">
+          <Link className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-start text-caption-2-semibold tracking-tight text-text-white outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" href={overviewHref}><span className="shrink-0"><Icon name={icon} /></span><span className="truncate whitespace-nowrap">{moduleName}</span></Link>
+          <button type="button" className="flex w-7 shrink-0 items-center justify-center rounded-lg text-text-white hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={navigationOpen ? `Collapse ${moduleName} sections` : `Expand ${moduleName} sections`} aria-expanded={navigationOpen} aria-controls="review-module-navigation" onClick={() => setNavigationOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${navigationOpen ? "" : "-rotate-90"}`} /></button>
+        </div>}
+        {sidebarAccount ?? (!moduleDropdown && <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>)}
+        {moduleDropdown ? <div id="review-module-navigation" className="min-h-0 flex-1" hidden={!navigationOpen}>{navigation}</div> : navigation}
         {sidebarFooter ?? <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>}
         <Link className="review-all-modules-card" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link>
       </div>

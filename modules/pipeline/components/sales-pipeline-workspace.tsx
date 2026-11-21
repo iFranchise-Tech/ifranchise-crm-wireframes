@@ -383,7 +383,7 @@ export function SalesPipelineWorkspace() {
     <Button variant={managingPipeline ? "primary" : "ghost"} className="w-full justify-start" leadingIcon={RiEditLine} aria-current={managingPipeline ? "page" : undefined} onClick={event => { event.currentTarget.closest("dialog")?.close(); setDetailId(null); setManagingPipeline(true); closeModal(); }}>Pipeline management</Button>
   </nav>;
 
-  return <DirectionProvider locale="en-US"><ReviewShell className="sp-shell" moduleName="Sales Pipeline" icon="layers" subtitle="Opportunities, stages & closure" overviewHref="/library/modules/pipeline" title={detailOpportunity ? detailOpportunity.enquiryId : managingPipeline ? "Pipeline management" : view === "list" ? "Pipeline list" : "Pipeline board"} navigation={navigation}>
+  return <DirectionProvider locale="en-US"><ReviewShell className="sp-shell" moduleName="Sales Pipeline" icon="layers" subtitle="Opportunities, stages & closure" overviewHref="/library/modules/pipeline" title={detailOpportunity ? detailOpportunity.enquiryId : managingPipeline ? "Pipeline management" : view === "list" ? "Pipeline list" : "Pipeline board"} navigation={navigation} moduleDropdown>
     <div className="relative min-h-0"><div ref={workspaceRef} className={cx("review-information sp-workspace", detailOpportunity && "sp-detail-workspace")} onScroll={workspaceFade.onScroll}>
     {modal === null && notice ? <div className="sp-toast text-body-2-regular" role="status"><RiCheckLine /><span className="min-w-0 flex-1">{notice}</span>{undoMove && <Button size="small" variant="ghost" leadingIcon={RiArrowGoBackLine} onClick={() => {
       setOpportunities(current => current.map(item => item === undoMove.after ? undoMove.before : item));
