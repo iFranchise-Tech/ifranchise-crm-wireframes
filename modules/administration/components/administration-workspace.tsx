@@ -23,6 +23,7 @@ type Key = "Overview" | "Users & Accounts" | "Roles & Permissions" | "Department
 type RecordRow = { id: string; [key: string]: string };
 type Column = { id: string; name: string; isRowHeader?: boolean };
 type Screen = { description: string; columns: Column[]; fields: string[]; access: string[]; add?: string; supportsDeactivate?: boolean };
+type PageFilter = { field: string; label: string; allLabel: string };
 
 const groups: { title: string; pages: Key[] }[] = [
   { title: "Workspace", pages: ["Overview"] },
@@ -48,6 +49,21 @@ const screens: Record<Exclude<Key, "Overview">, Screen> = {
   "Backup & Recovery": { description: "Verify completion, retention and recovery records.", add: "Schedule backup", access: ["IT Administrator", "CEO / Super Admin"], fields: ["Backup reference", "Type", "Started", "Completed", "Verification", "Retention", "RPO / RTO", "Status"], columns: [{ id: "Backup reference", name: "Backup", isRowHeader: true }, { id: "Type", name: "Type" }, { id: "Completed", name: "Completed" }, { id: "Verification", name: "Verification" }, { id: "Retention", name: "Retention" }, { id: "Status", name: "Status" }] },
   "Versions & Deployments": { description: "Track releases, rollout status and rollback history.", add: "Record deployment", access: ["IT Administrator", "CEO / Super Admin"], fields: ["Release", "Platform", "Version", "Environment", "Deployed at", "Deployed by", "Rollback", "Status"], columns: [{ id: "Release", name: "Release", isRowHeader: true }, { id: "Platform", name: "Platform" }, { id: "Version", name: "Version" }, { id: "Environment", name: "Environment" }, { id: "Deployed at", name: "Deployed at" }, { id: "Rollback", name: "Rollback" }, { id: "Status", name: "Status" }] },
   "Audit Logs": { description: "Read-only history of administrative and security changes.", access: ["IT Administrator", "CEO / Super Admin", "Finance", "HR", "Marketing"], fields: ["Action", "Actor", "Module", "Resource", "Previous value", "New value", "Date and time", "IP / Device", "Result"], columns: [{ id: "Action", name: "Action", isRowHeader: true }, { id: "Actor", name: "Changed by" }, { id: "Module", name: "Module" }, { id: "Resource", name: "Resource" }, { id: "Date and time", name: "Date & time" }, { id: "Result", name: "Result" }] },
+};
+
+const pageFilters: Partial<Record<Exclude<Key, "Overview">, PageFilter[]>> = {
+  "Users & Accounts": [{ field: "Department", label: "Department", allLabel: "All departments" }, { field: "Assigned role", label: "Assigned role", allLabel: "All assigned roles" }],
+  "Roles & Permissions": [{ field: "Scope", label: "Scope", allLabel: "All scopes" }],
+  "Departments & Hierarchy": [{ field: "Department head", label: "Department head", allLabel: "All department heads" }],
+  "Brand Administration": [{ field: "Portal", label: "Portal access", allLabel: "All portal states" }],
+  "Franchise Models & Pricing": [{ field: "Brand", label: "Brand", allLabel: "All brands" }, { field: "Finance approval", label: "Finance approval", allLabel: "All approval states" }],
+  "System Configuration": [{ field: "Area", label: "Area", allLabel: "All areas" }, { field: "Environment", label: "Environment", allLabel: "All environments" }],
+  Integrations: [{ field: "Provider", label: "Provider", allLabel: "All providers" }],
+  "Infrastructure & Database": [{ field: "Type", label: "Service type", allLabel: "All service types" }],
+  "Security & Devices": [{ field: "Employee", label: "Employee", allLabel: "All employees" }],
+  "Backup & Recovery": [{ field: "Type", label: "Backup type", allLabel: "All backup types" }],
+  "Versions & Deployments": [{ field: "Platform", label: "Platform", allLabel: "All platforms" }, { field: "Environment", label: "Environment", allLabel: "All environments" }],
+  "Audit Logs": [{ field: "Module", label: "Module", allLabel: "All modules" }],
 };
 
 const seeds: Record<Exclude<Key, "Overview">, RecordRow[]> = {
@@ -168,6 +184,7 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const [sortKey, setSortKey] = useState("");
   const [ascending, setAscending] = useState(true);
   const [page, setPage] = useState(0);
+  const [filters, setFilters] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [sectionsOpen, setSectionsOpen] = useState(true);
   const [editor, setEditor] = useState<{ row: RecordRow; isNew: boolean } | null>(null);
@@ -176,7 +193,13 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const [confirm, setConfirm] = useState<{ title: string; description: string; confirmLabel?: string; run: () => void } | null>(null);
   const [notice, setNotice] = useState("");
 
-  useEffect(() => setSelected([]), [section]);
+  useEffect(() => {
+    setSelected([]);
+    setFilters({});
+    setStatusFilter(status || "All statuses");
+    setQuery("");
+    setPage(0);
+  }, [section, status]);
 
   const screen = section === "Overview" ? null : screens[section];
   const dataSection = section === "Overview" ? null : section;
@@ -192,8 +215,9 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const filterValues = useMemo(() => [...new Set(activeRows.map(row => row[filterField]).filter((value): value is string => Boolean(value)))], [activeRows, filterField]);
   const filtered = useMemo(() => activeRows.filter(row => {
     const haystack = Object.values(row).join(" ").toLowerCase();
-    return haystack.includes(query.toLowerCase()) && (statusFilter === "All statuses" || row[filterField]?.toLowerCase() === statusFilter.toLowerCase());
-  }).sort((a, b) => sortKey ? (a[sortKey] || "").localeCompare(b[sortKey] || "") * (ascending ? 1 : -1) : 0), [activeRows, filterField, query, statusFilter, sortKey, ascending]);
+    const matchesPageFilters = Object.entries(filters).every(([field, value]) => !value || row[field] === value);
+    return haystack.includes(query.toLowerCase()) && matchesPageFilters && (statusFilter === "All statuses" || row[filterField]?.toLowerCase() === statusFilter.toLowerCase());
+  }).sort((a, b) => sortKey ? (a[sortKey] || "").localeCompare(b[sortKey] || "") * (ascending ? 1 : -1) : 0), [activeRows, filterField, filters, query, statusFilter, sortKey, ascending]);
   const pageSize = 8;
   const pageRows = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const selectableRows = section === "Security & Devices" ? pageRows.filter(row => row.id.startsWith("DV-")) : pageRows;
@@ -305,6 +329,10 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-separator-border p-4">
           <SearchField aria-label={`Search ${section}`} placeholder={`Search ${section.toLowerCase()}`} value={query} onChange={value => { setQuery(value); setPage(0); setSelected([]); }} className="min-w-56 flex-1" />
           <Select aria-label={`Filter by ${filterLabel}`} selectedKey={statusFilter} onSelectionChange={key => { setStatusFilter(String(key)); setPage(0); setSelected([]); }} className="w-48"><SelectItem id="All statuses">All {filterNoun}</SelectItem>{filterValues.map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>
+          {(pageFilters[section as Exclude<Key, "Overview">] || []).map(filter => {
+            const values = [...new Set(activeRows.map(row => row[filter.field]).filter((value): value is string => Boolean(value)))];
+            return <Select key={filter.field} aria-label={`Filter by ${filter.label.toLowerCase()}`} selectedKey={filters[filter.field] || "__all__"} onSelectionChange={key => { const value = String(key); setFilters(current => ({ ...current, [filter.field]: value === "__all__" ? "" : value })); setPage(0); setSelected([]); }} className="w-48"><SelectItem id="__all__">{filter.allLabel}</SelectItem>{values.map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>;
+          })}
         </div>
         {selected.length > 0 && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-separator-border bg-background-secondary-default px-4 py-3" role="region" aria-label="Selected record actions">
           <span className="mr-auto text-body-2-medium text-text-primary">{selected.length} selected</span>
