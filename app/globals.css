@@ -411,6 +411,12 @@ button:disabled { cursor: not-allowed; }
 .review-overview-link[aria-current="page"]:hover { color: #fff; background: var(--brand-strong); }
 .review-module-navigation .review-overview-link[aria-current="page"],
 .review-module-navigation .review-overview-link[aria-current="page"]:hover { color: var(--color-accent-800); background: var(--color-accent-50); font-weight: 550; }
+.review-module-navigation > .review-navigation { flex: 0 1 auto; min-height: 0; max-height: 100%; overflow-y: auto; margin: .25rem .75rem .45rem; padding: 0 0 0 .375rem; border-inline-start: 1px solid var(--color-accent-100); scrollbar-width: thin; }
+.review-module-navigation .review-overview-link,
+.review-module-navigation button.review-overview-link { min-height: 2rem; gap: .4rem; margin: 0 0 .15rem; padding: .35rem .45rem; font-size: var(--text-caption-1-regular); font-weight: var(--text-caption-1-regular--font-weight); line-height: var(--text-caption-1-regular--line-height); letter-spacing: var(--text-caption-1-regular--letter-spacing); }
+.review-module-navigation .review-overview-link > svg { width: .9rem; height: .9rem; flex: none; color: var(--color-text-tertiary); }
+.review-module-navigation .review-overview-link:hover { color: var(--color-accent-800); background: var(--color-background-secondary-hover); }
+.review-module-navigation .review-overview-link[aria-current="page"] > svg { color: var(--color-accent-800); }
 .review-nav-dialog .review-all-modules { display: flex; padding: 4px 22px 20px; }
 
 

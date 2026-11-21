@@ -855,10 +855,10 @@ export function LeadsWorkspace({ view = "Enquiries", enquiryId }: { view?: strin
   const nav = (
     <nav className="review-navigation ld-side-nav">
       {enquiryTabs.filter(tab => role.categories.includes(tab.id)).map(tab => (
-        <Link className="review-overview-link" key={tab.id} href={`/library/modules/leads?view=${encodeURIComponent(tab.id)}`} aria-current={section === tab.id ? "page" : undefined}>{tab.label}</Link>
+        <Link className="review-overview-link" key={tab.id} href={`/library/modules/leads?view=${encodeURIComponent(tab.id)}`} aria-current={section === tab.id ? "page" : undefined}><tab.icon aria-hidden="true" />{tab.label}</Link>
       ))}
-      {role.sections.includes("Activity") && <Link className="review-overview-link ld-side-split" href="/library/modules/leads?view=Activity" aria-current={section === "Activity" ? "page" : undefined}>Activity</Link>}
-      {role.sections.includes("Sources") && <Link className="review-overview-link" href="/library/modules/leads?view=Sources" aria-current={section === "Sources" ? "page" : undefined}>Sources</Link>}
+      {role.sections.includes("Activity") && <Link className="review-overview-link ld-side-split" href="/library/modules/leads?view=Activity" aria-current={section === "Activity" ? "page" : undefined}><RiCalendarLine aria-hidden="true" />Activity</Link>}
+      {role.sections.includes("Sources") && <Link className="review-overview-link" href="/library/modules/leads?view=Sources" aria-current={section === "Sources" ? "page" : undefined}><RiGlobalLine aria-hidden="true" />Sources</Link>}
     </nav>
   );
 

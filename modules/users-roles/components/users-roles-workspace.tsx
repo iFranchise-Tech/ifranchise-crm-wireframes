@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { RiAddLine, RiBarChartBoxLine, RiCheckboxCircleLine, RiDeleteBinLine, RiFileExcel2Line, RiFilePdf2Line, RiFocus3Line, RiFullscreenExitLine, RiFullscreenLine, RiGroupLine, RiListCheck2, RiMailLine, RiOrganizationChart, RiPauseCircleLine, RiPencilLine, RiPhoneLine, RiShieldCheckLine, RiTeamLine, RiUserAddLine, RiUserForbidLine, RiUserLine, RiZoomInLine, RiZoomOutLine, type RemixiconComponentType } from "@remixicon/react";
+import { RiAddLine, RiBarChartBoxLine, RiBuilding2Line, RiCheckboxCircleLine, RiDeleteBinLine, RiFileExcel2Line, RiFilePdf2Line, RiFocus3Line, RiFullscreenExitLine, RiFullscreenLine, RiGroupLine, RiHistoryLine, RiListCheck2, RiMailLine, RiOrganizationChart, RiPauseCircleLine, RiPencilLine, RiPhoneLine, RiShieldCheckLine, RiTeamLine, RiUserAddLine, RiUserForbidLine, RiUserLine, RiZoomInLine, RiZoomOutLine, type RemixiconComponentType } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Chip, type ChipColor } from "@/components/base/badges/chip";
@@ -29,6 +29,16 @@ import { actions, modules, statuses, type Action, type Audit, type Device, type 
 
 const sections = ["Users", "Organization hierarchy", "Roles", "Effective access", "Departments", "Teams", "Devices", "Audit history"] as const;
 type Section = (typeof sections)[number];
+const sectionIcons: Record<Section, RemixiconComponentType> = {
+  Users: RiGroupLine,
+  "Organization hierarchy": RiOrganizationChart,
+  Roles: RiShieldCheckLine,
+  "Effective access": RiListCheck2,
+  Departments: RiBuilding2Line,
+  Teams: RiTeamLine,
+  Devices: RiPhoneLine,
+  "Audit history": RiHistoryLine,
+};
 type DeviceDraft = Device & { originalId?: string };
 type ConfirmState = { title: string; description: string; confirmLabel?: string; apply: (reason: string) => void };
 type AvatarColor = "neutral" | "blue" | "lime" | "pink";
@@ -650,8 +660,8 @@ export function UsersRolesWorkspace({ view = "Users" }: { view?: string }) {
   const userDevices = detail ? devices.filter(device => device.userId === detail.id) : [];
 
   const nav = (
-    <nav className="review-navigation">
-      {sections.map(item => <Link className="review-overview-link" key={item} href={`/library/modules/roles?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}>{item}</Link>)}
+    <nav className="review-navigation ur-sidebar-navigation">
+      {sections.map(item => { const SectionIcon = sectionIcons[item]; return <Link className="review-overview-link" key={item} href={`/library/modules/roles?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}><SectionIcon aria-hidden="true" />{item}</Link>; })}
     </nav>
   );
 
