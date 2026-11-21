@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { RiAddLine, RiArrowRightSLine, RiCheckLine, RiMore2Line, RiRefreshLine, RiSettings3Line } from "@remixicon/react";
+import { RiAddLine, RiArrowDownSLine, RiArrowRightSLine, RiCheckLine, RiMore2Line, RiRefreshLine, RiSettings3Line } from "@remixicon/react";
 import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { DirectionProvider } from "@/components/foundations/direction/direction";
 import { Button } from "@/components/base/buttons/button";
@@ -169,6 +169,7 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
   const [ascending, setAscending] = useState(true);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
+  const [sectionsOpen, setSectionsOpen] = useState(true);
   const [editor, setEditor] = useState<{ row: RecordRow; isNew: boolean } | null>(null);
   const [detail, setDetail] = useState<RecordRow | null>(null);
   const [effectiveEmployeeId, setEffectiveEmployeeId] = useState("IF2026001");
@@ -278,10 +279,16 @@ export function AdministrationWorkspace({ view = "Overview", status }: { view?: 
     } });
   };
 
-  const nav = <nav className="review-navigation admin-navigation" aria-label="IT administration sections">{groups.map(group => <div className="admin-nav-group" key={group.title}><span>{group.title}</span>{group.pages.map(item => <Link key={item} className="review-overview-link" href={`/library/modules/administration?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}>{item}</Link>)}</div>)}</nav>;
+  const nav = <nav className="review-navigation admin-navigation" aria-label="IT administration sections"><div className="flex flex-col gap-2">
+    <div className="flex items-stretch gap-0 rounded-xl bg-button-primary p-1 text-text-white">
+      <Link className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-start text-caption-2-semibold tracking-tight text-text-white outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" href="/library/modules/administration?view=Overview" aria-current={section === "Overview" ? "page" : undefined}><RiSettings3Line className="size-4 shrink-0" /><span className="truncate whitespace-nowrap">IT &amp; System Administration</span></Link>
+      <button type="button" className="flex w-7 shrink-0 items-center justify-center rounded-lg text-text-white hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={sectionsOpen ? "Collapse administration sections" : "Expand administration sections"} aria-expanded={sectionsOpen} onClick={() => setSectionsOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${sectionsOpen ? "" : "-rotate-90"}`} /></button>
+    </div>
+    {sectionsOpen && <div className="ms-3 flex flex-col gap-1 border-s border-separator-border ps-2">{groups.map(group => <div className="admin-nav-group" key={group.title}><span>{group.title}</span>{group.pages.map(item => <Link key={item} className={cx("review-overview-link", section === item && "bg-accent-50 text-accent-800")} href={`/library/modules/administration?view=${encodeURIComponent(item)}`} aria-current={section === item ? "page" : undefined}>{item}</Link>)}</div>)}</div>}
+  </div></nav>;
   const controls = <div className="flex items-center gap-2 pr-4"><span className="hidden text-caption-1-regular text-text-tertiary md:inline">Review profile</span><Select aria-label="Review profile" selectedKey={profile} onSelectionChange={key => { const next = String(key) as Profile; setProfile(next); setNotice(`Preview profile changed to ${next}.`); }} className="min-w-48"><SelectItem id="IT Administrator">IT Administrator</SelectItem><SelectItem id="CEO / Super Admin">CEO / Super Admin</SelectItem><SelectItem id="Finance">Finance</SelectItem><SelectItem id="HR">HR</SelectItem><SelectItem id="Marketing">Marketing</SelectItem></Select><span className="sr-only">Signed in as {people[profiles.indexOf(profile)]}</span></div>;
 
-  return <DirectionProvider locale="en-US"><ReviewShell moduleName="IT & System Administration" icon="settings" subtitle="Systems, access & governance" overviewHref="/library/modules/administration?view=Overview" title={section} navigation={nav} collapsibleNavigation controls={controls} className="admin-shell">
+  return <DirectionProvider locale="en-US"><ReviewShell moduleName="IT & System Administration" icon="settings" subtitle="Systems, access & governance" overviewHref="/library/modules/administration?view=Overview" title={section} navigation={nav} sidebarAccount={<div className="h-2" aria-hidden="true" />} controls={controls} className="admin-shell">
     <div className="admin-board flex min-h-0 h-full flex-col gap-5 overflow-hidden p-6 text-text-primary">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="min-w-0"><h2 className="text-title-2-medium">{section}</h2><p className="mt-1 text-body-regular text-text-secondary">{section === "Overview" ? "System health, access and recent administrative activity." : screen?.description}</p></div>

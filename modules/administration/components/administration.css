@@ -7,7 +7,7 @@
 .admin-nav-group { margin: 0 0 10px; }
 .admin-nav-group > span { display: block; padding: 10px 12px 5px; color: var(--color-text-tertiary); font-size: var(--text-caption-1-medium); font-weight: 500; }
 .admin-navigation .review-overview-link { min-height: 34px; margin-bottom: 2px; padding: 7px 10px; font-size: var(--text-body-2-regular); }
-.admin-navigation .review-overview-link[aria-current="page"] { background: var(--color-background-secondary-default); color: var(--color-text-primary); font-weight: 550; }
+.admin-navigation .review-overview-link[aria-current="page"] { background: var(--color-accent-50); color: var(--color-accent-800); font-weight: 550; }
 .admin-metric { display: block; min-height: 138px; padding: 16px; color: var(--color-text-primary); text-decoration: none; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .admin-metric:hover { border-color: var(--color-border-button-hover); box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .admin-overview { scrollbar-width: thin; scrollbar-color: var(--color-border-button-default) transparent; }
