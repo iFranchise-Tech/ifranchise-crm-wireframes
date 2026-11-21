@@ -384,7 +384,7 @@ export function BrandWorkspace({ view, stage, focus }: { view?: string; stage?: 
   );
 
   return (
-    <ReviewShell className="bp-shell" moduleName="Brand Portal" icon="building" subtitle={brand.name} overviewHref="/library/modules/brands?view=Overview" title={heading} navigation={nav} moduleDropdown sidebarAccount={
+    <ReviewShell className="bp-shell" moduleName="Brand Portal" icon="building" subtitle={brand.name} overviewHref="/library/modules/brands?view=Overview" title={heading} navigation={nav} sidebarAccount={
       <Dropdown isOpen={brandOpen} onOpenChange={setBrandOpen}>
         <DropdownTrigger className="bp-brand-switch-trigger" aria-label={`Choose brand account. Current brand: ${brand.name}`}>
           <span className="bp-brand-switch-logo">{brand.logo ? <img src={brand.logo} alt="" /> : <strong>{brand.name.slice(0, 2).toUpperCase()}</strong>}</span>

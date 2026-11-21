@@ -53,7 +53,7 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
           <button type="button" className="flex w-7 shrink-0 items-center justify-center rounded-lg text-text-white hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={navigationOpen ? `Collapse ${moduleName} sections` : `Expand ${moduleName} sections`} aria-expanded={navigationOpen} aria-controls="review-module-navigation" onClick={() => setNavigationOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${navigationOpen ? "" : "-rotate-90"}`} /></button>
         </div>}
         {sidebarAccount ?? (!moduleDropdown && <div className="review-sidebar-heading"><span className="review-module-icon"><Icon name={icon} /></span><div><strong>{moduleName}</strong><span>{subtitle}</span></div></div>)}
-        {moduleDropdown ? <div id="review-module-navigation" className="min-h-0 flex-1" hidden={!navigationOpen}>{navigation}</div> : navigation}
+        {moduleDropdown ? <div id="review-module-navigation" className="review-module-navigation min-h-0 flex-1" hidden={!navigationOpen}>{navigation}</div> : navigation}
         {sidebarFooter ?? <div className="review-sidebar-footer"><span className="status-dot" />Internal design review</div>}
         <Link className="review-all-modules-card" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link>
       </div>

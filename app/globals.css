@@ -409,6 +409,8 @@ button:disabled { cursor: not-allowed; }
 .review-overview-link:hover { color: #171717; background: #f4f4f5; }
 .review-overview-link[aria-current="page"] { color: #fff; background: var(--brand); font-weight: 500; }
 .review-overview-link[aria-current="page"]:hover { color: #fff; background: var(--brand-strong); }
+.review-module-navigation .review-overview-link[aria-current="page"],
+.review-module-navigation .review-overview-link[aria-current="page"]:hover { color: var(--color-accent-800); background: var(--color-accent-50); font-weight: 550; }
 .review-nav-dialog .review-all-modules { display: flex; padding: 4px 22px 20px; }
 
 
