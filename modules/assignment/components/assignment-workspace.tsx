@@ -590,7 +590,7 @@ export function AssignmentWorkspace() {
           </div>
         </section>}
       </div>
-    <Modal isOpen={Boolean(selected)} onOpenChange={open => { if (!open) { setSelectedId(null); setChecked([]); } }} size="lg" overlayClassName="assignment-drawer-overlay" className="assignment-confirm-dialog assignment-drawer-panel" aria-label={isBulkAssignment ? `Assign ${assignmentTargetLeads.length} selected opportunities` : "Assign opportunity"}>
+    <Modal isOpen={Boolean(selected)} onOpenChange={open => { if (!open) { setSelectedId(null); setChecked([]); } }} size="wide" overlayClassName="assignment-drawer-overlay" className="assignment-confirm-dialog assignment-drawer-panel" aria-label={isBulkAssignment ? `Assign ${assignmentTargetLeads.length} selected opportunities` : "Assign opportunity"}>
       {selected ? <>
         <ModalHeader className="assignment-modal-header" title={<span className="assignment-title-with-info">{isBulkAssignment ? `Assign ${assignmentTargetLeads.length} selected opportunities` : targetRole === "Central Allocation" ? "Return Opportunity to Central Allocation" : targetRole === "BDA" ? "Assign Opportunity to BDA" : "Assign Opportunity"}<Dropdown><DropdownTrigger aria-label="Assignment information" className="assignment-info-trigger"><RiInformationLine aria-hidden="true" /></DropdownTrigger><DropdownPopover aria-label="Assignment guidance" className="w-72 assignment-guidance-popover"><p>Choose an active teammate for this opportunity. The new owner and your reason are saved in assignment history.</p></DropdownPopover></Dropdown></span>} icon={isBulkAssignment ? RiGlobalLine : sourceIconFor(selected.source)} />
         <ModalBody className="assignment-confirm-body">
