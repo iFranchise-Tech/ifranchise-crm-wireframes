@@ -71,6 +71,7 @@ import { canManageRecord, canViewRecord, displayTime, followUpStatus } from "@/m
 import type { ActivitySource, CustomerRecord } from "@/modules/meetings/types";
 import { FollowUpForm, MeetingForm } from "@/modules/meetings/components/meeting-forms";
 import { EntityDetail, StatusBadge } from "@/modules/meetings/components/record-detail";
+import { useCallingStore } from "@/modules/calling/store";
 
 const statusColor: Record<EnquiryStatus, ChipColor> = { New: "purple", "In Progress": "yellow", Qualified: "lime", Converted: "blue" };
 const leadStages = ["New", "Qualified", "Meeting", "Hot", "Token Collected", "Won", "Lost"] as const;
@@ -275,7 +276,7 @@ function fileType(name: string) {
 
 export function EnquiryDetail({
   enquiry,
-  activities,
+  activities: existingActivities,
   owners,
   contacts,
   canDelete,
@@ -312,6 +313,25 @@ export function EnquiryDetail({
   backLabel?: string;
   opportunityId?: string;
 }) {
+  const { state: callingState } = useCallingStore();
+  const callActivities: Activity[] = (callingState?.calls ?? []).filter(call => call.opportunityId === enquiry.id || call.contactId === enquiry.id).map(call => ({
+    id: call.id,
+    enquiryId: call.opportunityId ?? call.contactId ?? enquiry.id,
+    title: `${call.direction} call · ${call.status}`,
+    kind: "call",
+    status: call.status === "Connected" || call.status === "Completed" ? "Completed" : "Pending",
+    due: call.followUpAt ?? "",
+    type: "Phone Call",
+    when: new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(call.startedAt)),
+    direction: call.direction,
+    summary: `${call.id} · ${call.durationSeconds ? `${Math.floor(call.durationSeconds / 60)}m ${String(call.durationSeconds % 60).padStart(2, "0")}s connected` : call.status} · Recording ${call.recording}${call.note ? ` · ${call.note}` : ""}`,
+    outcome: call.disposition ?? call.status,
+    followUp: call.followUpAt ?? "",
+    manual: false,
+    createdBy: call.employeeName,
+    createdAt: call.startedAt,
+  }));
+  const activities = [...existingActivities, ...callActivities];
   const { state: meetingState, now: meetingNow } = useMeetings();
   const [meetingProfile] = useMeetingProfile();
   const customer: CustomerRecord = { id: enquiry.id, name: enquiry.name, email: enquiry.email, owner: enquiry.owner, brand: enquiry.brand, category: enquiry.category, opportunityId: opportunityId ?? meetingState.records.find(item => item.id === enquiry.id)?.opportunityId, snapshot: enquiry };

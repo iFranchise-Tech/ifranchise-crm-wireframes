@@ -5,6 +5,10 @@ import { ReviewShell } from "@/modules/screen-library/components/review-shell";
 import { Icon } from "@/modules/auth/components/icon";
 import { SecurityWorkspace } from "@/modules/security/components/security-workspace";
 import { ProductivityWorkspace } from "@/modules/productivity/components/productivity-workspace";
+import { FinanceWorkspace } from "@/modules/finance/components/finance-workspace";
+import { InvoiceWorkspace } from "@/modules/finance/components/invoice-workspace";
+import { ReportsWorkspace } from "@/modules/finance/components/reports-workspace";
+import { CallingWorkspace } from "@/modules/calling/components/calling-workspace";
 
 export function generateStaticParams() { return crmModules.map(module => ({ module: module.id })); }
 export async function generateMetadata({ params }: { params: Promise<{ module: string }> }) {
@@ -17,6 +21,10 @@ export default async function ModuleScopePage({ params, searchParams }: { params
   if (!module) notFound();
   if (id === "security") return <SecurityWorkspace view={query.view ?? "Overview"} />;
   if (id === "productivity") return <ProductivityWorkspace view={query.view ?? "Overview"} />;
+  if (id === "finance") return <FinanceWorkspace view={query.view ?? "Overview"} />;
+  if (id === "invoices") return <InvoiceWorkspace view={query.view ?? "Overview"} />;
+  if (id === "reports") return <ReportsWorkspace view={query.view ?? "Overview"} />;
+  if (id === "calling") return <CallingWorkspace view={query.view ?? "Overview"} />;
   const isOverview = query.view === "overview";
   const scopeHref = `/library/modules/${module.id}`;
   const overviewHref = `${scopeHref}?view=overview`;

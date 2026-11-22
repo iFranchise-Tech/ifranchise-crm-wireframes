@@ -29,6 +29,7 @@ import { PipelineManagement } from "./pipeline-management";
 import { PipelineLeadDetail } from "./pipeline-lead-detail";
 import { OpportunityActions, type OpportunityAction } from "./opportunity-actions";
 import { matchesOpportunityFilters, pipelineSummary, prepareOpportunityMove, pipelineStageTransitions, pipelineAdjacentStages, validateOpportunity, type OpportunityDraft } from "../records";
+import { readFinanceState, applyFinancePaymentSnapshot } from "@/modules/finance/store";
 import { originalSources } from "@/modules/leads/types";
 import { cx } from "@/utils/cx";
 import "@/modules/leads/components/leads.css";
@@ -137,9 +138,10 @@ export function SalesPipelineWorkspace() {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
+      const financePayments = readFinanceState().payments;
       if (saved) {
         const state = JSON.parse(saved) as { opportunities?: Opportunity[]; stages?: PipelineStage[]; pipelineName?: string; pipelineDescription?: string; pipelines?: PipelineConfig[]; activePipelineId?: string };
-        if (state.opportunities) setOpportunities(state.opportunities.map(item => ({ ...item, pipelineId: item.pipelineId ?? "franchise" })));
+        if (state.opportunities) setOpportunities(applyFinancePaymentSnapshot(state.opportunities.map(item => ({ ...item, pipelineId: item.pipelineId ?? "franchise" })), financePayments));
         if (state.pipelines?.length) {
           setPipelineConfigs(state.pipelines);
           const active = state.pipelines.find(item => item.id === state.activePipelineId) ?? state.pipelines.find(item => item.isDefault) ?? state.pipelines[0];
@@ -152,6 +154,8 @@ export function SalesPipelineWorkspace() {
           if (state.pipelineName) setPipelineName(state.pipelineName);
           if (state.pipelineDescription) setPipelineDescription(state.pipelineDescription);
         }
+      } else {
+        setOpportunities(current => applyFinancePaymentSnapshot(current, financePayments));
       }
     } catch { window.localStorage.removeItem(STORAGE_KEY); }
     setIsHydrated(true);
