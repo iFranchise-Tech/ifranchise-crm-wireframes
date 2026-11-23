@@ -96,6 +96,23 @@ export function updateNotifications(updater: (state: NotificationState) => Notif
   if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify(current));
   publish();
 }
+/** Adds a module-originated in-app event without replacing saved notification settings. */
+export function addPreviewNotification(notice: Notice) {
+  if (typeof window === "undefined") return;
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    const saved = stored ? JSON.parse(stored) as Partial<NotificationState> : null;
+    const base = saved ? { ...initial, ...saved, preferences: { ...initial.preferences, ...saved.preferences } } : current;
+    if (base.notices.some(item => item.recordId === notice.recordId && item.title === notice.title)) return;
+    const event: CrmEvent = { id: notice.sourceEventId ?? notice.id, name: notice.title, module: "Calling Management", recordId: notice.recordId, organizationId: "org-review-preview", actor: "Calling Management preview", timestamp: notice.at, payloadSummary: notice.body, correlationKey: `calling:${notice.recordId}:${notice.title}` };
+    current = { ...base, notices: [notice, ...base.notices], events: [event, ...(base.events ?? [])] };
+    window.localStorage.setItem(storageKey, JSON.stringify(current));
+    ready = true;
+    publish();
+  } catch {
+    // Leave existing notification records intact if the saved state is malformed or unavailable.
+  }
+}
 export function useNotifications() {
   const state = useSyncExternalStore(callback => { listeners.add(callback); return () => listeners.delete(callback); }, () => ready ? current : empty, () => empty);
   const [loadError, setLoadError] = useState("");
