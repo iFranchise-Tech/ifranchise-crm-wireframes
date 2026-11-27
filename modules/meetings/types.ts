@@ -11,6 +11,8 @@ export type FollowUp = {
   version: number; createdAt: string; history: AuditEvent[];
 };
 export type MeetingCategory = "Manager meeting" | "Brand meeting" | "Follow-up meeting";
+export type MeetingPlatform = "Google Meet" | "Zoom" | "Microsoft Teams";
+export type MeetingAssistant = "None" | "Rube" | "Aether" | "Syntax" | "Theo" | "Clara";
 export type MeetingStatus = "Pending sync" | "Scheduled" | "Rescheduled" | "Awaiting MOM" | "MOM submitted" | "Postponed" | "Customer did not attend" | "Internal participant did not attend" | "Cancelled";
 export type Minutes = {
   summary: string; requirements: string; businessRequirements: string; concerns: string;
@@ -19,7 +21,7 @@ export type Minutes = {
 };
 export type Meeting = {
   id: string; recordId: string; opportunityId: string; title: string; category: MeetingCategory;
-  format: "Virtual" | "In person"; startAt: string; duration: number; assignedTo: string;
+  format: "Virtual" | "In person"; platform?: MeetingPlatform; assistant?: MeetingAssistant; summarizeCall?: boolean; captureActionItems?: boolean; assistLive?: boolean; startAt: string; duration: number; assignedTo: string;
   participants: string[]; manager: string; brandRepresentative: string; brandEmail: string; customerEmail: string;
   agenda: string; remarks: string; location: string; address: string; meetLink: string;
   status: MeetingStatus; outcome: string; version: number; createdAt: string;

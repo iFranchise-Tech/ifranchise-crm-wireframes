@@ -309,7 +309,7 @@ button:disabled { cursor: not-allowed; }
 .scope-content p { margin: 22px 0 0; color: var(--subtle); font-size: 12px; line-height: 1.8; }
 
 /* Screen viewer: compact persistent sidebar and a real isolated viewport. */
-.review-shell { display: grid; width: 100%; grid-template-columns: minmax(0, 236px) minmax(0, 1fr); height: 100dvh; min-height: 0; overflow: hidden; background: #f4f2f7; }
+.review-shell { display: grid; width: 100%; grid-template-columns: minmax(0, 236px) minmax(0, 1fr); height: 100dvh; min-height: 0; overflow: hidden; background: var(--color-background-full); }
 .review-sidebar { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid #e8e3ef; background: #fff; font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; }
 .review-sidebar > :not(.review-navigation) { flex-shrink: 0; }
 .review-sidebar-top { display: flex; min-width: 0; height: 66px; min-height: 66px; flex: none; align-items: center; border-bottom: 1px solid var(--line); }
@@ -384,7 +384,7 @@ button:disabled { cursor: not-allowed; }
 .dialog-heading strong { font-size: 14px; font-weight: 600; }
 
 /* Module information lives inside the same review workspace. */
-.review-information { min-height: 0; overflow-y: auto; padding: 32px 29px; scrollbar-width: thin; }
+.review-information { min-height: 0; overflow-y: auto; padding: 32px 29px; background: var(--color-background-full); scrollbar-width: thin; }
 .module-overview { max-width: 1120px; margin: 0 auto; }
 .module-summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 6px 0 22px; }
 .module-summary h2 { margin: 0; color: var(--ink); font-size: 25px; line-height: 1.25; font-weight: 550; letter-spacing: -.035em; }

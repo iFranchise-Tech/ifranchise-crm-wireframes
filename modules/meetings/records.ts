@@ -105,7 +105,8 @@ export function createMeeting(state: MeetingsState, profile: MeetingProfile, dra
   if (draft.category === "Brand meeting") { required(draft.brandRepresentative, "Brand representative"); if (!emailValid(draft.brandEmail)) throw new Error("Enter the brand representative's valid email."); }
   if (draft.format === "Virtual") {
     if (!emailValid(draft.customerEmail)) throw new Error("Enter a valid customer email for a virtual meeting.");
-    if (draft.meetLink && !/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(draft.meetLink.trim())) throw new Error("Enter a valid Google Meet link, or leave it empty until Calendar is connected.");
+    if (!draft.platform || !["Google Meet", "Zoom", "Microsoft Teams"].includes(draft.platform)) throw new Error("Choose a meeting platform.");
+    if (draft.meetLink && !/^https:\/\//i.test(draft.meetLink.trim())) throw new Error("Enter a secure https meeting link, or leave it empty until the platform is connected.");
   } else if (draft.format === "In person") { required(draft.location, "Location"); required(draft.address, "Complete address"); }
   else throw new Error("Select a meeting format.");
   if (meetingConflict(state.meetings, draft)) throw new Error("The customer or an internal participant already has a CRM meeting at this time. Choose another time.");

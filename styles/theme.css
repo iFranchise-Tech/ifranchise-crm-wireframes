@@ -256,6 +256,8 @@
   /* State */
   --color-state-success-text: var(--color-lime-800);
   --color-state-success-base: var(--color-lime-200);
+  --color-invoice-accent-green: var(--color-green-500);
+  --color-invoice-accent-orange: var(--color-orange-500);
 
   /* Selected control interiors remain light on colored tracks in both themes. */
   --color-control-indicator-background:        var(--color-white);
@@ -427,6 +429,8 @@
 
 .dark {
   /* Foreground */
+  --color-invoice-accent-green: var(--color-green-400);
+  --color-invoice-accent-orange: var(--color-orange-400);
   --color-foreground-full:            var(--color-neutral-700);
   --color-foreground-icon-primary:    var(--color-neutral-50);
   --color-foreground-icon-hover:      var(--color-white);
@@ -827,6 +831,8 @@
   --color-chart-4-active: var(--color-chart-4-active);
   --color-chart-5:        var(--color-chart-5);
   --color-chart-5-active: var(--color-chart-5-active);
+  --color-invoice-accent-green: var(--color-invoice-accent-green);
+  --color-invoice-accent-orange: var(--color-invoice-accent-orange);
   --color-chart-6:        var(--color-chart-6);
   --color-chart-6-active: var(--color-chart-6-active);
   --color-chart-7:        var(--color-chart-7);

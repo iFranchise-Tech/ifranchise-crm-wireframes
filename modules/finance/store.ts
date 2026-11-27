@@ -13,7 +13,38 @@ export function createInitialFinanceState(): FinancialState {
     payer: opportunity.name, payerType: "Individual", relationship: "Applicant", proofName: "", submittedBy: opportunity.owner,
     submittedAt: payment.date, status: payment.verified ? "Verified" as const : "Pending Verification" as const, remarks: "Imported from the opportunity preview record",
   })));
-  return { payments, pricing: [], invoices: [], audit: [], invoiceSequence: 1 };
+  return { payments, pricing: [], invoices: createDemoInvoices(), audit: [], invoiceSequence: 1, demoInvoicesSeeded: true };
+}
+
+function createDemoInvoices(): InvoiceRecord[] {
+  const examples = [
+    { status: "Overdue", amount: 420, number: "INV-00127", method: "" },
+    { status: "Overdue", amount: 2130, number: "INV-00132", method: "" },
+    { status: "Overdue", amount: 3760, number: "INV-00145", method: "" },
+    { status: "Overdue", amount: 100, number: "INV-00157", method: "" },
+    { status: "Paid", amount: 1560, number: "INV-00159", method: "ACH via Stripe" },
+    { status: "Paid", amount: 11400, number: "INV-00183", method: "Visa ···· 7080" },
+    { status: "Paid", amount: 200, number: "INV-00197", method: "Amazon Pay" },
+    { status: "Paid", amount: 16320, number: "INV-00199", method: "PayPal" },
+    { status: "Sent", amount: 2160, number: "INV-00200", method: "" },
+    { status: "Issued", amount: 9840, number: "INV-00204", method: "" },
+    { status: "Draft", amount: 2700, number: "DRAFT", method: "" },
+    { status: "Partially Paid", amount: 12480, number: "INV-00212", method: "Wire via Wise" },
+  ] as const;
+  return examples.map((example, index) => {
+    const opportunity = initialOpportunities[index % initialOpportunities.length];
+    const paid = example.status === "Paid" ? example.amount : example.status === "Partially Paid" ? Math.round(example.amount * 0.45) : 0;
+    const invoiceDate = index < 8 ? (index < 4 ? "2026-09-01" : "2026-08-01") : "2026-11-01";
+    const dueDate = index < 4 ? "2026-10-01" : index < 8 ? "2026-08-31" : index === 8 ? "2026-11-30" : index === 9 ? "2026-12-05" : index === 10 ? "" : "2026-11-22";
+    const billingName = opportunity?.name ?? `Sample customer ${index + 1}`;
+    const reconciliation = paid ? [{ paymentId: `DEMO-PAY-${index + 1}`, amount: paid, at: `${index < 4 ? "2026-09" : "2026-11"}-${String(7 + index % 19).padStart(2, "0")}T10:00:00+05:30`, method: example.method }] : [];
+    return {
+      id: `DEMO-INV-${String(index + 1).padStart(4, "0")}`, number: example.number, opportunityId: opportunity?.id ?? `OPP-${1001 + index}`, brand: opportunity?.brand ?? "Sample brand", model: "Standard franchise model", billingType: "Company" as const,
+      parties: [{ name: billingName, address: "12 Market Road, Bengaluru, Karnataka", email: opportunity?.email ?? `billing${index + 1}@example.com`, phone: opportunity?.phone ?? "", gstin: "", allocation: example.amount }], recipients: [opportunity?.email ?? `billing${index + 1}@example.com`],
+      lines: [{ description: "Franchise services", quantity: 1, unitPrice: example.amount, gstRate: 0 }], invoiceDate, dueDate, status: example.status as InvoiceRecord["status"], approvalBy: "Finance team", issuedAt: invoiceDate ? `${invoiceDate}T09:00:00+05:30` : "", delivery: example.status === "Sent" ? "Delivery Status Unknown" as const : "Not Sent" as const, deliveryAttempts: [], reconciliations: reconciliation, cancelledReason: "", creditNotes: [],
+      ...(example.method ? { paymentMethod: example.method } : {}),
+    } as InvoiceRecord;
+  });
 }
 
 export function readFinanceState(): FinancialState {
@@ -23,7 +54,22 @@ export function readFinanceState(): FinancialState {
     if (!value) return createInitialFinanceState();
     const saved = JSON.parse(value) as Partial<FinancialState>;
     const defaults = createInitialFinanceState();
-    return { ...defaults, ...saved, payments: saved.payments ?? defaults.payments, pricing: saved.pricing ?? [], invoices: saved.invoices ?? [], audit: saved.audit ?? [] };
+    const seedDemo = !saved.demoInvoicesSeeded && !saved.invoices?.length;
+    const demoById = new Map(defaults.invoices.map(invoice => [invoice.id, invoice]));
+    const invoices = seedDemo ? defaults.invoices : (saved.invoices ?? defaults.invoices).map(invoice => {
+      const demo = demoById.get(invoice.id);
+      if (!demo) return invoice;
+      return {
+        ...invoice,
+        paymentMethod: invoice.paymentMethod ?? demo.paymentMethod,
+        reconciliations: invoice.reconciliations.map((entry, index) => ({
+          ...entry,
+          method: entry.method ?? demo.reconciliations[index]?.method,
+          at: entry.paymentId.startsWith("DEMO-PAY-") ? demo.reconciliations[index]?.at ?? entry.at : entry.at,
+        })),
+      };
+    });
+    return { ...defaults, ...saved, payments: saved.payments ?? defaults.payments, pricing: saved.pricing ?? [], invoices, audit: saved.audit ?? [], demoInvoicesSeeded: true };
   } catch { return createInitialFinanceState(); }
 }
 

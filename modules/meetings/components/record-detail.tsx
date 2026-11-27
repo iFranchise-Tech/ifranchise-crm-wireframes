@@ -12,6 +12,7 @@ import { portraitFor } from "@/modules/users-roles/portrait";
 import { canManageRecord, canViewRecord, displayTime, followUpStatus, meetingReschedulable } from "../records";
 import type { AuditEvent, MeetingProfile, MeetingsState } from "../types";
 import { ActionForm, FollowUpForm, MinutesForm, minuteFields, type ActionMode } from "./meeting-forms";
+import { MeetingPlatformLogo } from "./meeting-platform";
 
 export function StatusBadge({ status }: { status: string }) {
   return <Chip variant="caption" color={status === "Overdue" ? "rose" : ["Completed", "MOM submitted"].includes(status) ? "lime" : ["Cancelled", "Postponed"].includes(status) ? "gray" : status === "Awaiting MOM" || status === "Pending sync" ? "yellow" : "blue"}>{status}</Chip>;
@@ -22,15 +23,6 @@ export function AuditHistory({ events }: { events: AuditEvent[] }) {
 
 function initials(name: string) {
   return name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join("").toUpperCase();
-}
-
-function GoogleMeetMark() {
-  return <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0">
-    <defs><linearGradient id="meet-camera" x1="4" x2="19" y1="4" y2="20" gradientUnits="userSpaceOnUse"><stop stopColor="#FDE293" /><stop offset=".52" stopColor="#FBBC04" /><stop offset="1" stopColor="#F29900" /></linearGradient></defs>
-    <path fill="url(#meet-camera)" d="M3 6.1A3.1 3.1 0 0 1 6.1 3h8.3a3.1 3.1 0 0 1 3.1 3.1v1.1l3.3-2.5A1.4 1.4 0 0 1 23 5.8v12.4a1.4 1.4 0 0 1-2.2 1.1l-3.3-2.5v1.1a3.1 3.1 0 0 1-3.1 3.1H6.1A3.1 3.1 0 0 1 3 17.9z" />
-    <path fill="#F9AB00" d="M17.5 8.1 21 5.5a1.2 1.2 0 0 1 1.9 1v5.4h-5.4z" />
-    <path fill="#E37400" d="M17.5 15.9h5.4v5.4a1.2 1.2 0 0 1-1.9 1l-3.5-2.6z" />
-  </svg>;
 }
 
 export function EntityDetail({ kind, id, state, profile, now, onClose, initialMode = null }: { kind: "meeting" | "follow-up"; id: string; state: MeetingsState; profile: MeetingProfile; now: number; onClose: () => void; initialMode?: ActionMode | "minutes" | "follow-up" | null }) {
@@ -51,8 +43,8 @@ export function EntityDetail({ kind, id, state, profile, now, onClose, initialMo
   if (mode === "follow-up" && meeting && manage) return <FollowUpForm state={state} profile={profile} record={record} source={{ id: meeting.id, recordId: meeting.recordId, title: meeting.title, type: "Meeting", when: displayTime(meeting.startAt) }} onClose={() => setMode(null)} />;
   if (mode === "minutes" && meeting && manage) return <MinutesForm meeting={meeting} profile={profile} onClose={() => setMode(null)} />;
   if (mode && mode !== "minutes" && mode !== "follow-up" && manage) return <ActionForm item={item} kind={kind} mode={mode} state={state} profile={profile} onClose={() => setMode(null)} />;
-  return <Modal isOpen onOpenChange={open => { if (!open) onClose(); }} size="lg">
-    <ModalHeader title={item.title} />
+  return <Modal isOpen onOpenChange={open => { if (!open) onClose(); }} size="lg" overlayClassName="mf-meeting-detail-overlay" className="mf-meeting-detail-panel">
+    <ModalHeader title={item.title} className="mf-meeting-detail-header" />
     <ModalBody><div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -65,7 +57,7 @@ export function EntityDetail({ kind, id, state, profile, now, onClose, initialMo
         </div>
         <div className="flex items-center gap-2">
           {meeting && <ButtonLink size="small" variant="secondary" href={meeting.meetLink || undefined} target={meeting.meetLink ? "_blank" : undefined} rel={meeting.meetLink ? "noreferrer" : undefined} aria-disabled={!meeting.meetLink} className={!meeting.meetLink ? "pointer-events-none opacity-50" : undefined}>
-            <GoogleMeetMark /><span className="ms-1">Join meeting</span>
+            <MeetingPlatformLogo platform={meeting.platform ?? "Google Meet"} className="size-5 shrink-0" /><span className="ms-1">Join {meeting.platform ?? "meeting"}</span>
           </ButtonLink>}
           <Dropdown isOpen={actionsOpen} onOpenChange={setActionsOpen}>
             <DropdownTrigger aria-label="Meeting actions" className="inline-flex size-8 items-center justify-center rounded-lg border border-border-button-default bg-background-primary-default text-foreground-icon-primary hover:bg-background-primary-hover focus-visible:ring-2 focus-visible:ring-border-focus-ring">
@@ -96,7 +88,7 @@ export function EntityDetail({ kind, id, state, profile, now, onClose, initialMo
           </Dropdown>
         </div>
       </div>
-      <dl className="grid gap-4 rounded-xl border border-separator-border bg-background-secondary-default p-4 sm:grid-cols-2">
+      <dl className="mf-meeting-detail-facts grid gap-4 sm:grid-cols-2">
         <div><dt className="text-caption-1-regular text-text-secondary">{meeting ? "Meeting time" : "Due date & time"}</dt><dd className="text-body-medium text-text-primary">{displayTime(meeting?.startAt ?? followUp!.dueAt)} IST</dd></div>
         <div><dt className="text-caption-1-regular text-text-secondary">Assigned employee</dt><dd className="mt-1 flex items-center gap-2 text-body-medium text-text-primary"><Avatar size="sm" src={portraitFor(item.assignedTo)} initials={initials(item.assignedTo)} alt="" />{item.assignedTo}</dd></div>
         <div><dt className="text-caption-1-regular text-text-secondary">Linked record</dt><dd className="text-body-medium text-text-primary">{followUp?.linkType ?? "Opportunity"} · {meeting?.opportunityId ?? (followUp?.linkType === "Opportunity" ? record?.opportunityId : item.recordId)}</dd></div>
@@ -104,22 +96,22 @@ export function EntityDetail({ kind, id, state, profile, now, onClose, initialMo
       </dl>
       {followUp && <><section className="flex flex-col gap-2"><h3 className="text-headline-medium text-text-primary">Description</h3><p className="whitespace-pre-wrap text-body-regular text-text-secondary">{followUp.description}</p></section>{followUp.source && <section className="rounded-xl border border-separator-border p-4"><h3 className="text-body-medium text-text-primary">Created from activity</h3><p className="text-body-2-regular text-text-secondary">{followUp.source.title} · {followUp.source.type}<br />{followUp.source.when} · {followUp.source.id}</p></section>}</>}
       {meeting && <>
-        <section className="flex flex-col gap-3 rounded-xl border border-separator-border bg-background-secondary-default p-4">
+        <section className="mf-meeting-detail-section flex flex-col gap-3">
           <h3 className="text-headline-medium text-text-primary">Meeting details</h3>
           <p className="whitespace-pre-wrap text-body-regular text-text-secondary">{meeting.agenda}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Participants</span><br />{meeting.participants.join(", ")}</p>
             <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Customer</span><br />{record?.name}{meeting.customerEmail && ` · ${meeting.customerEmail}`}</p>
             {meeting.category === "Brand meeting" && <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Brand representative</span><br />{meeting.brandRepresentative} · {meeting.brandEmail}</p>}
-            {meeting.format === "In person" ? <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Location</span><br />{meeting.location} · {meeting.address}</p> : <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Format</span><br />Virtual{!meeting.meetLink ? " · Meet link pending Calendar connection" : " · Google Meet"}</p>}
+            {meeting.format === "In person" ? <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Location</span><br />{meeting.location} · {meeting.address}</p> : <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Format</span><br />Virtual · {meeting.platform ?? "Google Meet"}{!meeting.meetLink ? " connection required" : ""}</p>}
           </div>
           {meeting.remarks && <p className="text-body-2-regular text-text-secondary"><span className="text-text-primary">Remarks</span><br />{meeting.remarks}</p>}
-          <p className="rounded-lg bg-background-primary-default p-3 text-caption-1-regular text-text-tertiary">Calendar: not connected · Invitations: not sent. Reminders in this review are in-app only while the CRM is open.</p>
+          <p className="mf-meeting-detail-note text-caption-1-regular text-text-tertiary">Calendar: not connected · Invitations: not sent. Reminders in this review are in-app only while the CRM is open.</p>
         </section>
       </>}
       {item.outcome && <section className="flex flex-col gap-2"><h3 className="text-headline-medium text-text-primary">Recorded outcome</h3><p className="whitespace-pre-wrap text-body-regular text-text-secondary">{item.outcome}</p></section>}
-      {minutes && meeting && <section className="flex flex-col gap-4 rounded-xl border border-separator-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-headline-medium text-text-primary">Minutes of meeting</h3><div className="flex flex-wrap gap-2">{meeting.minutes.map(entry => <Button key={entry.version} size="small" variant={minutes.version === entry.version ? "primary" : "secondary"} onClick={() => setMinutesVersion(entry.version)}>Version {entry.version}</Button>)}</div></div><p className="text-caption-1-regular text-text-secondary">{minutes.author} · {displayTime(minutes.at)} IST</p>{minuteFields.map(field => <div key={field.key}><h4 className="text-body-medium text-text-primary">{field.label}</h4><p className="whitespace-pre-wrap text-body-2-regular text-text-secondary">{minutes[field.key]}</p></div>)}<p className="text-body-2-regular text-text-secondary">Interest: {minutes.interest}</p>{minutes.nextFollowUpAt && <p className="text-body-2-regular text-text-secondary">Next follow-up: {displayTime(minutes.nextFollowUpAt)} IST</p>}{minutes.remarks && <p className="text-body-2-regular text-text-secondary">Remarks: {minutes.remarks}</p>}{minutes.review ? <p className="rounded-xl bg-background-secondary-default p-3 text-body-2-regular text-text-secondary">Reviewed by {minutes.review.author} · {displayTime(minutes.review.at)} IST<br />{minutes.review.comment}</p> : <p className="text-caption-1-regular text-text-secondary">Awaiting manager review</p>}</section>}
+      {minutes && meeting && <section className="mf-meeting-detail-section flex flex-col gap-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-headline-medium text-text-primary">Minutes of meeting</h3><div className="flex flex-wrap gap-2">{meeting.minutes.map(entry => <Button key={entry.version} size="small" variant={minutes.version === entry.version ? "primary" : "secondary"} onClick={() => setMinutesVersion(entry.version)}>Version {entry.version}</Button>)}</div></div><p className="text-caption-1-regular text-text-secondary">{minutes.author} · {displayTime(minutes.at)} IST</p>{minuteFields.map(field => <div key={field.key}><h4 className="text-body-medium text-text-primary">{field.label}</h4><p className="whitespace-pre-wrap text-body-2-regular text-text-secondary">{minutes[field.key]}</p></div>)}<p className="text-body-2-regular text-text-secondary">Interest: {minutes.interest}</p>{minutes.nextFollowUpAt && <p className="text-body-2-regular text-text-secondary">Next follow-up: {displayTime(minutes.nextFollowUpAt)} IST</p>}{minutes.remarks && <p className="text-body-2-regular text-text-secondary">Remarks: {minutes.remarks}</p>}{minutes.review ? <p className="mf-meeting-detail-note text-body-2-regular text-text-secondary">Reviewed by {minutes.review.author} · {displayTime(minutes.review.at)} IST<br />{minutes.review.comment}</p> : <p className="text-caption-1-regular text-text-secondary">Awaiting manager review</p>}</section>}
     </div></ModalBody>
-    <ModalFooter><Button variant="secondary" onClick={onClose}>Close</Button></ModalFooter>
+    <ModalFooter className="mf-meeting-detail-footer"><Button variant="secondary" onClick={onClose}>Close</Button></ModalFooter>
   </Modal>;
 }
