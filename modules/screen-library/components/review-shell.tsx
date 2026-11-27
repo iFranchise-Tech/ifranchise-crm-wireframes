@@ -19,12 +19,14 @@ type ReviewShellProps = {
   sidebarAccount?: ReactNode;
   sidebarFooter?: ReactNode;
   moduleDropdown?: boolean;
+  singleModuleSidebar?: boolean;
+  headerTitleOnly?: boolean;
   className?: string;
   children: ReactNode;
 };
 
 /** One workspace for screens, module information and future CRM experiences. */
-export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, moduleDropdown = false, className, children }: ReviewShellProps) {
+export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, navigation, controls, sidebarAccount, sidebarFooter, moduleDropdown = false, singleModuleSidebar = false, headerTitleOnly = false, className, children }: ReviewShellProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navigationOpen, setNavigationOpen] = useState(true);
@@ -41,13 +43,15 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
     });
   };
 
-  return <div className={className ? `review-shell ${className}` : "review-shell"} data-sidebar-collapsed={sidebarCollapsed} style={sidebarCollapsed ? { gridTemplateColumns: "64px minmax(0, 1fr)" } : undefined}>
-    <aside className="review-sidebar" aria-label="Module sidebar" data-collapsed={sidebarCollapsed}>
+  const collapsedLayout = sidebarCollapsed;
+  return <div className={className ? `review-shell ${className}` : "review-shell"} data-sidebar-collapsed={collapsedLayout} style={collapsedLayout ? { gridTemplateColumns: "64px minmax(0, 1fr)" } : undefined}>
+    <aside className="review-sidebar" aria-label="Module sidebar" data-collapsed={collapsedLayout}>
       <div className="review-sidebar-top">
         <Link className="review-brand" href="/library" aria-label="iFranchise home"><BrandMark /></Link>
         <IconButton className="review-sidebar-toggle" icon={sidebarCollapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={toggleSidebar} />
       </div>
       <div className="review-sidebar-content">
+        {singleModuleSidebar ? <><nav className="fin-single-module-sidebar" aria-label="Invoice navigation"><Link className="fin-single-module-link" href={overviewHref} aria-current="page"><Icon name={icon} /><span>Invoice Management</span></Link></nav><Link className="review-all-modules-card fin-single-module-all-modules" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link></> : <>
         {moduleDropdown && <div className="mx-3 mt-3 flex min-h-9 items-stretch gap-0 rounded-xl bg-button-primary p-0 text-text-white">
           <Link className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-start text-caption-1-semibold tracking-tight text-text-white outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" href={overviewHref}><span className="size-5 shrink-0"><Icon name={icon} className="size-full" /></span><span className="truncate whitespace-nowrap">{moduleName}</span></Link>
           <button type="button" className="flex w-9 shrink-0 items-center justify-center rounded-lg text-text-white hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring" aria-label={navigationOpen ? `Collapse ${moduleName} sections` : `Expand ${moduleName} sections`} aria-expanded={navigationOpen} aria-controls="review-module-navigation" onClick={() => setNavigationOpen(open => !open)}><RiArrowDownSLine className={`size-4 transition-transform ${navigationOpen ? "" : "-rotate-90"}`} /></button>
@@ -56,15 +60,16 @@ export function ReviewShell({ moduleName, icon, subtitle, overviewHref, title, n
         {moduleDropdown ? <div id="review-module-navigation" className="review-module-navigation flex min-h-0 flex-1 flex-col" hidden={!navigationOpen}>{navigation}</div> : navigation}
         {sidebarFooter}
         <Link className="review-all-modules-card" href="/library"><Icon name="grid" /><span>All modules</span><Icon name="arrow" /></Link>
+        </>}
       </div>
     </aside>
     <main className="review-workspace">
       <header className="review-toolbar">
         <button className="icon-button review-menu-button" aria-label="Browse module navigation" onClick={() => dialog.current?.showModal()}><Icon name="menu" /></button>
-        <Breadcrumb className="review-breadcrumb" aria-label="Breadcrumb">
+        {headerTitleOnly ? <div className="review-breadcrumb fin-header-title"><span><Icon name={icon} /></span><h1 className="review-breadcrumb-title">{moduleName}</h1></div> : <Breadcrumb className="review-breadcrumb" aria-label="Breadcrumb">
           <BreadcrumbItem href={overviewHref}>{moduleName}</BreadcrumbItem>
           <BreadcrumbItem current><h1 className="review-breadcrumb-title">{title}</h1></BreadcrumbItem>
-        </Breadcrumb>
+        </Breadcrumb>}
         {controls}
       </header>
       {children}

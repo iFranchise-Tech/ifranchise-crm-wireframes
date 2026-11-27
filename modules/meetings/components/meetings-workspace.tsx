@@ -25,6 +25,7 @@ import { updateMeetings, useMeetingProfile, useMeetings } from "../store";
 import type { FollowUp, Meeting, MeetingProfile, MeetingsState, ReminderPolicy } from "../types";
 import { FollowUpForm, MeetingForm, fieldClass, type ActionMode } from "./meeting-forms";
 import { AuditHistory, EntityDetail, StatusBadge } from "./record-detail";
+import { MeetingPlatformLogo } from "./meeting-platform";
 import { portraitFor } from "@/modules/users-roles/portrait";
 import "@/modules/leads/components/leads.css";
 import "./meetings.css";
@@ -45,7 +46,7 @@ export function MeetingsWorkspace() {
   const [query, setQuery] = useState(""); const [status, setStatus] = useState("all"); const [owner, setOwner] = useState("all"); const [category, setCategory] = useState("all");
   const [advanced, setAdvanced] = useState(false); const [filters, setFilters] = useState<LeadAdvancedFilters | null>(null); const [columnsOpen, setColumnsOpen] = useState(false);
   const [columnIds, setColumnIds] = useState(baseColumns.map(column => column.id)); const [page, setPage] = useState(1);
-  const [create, setCreate] = useState<"meeting" | "follow-up" | null>(null); const [detail, setDetail] = useState<{ kind: "meeting" | "follow-up"; id: string; action?: ActionMode | "minutes" | "follow-up" } | null>(null);
+  const [create, setCreate] = useState<"meeting" | "follow-up" | null>(null); const [meetingInitialDate, setMeetingInitialDate] = useState(""); const [detail, setDetail] = useState<{ kind: "meeting" | "follow-up"; id: string; action?: ActionMode | "minutes" | "follow-up" } | null>(null);
   const [openMeetingMenuId, setOpenMeetingMenuId] = useState<string | null>(null);
   const [notice, setNotice] = useState(""); const fade = useScrollFade();
   const follow = view === "Follow-ups"; const listView = follow || (view === "Meetings" && meetingDisplay === "list"); const activityView = follow || view === "Meetings";
@@ -130,14 +131,14 @@ export function MeetingsWorkspace() {
             <Select className="mf-meeting-filter" aria-label="Filter meetings by assignee" selectedKey={owner} onSelectionChange={key => setOwner(String(key))}><SelectItem id="all">All assignees</SelectItem>{[...new Set(entries.map(item => item.assignedTo))].map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>
             <Select className="mf-meeting-filter" aria-label="Filter meetings by category" selectedKey={category} onSelectionChange={key => setCategory(String(key))}><SelectItem id="all">All categories</SelectItem>{["Manager meeting", "Brand meeting", "Follow-up meeting"].map(value => <SelectItem key={value} id={value}>{value}</SelectItem>)}</Select>
             <IconButton icon={RiBarChartBoxLine} aria-label="Quick overview" title="Quick overview" aria-pressed={overview} className={cx("mf-tool", overview && "border-accent-600 bg-accent-50 text-accent-700")} onClick={() => setOverview(!overview)} />
-            <Button leadingIcon={RiAddLine} disabled={profile.readOnly || !ready || !scopedRecords.some(item => canManageRecord(profile, item) && item.opportunityId)} onClick={() => setCreate("meeting")}>New meeting</Button>
+            <Button leadingIcon={RiAddLine} disabled={profile.readOnly || !ready || !scopedRecords.some(item => canManageRecord(profile, item) && item.opportunityId)} onClick={() => { setMeetingInitialDate(istParts(now || Date.now()).date); setCreate("meeting"); }}>New meeting</Button>
             <div className="mf-view-toggle" aria-label="Meeting view">
               <IconButton icon={RiCalendarLine} aria-label="Calendar view" title="Calendar view" aria-pressed={meetingDisplay === "calendar"} onClick={() => { setQuery(""); setMeetingDisplay("calendar"); }} />
               <IconButton icon={RiListUnordered} aria-label="List view" title="List view" aria-pressed={meetingDisplay === "list"} onClick={() => { setQuery(""); setMeetingDisplay("list"); }} />
             </div>
           </div>
         </div>
-        {meetingDisplay === "calendar" ? ready ? <MeetingCalendarView meetings={filtered.filter((item): item is Meeting => "startAt" in item)} month={calendarMonth} now={now} onOpen={id => setDetail({ kind: "meeting", id })} /> : <p className="mf-calendar-empty">Loading calendar…</p> : <div className={cx("mf-list-content", advanced && "mf-with-filters")}>
+        {meetingDisplay === "calendar" ? ready ? <MeetingCalendarView meetings={filtered.filter((item): item is Meeting => "startAt" in item)} month={calendarMonth} now={now} onOpen={id => setDetail({ kind: "meeting", id })} onAddForDate={date => { setMeetingInitialDate(date); setCreate("meeting"); }} /> : <p className="mf-calendar-empty">Loading calendar…</p> : <div className={cx("mf-list-content", advanced && "mf-with-filters")}>
           <div className="min-w-0"><Table aria-label="Meetings" className="mf-table"><TableHeader>{visibleColumns.map(column => <TableColumn key={column.id} id={column.id} isRowHeader={column.id === "title"}>{column.name}</TableColumn>)}<TableColumn aria-label="Actions"> </TableColumn></TableHeader><TableBody renderEmptyState={() => <div className="p-8 text-center text-body-regular text-text-secondary">{!ready ? "Loading your meetings…" : entries.length ? "No meetings match these filters." : "No meetings in your authorised records yet."}</div>}>{rows.map(item => {
             const record = recordFor(item.recordId);
             const canManage = canManageRecord(profile, record);
@@ -179,7 +180,7 @@ export function MeetingsWorkspace() {
       {view === "Reminder settings" && profile.admin && <ReminderSettingsPanel state={state} profile={profile} />}
     </div><ScrollFade progress={fade.progress} surfaceClassName="from-background-primary-default" /></div>
     {create === "follow-up" && <FollowUpForm state={state} profile={profile} onClose={() => setCreate(null)} onSaved={id => setDetail({ kind: "follow-up", id })} />}
-    {create === "meeting" && <MeetingForm state={state} profile={profile} onClose={() => setCreate(null)} onSaved={id => setDetail({ kind: "meeting", id })} />}
+    {create === "meeting" && <MeetingForm state={state} profile={profile} initialDate={meetingInitialDate} onClose={() => setCreate(null)} onSaved={id => setDetail({ kind: "meeting", id })} />}
     {detail && !create && <EntityDetail key={`${detail.kind}:${detail.id}:${detail.action ?? "view"}`} {...detail} initialMode={detail.action ?? null} state={state} profile={profile} now={now} onClose={() => setDetail(null)} />}
     {columnsOpen && <ColumnManagerModal isOpen onOpenChange={setColumnsOpen} availableColumns={columns} selectedIds={columnIds} requiredIds={["title"]} scopeLabel={scope} onSave={ids => { try { savePersonalTableColumns(scope, profile.id, ids); setColumnIds(ids); setColumnsOpen(false); } catch { setNotice("Column preferences could not be saved."); } }} />}
     {confirmationDialog}
@@ -198,7 +199,7 @@ function ReminderSettingsPanel({ state, profile }: { state: MeetingsState; profi
   </form>;
 }
 
-function MeetingCalendarView({ meetings, month, now, onOpen }: { meetings: Meeting[]; month: Date; now: number; onOpen: (id: string) => void }) {
+function MeetingCalendarView({ meetings, month, now, onOpen, onAddForDate }: { meetings: Meeting[]; month: Date; now: number; onOpen: (id: string) => void; onAddForDate: (date: string) => void }) {
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const start = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay());
@@ -209,7 +210,7 @@ function MeetingCalendarView({ meetings, month, now, onOpen }: { meetings: Meeti
       const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
       const dayMeetings = meetings.filter(item => istParts(item.startAt).date === key).sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
       return <article key={key} className={cx("mf-calendar-day", day.getMonth() !== month.getMonth() && "is-adjacent", key === todayKey && "is-today")}>
-        <span className="mf-calendar-day-number text-body-2-medium" aria-current={key === todayKey ? "date" : undefined}>{day.getDate()}</span>
+        <div className="mf-calendar-day-heading"><span className="mf-calendar-day-number text-body-2-medium" aria-current={key === todayKey ? "date" : undefined}>{day.getDate()}</span><IconButton icon={RiAddLine} aria-label={`New meeting on ${day.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`} title="New meeting on this day" className="mf-calendar-add" onClick={() => onAddForDate(key)} /></div>
         <div className="mf-calendar-events">{dayMeetings.map((meeting, index) => <button type="button" key={meeting.id} className={cx("mf-calendar-event focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring", `is-color-${index % 3}`)} onClick={() => onOpen(meeting.id)} title={`${meeting.title} · ${meeting.assignedTo}`}><span className="text-caption-1-medium">{meeting.title}</span><time className="text-caption-1-regular">{new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date(meeting.startAt))}</time></button>)}</div>
       </article>;
     })}</div></div>
@@ -271,7 +272,7 @@ function MeetingsNotifications({ notifications, selected, unread, now, filter, o
         {relatedStatus && <div className="mf-notice-status-row"><StatusBadge status={relatedStatus} /></div>}
         {relatedRecord && <a className="mf-notice-record-link text-body-2-regular" href={relatedRecordHref}>Open customer record · {relatedRecord.id}{relatedRecord.opportunityId ? ` · ${relatedRecord.opportunityId}` : ""}</a>}
         {(meeting || followUp) && <span className="text-body-2-regular">Assigned to · {meeting?.assignedTo ?? followUp?.assignedTo}</span>}
-        {meeting && <><span className="text-body-2-regular">{meeting.category} · {meeting.duration} minutes · {meeting.format}</span>{meeting.customerEmail && <span className="text-body-2-regular">Customer email · {meeting.customerEmail}</span>}{meeting.meetLink && <a className="text-body-2-regular text-accent-700 underline" href={meeting.meetLink} target="_blank" rel="noreferrer">Join Google Meet</a>}</>}
+        {meeting && <><span className="text-body-2-regular">{meeting.category} · {meeting.duration} minutes · {meeting.format}{meeting.format === "Virtual" ? ` · ${meeting.platform ?? "Google Meet"}` : ""}</span>{meeting.customerEmail && <span className="text-body-2-regular">Customer email · {meeting.customerEmail}</span>}{meeting.meetLink && <a className="flex items-center gap-2 text-body-2-regular text-accent-700 underline" href={meeting.meetLink} target="_blank" rel="noreferrer"><MeetingPlatformLogo platform={meeting.platform ?? "Google Meet"} className="size-5" />Join {meeting.platform ?? "meeting"}</a>}</>}
         {followUp && <><span className="text-body-2-regular">Priority · {followUp.priority} · {followUp.linkType}</span><p className="text-body-2-regular text-text-secondary">{followUp.description}</p></>}
       </section>
     </aside> : <aside className="mf-notification-detail mf-notification-placeholder"><RiNotification3Line className="size-8 text-foreground-icon-tertiary" /><p className="text-body-regular text-text-secondary">Select an update to see its details.</p></aside>}
